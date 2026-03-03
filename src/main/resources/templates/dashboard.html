@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <title>Production Dashboard</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 50%;
+            border-radius: 8px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/layout :: navbar}"></div>
+
+    <div class="container" style="max-width: 1400px;">
+        <h2>Production Dashboard</h2>
+
+        <form th:action="@{/dashboard/}" method="get" style="margin-bottom: 20px;">
+            <label>Select Date: </label>
+            <input type="date" name="date" th:value="${selectedDate}" class="form-control"
+                style="width: 200px; display: inline-block; margin-right: 10px;" />
+            <button type="submit" class="btn btn-primary">Load Data</button>
+        </form>
+
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="white-space: nowrap;">Date</th>
+                        <th style="white-space: nowrap;">Section</th>
+                        <th style="white-space: nowrap;">Line</th>
+                        <th style="white-space: nowrap;">Article</th>
+                        <th style="white-space: nowrap;">Total Output</th>
+                        <th style="white-space: nowrap;">WT</th>
+                        <th style="white-space: nowrap;">MP</th>
+                        <!-- 15 Time slots 07:00 to 21:00 -->
+                        <th style="white-space: nowrap;">07:00-08:00</th>
+                        <th style="white-space: nowrap;">08:00-09:00</th>
+                        <th style="white-space: nowrap;">09:00-10:00</th>
+                        <th style="white-space: nowrap;">10:00-11:00</th>
+                        <th style="white-space: nowrap;">11:00-12:00</th>
+                        <th style="white-space: nowrap;">12:00-13:00</th>
+                        <th style="white-space: nowrap;">13:00-14:00</th>
+                        <th style="white-space: nowrap;">14:00-15:00</th>
+                        <th style="white-space: nowrap;">15:00-16:00</th>
+                        <th style="white-space: nowrap;">16:00-17:00</th>
+                        <th style="white-space: nowrap;">17:00-18:00</th>
+                        <th style="white-space: nowrap;">18:00-19:00</th>
+                        <th style="white-space: nowrap;">19:00-20:00</th>
+                        <th style="white-space: nowrap;">20:00-21:00</th>
+                        <th style="white-space: nowrap;">21:00-22:00</th>
+                        <th style="white-space: nowrap;">TCT</th>
+                        <th style="white-space: nowrap;">Target</th>
+                        <th style="white-space: nowrap;">EFF %</th>
+                        <th sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" style="white-space: nowrap;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="record : ${records}">
+                        <td th:text="${record.productionDate}" style="white-space: nowrap;"></td>
+                        <td th:text="${record.section}"></td>
+                        <td th:text="${record.line}" style="white-space: nowrap;"></td>
+                        <td th:text="${record.article}"></td>
+                        <td th:text="${record.output}"></td>
+                        <td th:text="${record.wt}"></td>
+                        <td th:text="${record.mp}"></td>
+
+                        <!-- Print 15 Slots from static labels -->
+                        <td th:each="slotName : ${ {'07:00-08:00', '08:00-09:00', '09:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-13:00', '13:00-14:00', '14:00-15:00', '15:00-16:00', '16:00-17:00', '17:00-18:00', '18:00-19:00', '19:00-20:00', '20:00-21:00', '21:00-22:00'} }"
+                            style="white-space: nowrap; font-size: 0.9em;">
+                            <span th:each="dt : ${record.details}" th:if="${dt.timeSlot == slotName}"
+                                th:text="${dt.articleNo}"></span>
+                        </td>
+
+                        <td th:text="${record.tct != null ? record.tct : 'N/A'}"></td>
+                        <td th:text="${record.target != null ? #numbers.formatDecimal(record.target, 1, 0) : 'N/A'}">
+                        </td>
+                        <td th:text="${record.eff != null ? #numbers.formatDecimal(record.eff * 100, 1, 2) + '%' : 'N/A'}"
+                            style="font-weight: bold; color: #d9534f;">
+                        </td>
+                        <td sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" style="white-space: nowrap;">
+                            <button class="btn btn-primary" th:onclick="openEditModal([[${record}]])"
+                                style="padding: 5px 10px; font-size: 12px;">Edit</button>
+                            <form th:action="@{/dashboard/delete}" method="post" style="display:inline;">
+                                <input type="hidden" name="id" th:value="${record.id}" />
+                                <input type="hidden" name="date" th:value="${selectedDate}" />
+                                <button type="submit" class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;"
+                                    onclick="return confirm('Are you sure?')">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeEditModal()">&times;</span>
+            <h2>Edit Record</h2>
+            <form th:action="@{/dashboard/edit}" method="post">
+                <input type="hidden" id="edit-id" name="id" />
+                <input type="hidden" id="edit-date" name="productionDate" />
+
+                <div class="form-group">
+                    <label>Section</label>
+                    <select id="edit-section" name="section" class="form-control" required>
+                        <option value="SEW">SEW</option>
+                        <option value="BUFFING 1ST">BUFFING 1ST</option>
+                        <option value="BUFFING 2ND">BUFFING 2ND</option>
+                        <option value="STOCKFIT UV">STOCKFIT UV</option>
+                        <option value="STOCKFIT 1ST">STOCKFIT 1ST</option>
+                        <option value="STOCKFIT 2ND">STOCKFIT 2ND</option>
+                        <option value="ASSEMBLY BIG">ASSEMBLY BIG</option>
+                        <option value="ASSEMBLY SMALL">ASSEMBLY SMALL</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Line</label>
+                    <input type="text" id="edit-line" name="line" class="form-control" required />
+                </div>
+                <div class="form-group">
+                    <label>Total Output</label>
+                    <input type="number" id="edit-output" name="output" class="form-control" required />
+                </div>
+                <div class="form-group">
+                    <label>Manpower (MP)</label>
+                    <input type="number" step="0.1" id="edit-mp" name="mp" class="form-control" required />
+                </div>
+                <div class="form-group">
+                    <label>Working Time (WT)</label>
+                    <input type="number" step="0.1" id="edit-wt" name="wt" class="form-control" required />
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;">Save Changes</button>
+            </form>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        function openEditModal(record) {
+            document.getElementById('edit-id').value = record.id;
+            document.getElementById('edit-date').value = record.productionDate;
+            document.getElementById('edit-section').value = record.section;
+            document.getElementById('edit-line').value = record.line;
+            document.getElementById('edit-output').value = record.output;
+            document.getElementById('edit-mp').value = record.mp;
+            document.getElementById('edit-wt').value = record.wt;
+            document.getElementById('editModal').style.display = "block";
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = "none";
+        }
+
+        window.onclick = function (event) {
+            if (event.target == document.getElementById('editModal')) {
+                closeEditModal();
+            }
+        }
+    </script>
+</body>
+
+</html>

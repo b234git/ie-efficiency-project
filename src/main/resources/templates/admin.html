@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+
+<body>
+    <div th:replace="~{fragments/layout :: navbar}"></div>
+
+    <div class="container">
+        <h2>User Management</h2>
+
+        <div th:if="${param.success}" style="color: green; margin-bottom: 10px;">
+            Role updated successfully!
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Current Role</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="user : ${users}">
+                    <td th:text="${user.id}"></td>
+                    <td th:text="${user.username}"></td>
+                    <td th:text="${user.role}"></td>
+                    <td>
+                        <form th:action="@{/admin/update-role}" method="post" style="display: flex; gap: 10px;">
+                            <input type="hidden" name="userId" th:value="${user.id}" />
+                            <select name="newRole" class="form-control" style="width: auto;">
+                                <option value="ROLE_USER" th:selected="${user.role == 'ROLE_USER'}">USER</option>
+                                <option value="ROLE_MANAGER" th:selected="${user.role == 'ROLE_MANAGER'}">MANAGER
+                                </option>
+                                <option value="ROLE_ADMIN" th:selected="${user.role == 'ROLE_ADMIN'}">ADMIN</option>
+                            </select>
+                            <button type="submit" class="btn btn-primary">Update</button>
+                        </form>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 style="margin-top: 40px;">System Logs</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="log : ${logs}">
+                    <td th:text="${#temporals.format(log.timestamp, 'dd/MM/yyyy HH:mm:ss')}"></td>
+                    <td th:text="${log.username}"></td>
+                    <td th:text="${log.action}"></td>
+                    <td th:text="${log.details}"></td>
+                </tr>
+                <tr th:if="${logs == null || logs.isEmpty()}">
+                    <td colspan="4" style="text-align: center; color: #888;">No system logs available.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+
+</html>

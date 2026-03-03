@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Eff Management</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <script th:src="@{/js/main.js}"></script>
+</head>
+
+<body>
+
+    <div class="navbar" th:fragment="navbar">
+        <div>
+            <h2><a th:href="@{/home}">System Dashboard</a></h2>
+        </div>
+        <div sec:authorize="isAuthenticated()">
+            <span style="margin-right: 15px;">Welcome, <span sec:authentication="name"></span>!</span>
+
+            <a sec:authorize="hasAnyRole('USER', 'MANAGER', 'ADMIN')" th:href="@{/entry/}">Entry</a>
+            <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/dashboard/}">Dashboard</a>
+            <a sec:authorize="hasRole('ADMIN')" th:href="@{/admin/}">Admin</a>
+
+            <form th:action="@{/logout}" method="post" style="display: inline;">
+                <button type="submit" class="btn btn-danger" style="padding: 5px 10px;">Logout</button>
+            </form>
+        </div>
+        <div sec:authorize="!isAuthenticated()">
+            <a th:href="@{/login}">Login</a>
+            <a th:href="@{/register}">Register</a>
+        </div>
+    </div>
+
+</body>
+
+</html>
