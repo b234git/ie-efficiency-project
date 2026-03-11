@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 
 <head>
-    <title>Admin Dashboard</title>
+    <title th:text="#{admin.title}">Admin Dashboard</title>
     <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 
@@ -10,19 +10,18 @@
     <div th:replace="~{fragments/layout :: navbar}"></div>
 
     <div class="container">
-        <h2>User Management</h2>
+        <h2 th:text="#{admin.title}">User Management</h2>
 
-        <div th:if="${param.success}" style="color: green; margin-bottom: 10px;">
-            Role updated successfully!
-        </div>
+        <div th:if="${param.success}" style="color: green; margin-bottom: 10px;" th:text="#{admin.role.updated}">Role
+            updated successfully!</div>
 
         <table>
             <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>Username</th>
-                    <th>Current Role</th>
-                    <th>Action</th>
+                    <th th:text="#{admin.id}">ID</th>
+                    <th th:text="#{admin.username}">Username</th>
+                    <th th:text="#{admin.currentrole}">Current Role</th>
+                    <th th:text="#{admin.action}">Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -39,21 +38,21 @@
                                 </option>
                                 <option value="ROLE_ADMIN" th:selected="${user.role == 'ROLE_ADMIN'}">ADMIN</option>
                             </select>
-                            <button type="submit" class="btn btn-primary">Update</button>
+                            <button type="submit" class="btn btn-primary" th:text="#{admin.update}">Update</button>
                         </form>
                     </td>
                 </tr>
             </tbody>
         </table>
 
-        <h2 style="margin-top: 40px;">System Logs</h2>
+        <h2 style="margin-top: 40px;" th:text="#{admin.syslogs}">System Logs</h2>
         <table>
             <thead>
                 <tr>
-                    <th>Time</th>
-                    <th>User</th>
-                    <th>Action</th>
-                    <th>Details</th>
+                    <th th:text="#{admin.log.time}">Time</th>
+                    <th th:text="#{admin.log.user}">User</th>
+                    <th th:text="#{admin.log.action}">Action</th>
+                    <th th:text="#{admin.log.details}">Details</th>
                 </tr>
             </thead>
             <tbody>
@@ -64,7 +63,8 @@
                     <td th:text="${log.details}"></td>
                 </tr>
                 <tr th:if="${logs == null || logs.isEmpty()}">
-                    <td colspan="4" style="text-align: center; color: #888;">No system logs available.</td>
+                    <td colspan="4" style="text-align: center; color: #888;" th:text="#{admin.log.empty}">No system logs
+                        available.</td>
                 </tr>
             </tbody>
         </table>

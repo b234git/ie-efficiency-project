@@ -1,16 +1,9 @@
 import openpyxl
-wb = openpyxl.load_workbook('c:/Users/mphat/Desktop/work/IE-Eff/info/EFF JAN V6.xlsx', data_only=False)
-ws = wb['%']
-eff_col = None
-for c in range(1, 100):
-    val = ws.cell(2, c).value
-    if val and 'EFF' == str(val).strip():
-        eff_col = c
-        print(f"EFF column found at {c}: {val}")
-        break
-
-if eff_col:
-    print(f"EFF Formula at row 3: {ws.cell(3, eff_col).value}")
-    print(f"EFF Formula at row 4: {ws.cell(4, eff_col).value}")
-else:
-    print("EFF column not found")
+wb = openpyxl.load_workbook('info/EFF FEB V6.xlsx', data_only=True)
+sheet = wb['D']
+print('H8 (DL):', sheet['H8'].value)
+print('I8 (DLI):', sheet['I8'].value)
+print('J8 (IDL):', sheet['J8'].value)
+print('K8 (Output):', sheet['K8'].value)
+print('BO8 (Total Quota):', sheet['BO8'].value)
+print('CE8 (Total MP):', sheet['CE8'].value)

@@ -1,0 +1,79 @@
+package thienloc.manage.controller;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.*;
+import thienloc.manage.dto.DailyProductionDto;
+import thienloc.manage.service.ProductionService;
+
+import java.time.LocalDate;
+import java.util.List;
+
+@Controller
+@RequestMapping("/report")
+public class ReportController {
+
+    @Autowired
+    private ProductionService productionService;
+
+    @GetMapping({ "/", "/weekly" })
+    public String report(
+            @RequestParam(required = false, defaultValue = "1M") String range,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) String article,
+            Model model) {
+
+        LocalDate today = LocalDate.now();
+        List<DailyProductionDto> records;
+        String rangeLabel;
+
+        switch (range) {
+            case "TODAY":
+                LocalDate d = (date != null) ? date : today;
+                records = productionService.getDashboardData(d);
+                rangeLabel = "";
+                break;
+            case "6M":
+                records = productionService.getDashboardDataRange(today.minusMonths(6), today);
+                rangeLabel = "Last 6 months (" + today.minusMonths(6) + " \u2192 " + today + ")";
+                break;
+            case "ALL":
+                records = productionService.getDashboardDataAllTime();
+                rangeLabel = "All time";
+                break;
+            default: // 1M
+                records = productionService.getDashboardDataRange(today.minusMonths(1), today);
+                rangeLabel = "Last 1 month (" + today.minusMonths(1) + " \u2192 " + today + ")";
+                break;
+        }
+
+        // Filter by article if provided
+        if (article != null && !article.trim().isEmpty()) {
+            String lowerArticle = article.toLowerCase().trim();
+            records = records.stream()
+                    .filter(r -> (r.getArticle() != null && r.getArticle().toLowerCase().contains(lowerArticle)) ||
+                            (r.getDetails() != null && r.getDetails().stream()
+                                    .anyMatch(d -> d.getArticleNo() != null
+                                            && d.getArticleNo().toLowerCase().contains(lowerArticle))))
+                    .collect(java.util.stream.Collectors.toList());
+        }
+
+        model.addAttribute("records", records);
+        model.addAttribute("rangeLabel", rangeLabel);
+        model.addAttribute("selectedRange", range);
+        model.addAttribute("selectedDate", date != null ? date : today);
+        model.addAttribute("article", article);
+
+        // Pre-compute stats (Thymeleaf SpEL does NOT support lambdas)
+        int totalOutput = records.stream().mapToInt(r -> r.getOutput() != null ? r.getOutput() : 0).sum();
+        double avgEff = records.stream().filter(r -> r.getEff() != null)
+                .mapToDouble(r -> r.getEff()).average().orElse(0);
+        long effCount = records.stream().filter(r -> r.getEff() != null).count();
+        model.addAttribute("totalOutput", totalOutput);
+        model.addAttribute("avgEff", effCount > 0 ? avgEff : null);
+        return "report";
+
+    }
+}

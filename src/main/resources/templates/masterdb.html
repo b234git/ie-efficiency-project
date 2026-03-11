@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <title th:text="#{masterdb.title}">Master DB Management</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <style>
+        /* ── Page Layout ─────────────────────────────────────── */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        /* ── Search bar ──────────────────────────────────────── */
+        .search-bar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* ── Import panel ────────────────────────────────────── */
+        .import-panel {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+        }
+
+        .import-panel h5 {
+            margin: 0 0 12px 0;
+            font-weight: 600;
+        }
+
+        .import-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* ── Table ───────────────────────────────────────────── */
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table th,
+        table td {
+            white-space: nowrap;
+            font-size: 0.88rem;
+            padding: 6px 10px;
+        }
+
+        table td.num {
+            text-align: right;
+        }
+
+        .eff-col {
+            font-weight: bold;
+        }
+
+        /* ── Modal ───────────────────────────────────────────── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal-box {
+            background: #fff;
+            border-radius: 10px;
+            padding: 28px 32px;
+            width: 700px;
+            max-width: 95%;
+            margin: 40px auto;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 14px;
+            right: 18px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            background: none;
+            border: none;
+            line-height: 1;
+        }
+
+        .modal-title {
+            margin: 0 0 20px 0;
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .form-grid .span2 {
+            grid-column: span 2;
+        }
+
+        .pph-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .section-header {
+            grid-column: 1 / -1;
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.9rem;
+            margin-top: 4px;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 4px;
+        }
+
+        /* ── Pagination ──────────────────────────────────────── */
+        .pagination {
+            display: flex;
+            gap: 4px;
+            list-style: none;
+            padding: 0;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        .pagination a,
+        .pagination span {
+            padding: 5px 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #0d6efd;
+            font-size: 0.9rem;
+        }
+
+        .pagination .active {
+            background: #0d6efd;
+            color: white;
+            border-color: #0d6efd;
+        }
+
+        .pagination .disabled {
+            color: #adb5bd;
+            cursor: not-allowed;
+        }
+
+        /* ── Alerts ──────────────────────────────────────────── */
+        .alert {
+            padding: 10px 16px;
+            border-radius: 5px;
+            margin-bottom: 14px;
+        }
+
+        .alert-success {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #842029;
+        }
+
+        /* ── Action buttons ──────────────────────────────────── */
+        .btn-sm {
+            padding: 3px 9px;
+            font-size: 0.8rem;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #000;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .badge-count {
+            background: #0d6efd;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/layout :: navbar}"></div>
+
+    <div class="container" style="max-width:1600px; padding: 20px;">
+
+        <!-- ── Page header ─────────────────────────────────────── -->
+        <div class="page-header">
+            <div>
+                <h2 th:text="#{masterdb.title}">Master DB</h2>
+                <small style="color:#6c757d;">
+                    <span th:text="#{masterdb.totalrecords}">Tổng</span>: <strong
+                        th:text="${records.totalElements}">0</strong> <span th:text="#{masterdb.records}">bản ghi</span>
+                    &nbsp;·&nbsp;
+                    <span th:text="#{masterdb.page}">Trang</span> <strong th:text="${currentPage + 1}">1</strong>
+                    / <strong th:text="${totalPages}">1</strong>
+                </small>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <!-- MANAGER/ADMIN: thêm mới -->
+                <button sec:authorize="hasAnyRole('MANAGER','ADMIN')" class="btn btn-primary" onclick="openAddModal()">+
+                    Add New</button>
+                <!-- USER: cũng được thêm mới -->
+                <button sec:authorize="hasRole('USER')" class="btn btn-primary" onclick="openAddModal()">+ Thêm
+                    Mới</button>
+            </div>
+        </div>
+
+        <!-- ── Alerts ──────────────────────────────────────────── -->
+        <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+        <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+        <!-- ── Import Excel Panel ──────────────────────────────── -->
+        <div class="import-panel">
+            <h5>📥 Import Excel (Sheet "DB")</h5>
+            <div class="import-row">
+                <a th:href="@{/masterdb/template}" class="btn btn-success btn-sm"
+                    style="padding:7px 14px; font-size:0.9rem;">⬇ Download Template</a>
+                <form th:action="@{/masterdb/import}" method="post" enctype="multipart/form-data"
+                    style="display:flex; gap:8px; align-items:center;">
+                    <input type="file" name="file" accept=".xlsx" required style="font-size:0.9rem;" />
+                    <button type="submit" class="btn btn-primary" style="padding:7px 14px; font-size:0.9rem;">Upload
+                        &amp; Import</button>
+                </form>
+            </div>
+            <small style="color:#6c757d; margin-top:6px; display:block;">
+                ⚠️ File must contain a sheet named <code>DB</code>, data starts from row 3 (skip 2 header rows).
+                Các bản ghi có cùng <code>ref</code> sẽ được cập nhật (upsert).
+            </small>
+        </div>
+
+        <!-- ── Search bar ──────────────────────────────────────── -->
+        <form th:action="@{/masterdb/}" method="get" class="search-bar" style="margin-bottom:16px;">
+            <input type="text" name="keyword" th:value="${keyword}" class="form-control" style="width:280px;"
+                placeholder="Tìm theo Ref hoặc Article No..." />
+            <button type="submit" class="btn btn-primary" th:text="#{masterdb.searchbtn}">Search</button>
+            <a th:href="@{/masterdb/}" class="btn"
+                style="border:1px solid #ccc; padding:8px 14px; text-decoration:none; color:#333;"
+                th:text="#{masterdb.clearfilter}">Clear filter</a>
+        </form>
+
+        <!-- ── Data Table ──────────────────────────────────────── -->
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Ref</th>
+                        <th>Article No</th>
+                        <th>Pattern No</th>
+                        <th>Shoe Name</th>
+                        <th>OS Code</th>
+                        <th>Sew Quota</th>
+                        <th>TCT (s)</th>
+                        <th style="background:#dff0d8;">SEW PPH</th>
+                        <th style="background:#d9edf7;">BUFF 1ST</th>
+                        <th style="background:#d9edf7;">BUFF 2ND</th>
+                        <th style="background:#fcf8e3;">SF UV</th>
+                        <th style="background:#fcf8e3;">SF 1ST</th>
+                        <th style="background:#fcf8e3;">SF 2ND</th>
+                        <th style="background:#f2dede;">ASSEM BIG</th>
+                        <th style="background:#f2dede;">ASSEM SMALL</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:if="${records.isEmpty()}">
+                        <td colspan="17" style="text-align:center; color:#888; padding:20px;" th:text="#{table.nodata}">
+                            No data available.</td>
+                    </tr>
+                    <tr th:each="rec, stat : ${records.content}">
+                        <td th:text="${currentPage * 10 + stat.index + 1}" style="color:#6c757d;"></td>
+                        <td style="font-weight:600;" th:text="${rec.ref}"></td>
+                        <td th:text="${rec.articleNo}"></td>
+                        <td th:text="${rec.patternNo != null ? rec.patternNo : '-'}"></td>
+                        <td th:text="${rec.shoeName != null ? rec.shoeName : '-'}"></td>
+                        <td th:text="${rec.osCode != null ? rec.osCode : '-'}"></td>
+                        <td class="num"
+                            th:text="${rec.sewQuotaDb != null ? #numbers.formatDecimal(rec.sewQuotaDb,1,2,'POINT') : '-'}">
+                        </td>
+                        <td class="num" th:text="${rec.tct != null ? #numbers.formatDecimal(rec.tct, 1, 2) : '-'}"></td>
+                        <td class="num" style="background:#f5fff5;"
+                            th:text="${rec.sewPph != null ? #numbers.formatDecimal(rec.sewPph,1,2,'POINT') : '-'}">
+                        </td>
+                        <td class="num" style="background:#f0f8ff;"
+                            th:text="${rec.buff1stPph != null ? #numbers.formatDecimal(rec.buff1stPph,1,2,'POINT') : '-'}">
+                        </td>
+                        <td class="num" style="background:#f0f8ff;"
+                            th:text="${rec.buff2ndPph != null ? #numbers.formatDecimal(rec.buff2ndPph,1,2,'POINT') : '-'}">
+                        </td>
+                        <td class="num" style="background:#fffef0;"
+                            th:text="${rec.stockfitUvPph != null ? #numbers.formatDecimal(rec.stockfitUvPph,1,2,'POINT') : '-'}">
+                        </td>
+                        <td class="num" style="background:#fffef0;"
+                            th:text="${rec.stockfit1stPph != null ? #numbers.formatDecimal(rec.stockfit1stPph,1,2,'POINT') : '-'}">
+                        </td>
+                        <td class="num" style="background:#fffef0;"
+                            th:text="${rec.stockfit2ndPph != null ? #numbers.formatDecimal(rec.stockfit2ndPph,1,2,'POINT') : '-'}">
+                        </td>
+                        <td class="num" style="background:#fff5f5;"
+                            th:text="${rec.assemBigPph != null ? #numbers.formatDecimal(rec.assemBigPph,1,2,'POINT') : '-'}">
+                        </td>
+                        <td class="num" style="background:#fff5f5;"
+                            th:text="${rec.assemSmallPph != null ? #numbers.formatDecimal(rec.assemSmallPph,1,2,'POINT') : '-'}">
+                        </td>
+                        <td style="white-space:nowrap;">
+                            <!-- Edit — MANAGER/ADMIN only -->
+                            <button sec:authorize="hasAnyRole('MANAGER','ADMIN')" class="btn btn-warning btn-sm"
+                                onclick="openEditModal(this)" th:attr="data-id=${rec.id},
+                                             data-ref=${rec.ref},
+                                             data-articleno=${rec.articleNo},
+                                             data-patternno=${rec.patternNo ?: ''},
+                                             data-shoename=${rec.shoeName ?: ''},
+                                             data-oscode=${rec.osCode ?: ''},
+                                             data-sewquota=${rec.sewQuotaDb ?: 0},
+                                             data-tct=${rec.tct ?: 0},
+                                             data-sewpph=${rec.sewPph ?: 0},
+                                             data-buff1st=${rec.buff1stPph ?: 0},
+                                             data-buff2nd=${rec.buff2ndPph ?: 0},
+                                             data-sfuv=${rec.stockfitUvPph ?: 0},
+                                             data-sf1st=${rec.stockfit1stPph ?: 0},
+                                             data-sf2nd=${rec.stockfit2ndPph ?: 0},
+                                             data-assembig=${rec.assemBigPph ?: 0},
+                                             data-assemsmall=${rec.assemSmallPph ?: 0}">
+                                ✏️ Edit
+                            </button>
+                            <!-- Delete — MANAGER/ADMIN only -->
+                            <form sec:authorize="hasAnyRole('MANAGER','ADMIN')" th:action="@{/masterdb/delete}"
+                                method="post" style="display:inline;"
+                                onsubmit="return confirm(/*[[#{masterdb.delete.confirm}]]*/ 'Delete this record?');">
+                                <input type="hidden" name="id" th:value="${rec.id}" />
+                                <input type="hidden" name="keyword" th:value="${keyword}" />
+                                <input type="hidden" name="page" th:value="${currentPage}" />
+                                <button type="submit" class="btn btn-danger btn-sm" th:text="#{masterdb.delete}">🗑
+                                    Delete</button>
+                            </form>
+                            <!-- USER: chỉ xem, không có nút -->
+                            <span sec:authorize="hasRole('USER')" style="color:#6c757d; font-size:0.8rem;">📖 View
+                                only</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ── Pagination ──────────────────────────────────────── -->
+        <div th:if="${totalPages > 1}">
+            <ul class="pagination">
+                <li>
+                    <a th:if="${currentPage > 0}" th:href="@{/masterdb/(page=0, keyword=${keyword})}">« First</a>
+                    <span th:if="${currentPage == 0}" class="disabled">« First</span>
+                </li>
+                <li>
+                    <a th:if="${currentPage > 0}" th:href="@{/masterdb/(page=${currentPage - 1}, keyword=${keyword})}">‹
+                        Prev</a>
+                    <span th:if="${currentPage == 0}" class="disabled">‹ Prev</span>
+                </li>
+
+                <!-- Page numbers window: show up to 5 pages around current -->
+                <li th:each="pg : ${#numbers.sequence(T(java.lang.Math).max(0, currentPage - 2),
+                                                   T(java.lang.Math).min(totalPages - 1, currentPage + 2))}">
+                    <span th:if="${pg == currentPage}" class="active" th:text="${pg + 1}"></span>
+                    <a th:if="${pg != currentPage}" th:href="@{/masterdb/(page=${pg}, keyword=${keyword})}"
+                        th:text="${pg + 1}"></a>
+                </li>
+
+                <li>
+                    <a th:if="${currentPage < totalPages - 1}"
+                        th:href="@{/masterdb/(page=${currentPage + 1}, keyword=${keyword})}">Next ›</a>
+                    <span th:if="${currentPage >= totalPages - 1}" class="disabled">Next ›</span>
+                </li>
+                <li>
+                    <a th:if="${currentPage < totalPages - 1}"
+                        th:href="@{/masterdb/(page=${totalPages - 1}, keyword=${keyword})}">Last »</a>
+                    <span th:if="${currentPage >= totalPages - 1}" class="disabled">Last »</span>
+                </li>
+            </ul>
+        </div>
+
+    </div> <!-- /container -->
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!--  MODAL: Add / Edit                                         -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div id="masterdbModal" class="modal-overlay" onclick="closeModalOnOverlay(event)">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeModal()" title="Đóng">×</button>
+            <h3 id="modalTitle" class="modal-title">Add New Record</h3>
+
+            <form th:action="@{/masterdb/save}" method="post" id="masterdbForm">
+                <input type="hidden" id="f-id" name="id" />
+                <input type="hidden" name="keyword" th:value="${keyword}" />
+                <input type="hidden" name="page" th:value="${currentPage}" />
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Ref <span style="color:red">*</span></label>
+                        <input type="text" id="f-ref" name="ref" class="form-control" placeholder="E.g: 46024SEW1A"
+                            required />
+                    </div>
+                    <div class="form-group">
+                        <label>Article No <span style="color:red">*</span></label>
+                        <input type="text" id="f-articleNo" name="articleNo" class="form-control"
+                            placeholder="E.g: Y12345" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Pattern No</label>
+                        <input type="text" id="f-patternNo" name="patternNo" class="form-control"
+                            placeholder="E.g: P001" />
+                    </div>
+                    <div class="form-group">
+                        <label>Shoe Name</label>
+                        <input type="text" id="f-shoeName" name="shoeName" class="form-control"
+                            placeholder="E.g: Air Max..." />
+                    </div>
+                    <div class="form-group">
+                        <label>OS Code</label>
+                        <input type="text" id="f-osCode" name="osCode" class="form-control" placeholder="E.g: OS001" />
+                    </div>
+                    <div class="form-group">
+                        <label>Sew Quota</label>
+                        <input type="number" step="0.01" id="f-sewQuota" name="sewQuota" class="form-control"
+                            placeholder="E.g: 450" min="0" oninput="calcTCT()" />
+                    </div>
+                    <div class="form-group">
+                        <label>TCT (seconds) <small style="color:#6c757d;">– auto-calculated from Quota</small></label>
+                        <input type="number" step="0.0001" id="f-tct" name="tct" class="form-control"
+                            placeholder="Or enter manually" />
+                    </div>
+                </div>
+
+                <!-- PPH section -->
+                <div style="margin-top:18px;">
+                    <div class="section-header">PPH theo Section</div>
+                    <div class="pph-grid">
+                        <div class="form-group">
+                            <label style="font-size:0.85rem; color:#28a745;">SEW PPH</label>
+                            <input type="number" step="0.01" id="f-sewPph" name="sewPph" class="form-control"
+                                placeholder="0" min="0" />
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size:0.85rem; color:#17a2b8;">BUFFING 1ST</label>
+                            <input type="number" step="0.01" id="f-buff1stPph" name="buff1stPph" class="form-control"
+                                placeholder="0" min="0" />
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size:0.85rem; color:#17a2b8;">BUFFING 2ND</label>
+                            <input type="number" step="0.01" id="f-buff2ndPph" name="buff2ndPph" class="form-control"
+                                placeholder="0" min="0" />
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size:0.85rem; color:#997700;">STOCKFIT UV</label>
+                            <input type="number" step="0.01" id="f-stockfitUvPph" name="stockfitUvPph"
+                                class="form-control" placeholder="0" min="0" />
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size:0.85rem; color:#997700;">STOCKFIT 1ST</label>
+                            <input type="number" step="0.01" id="f-stockfit1stPph" name="stockfit1stPph"
+                                class="form-control" placeholder="0" min="0" />
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size:0.85rem; color:#997700;">STOCKFIT 2ND</label>
+                            <input type="number" step="0.01" id="f-stockfit2ndPph" name="stockfit2ndPph"
+                                class="form-control" placeholder="0" min="0" />
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size:0.85rem; color:#dc3545;">ASSEMBLY BIG</label>
+                            <input type="number" step="0.01" id="f-assemBigPph" name="assemBigPph" class="form-control"
+                                placeholder="0" min="0" />
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size:0.85rem; color:#dc3545;">ASSEMBLY SMALL</label>
+                            <input type="number" step="0.01" id="f-assemSmallPph" name="assemSmallPph"
+                                class="form-control" placeholder="0" min="0" />
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+                    <button type="button" class="btn" onclick="closeModal()"
+                        style="border:1px solid #ccc; padding:8px 20px;">Hủy</button>
+                    <button type="submit" class="btn btn-primary" style="padding:8px 24px;">💾 Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!--  JS                                                        -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <script>
+        function openAddModal() {
+            document.getElementById('modalTitle').textContent = 'Add New Record';
+            resetForm();
+            document.getElementById('masterdbModal').style.display = 'block';
+        }
+
+        function openEditModal(btn) {
+            const d = btn.dataset;
+            document.getElementById('modalTitle').textContent = 'Edit Record';
+            document.getElementById('f-id').value = d.id;
+            document.getElementById('f-ref').value = d.ref || '';
+            document.getElementById('f-articleNo').value = d.articleno || '';
+            document.getElementById('f-patternNo').value = d.patternno || '';
+            document.getElementById('f-shoeName').value = d.shoename || '';
+            document.getElementById('f-osCode').value = d.oscode || '';
+            setNum('f-sewQuota', d.sewquota);
+            setNum('f-tct', d.tct);
+            setNum('f-sewPph', d.sewpph);
+            setNum('f-buff1stPph', d.buff1st);
+            setNum('f-buff2ndPph', d.buff2nd);
+            setNum('f-stockfitUvPph', d.sfuv);
+            setNum('f-stockfit1stPph', d.sf1st);
+            setNum('f-stockfit2ndPph', d.sf2nd);
+            setNum('f-assemBigPph', d.assembig);
+            setNum('f-assemSmallPph', d.assemsmall);
+            document.getElementById('masterdbModal').style.display = 'block';
+        }
+
+        function setNum(id, val) {
+            document.getElementById(id).value = (val && val !== 0) ? val : '';
+        }
+
+        function resetForm() {
+            ['f-id', 'f-ref', 'f-articleNo', 'f-patternNo', 'f-shoeName', 'f-osCode',
+                'f-sewQuota', 'f-tct', 'f-sewPph', 'f-buff1stPph', 'f-buff2ndPph',
+                'f-stockfitUvPph', 'f-stockfit1stPph', 'f-stockfit2ndPph',
+                'f-assemBigPph', 'f-assemSmallPph'].forEach(id => {
+                    document.getElementById(id).value = '';
+                });
+        }
+
+        function closeModal() {
+            document.getElementById('masterdbModal').style.display = 'none';
+        }
+
+        function closeModalOnOverlay(event) {
+            if (event.target === document.getElementById('masterdbModal')) {
+                closeModal();
+            }
+        }
+
+
+
+        function calcTCT() {
+            const quota = parseFloat(document.getElementById('f-sewQuota').value);
+            if (quota && quota > 0) {
+                const tct = (10.0 * 3600.0) / quota;
+                document.getElementById('f-tct').value = tct.toFixed(4);
+            }
+        }
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeModal();
+        });
+    </script>
+
+</body>
+
+</html>

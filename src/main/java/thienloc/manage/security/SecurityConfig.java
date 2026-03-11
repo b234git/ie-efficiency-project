@@ -30,7 +30,9 @@ public class SecurityConfig {
                                                 .requestMatchers("/login").permitAll()
                                                 .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()
                                                 .requestMatchers("/admin/**").hasRole("ADMIN")
+                                                .requestMatchers("/masterdb/**").hasAnyRole("ADMIN", "MANAGER", "USER")
                                                 .requestMatchers("/dashboard/**").hasAnyRole("ADMIN", "MANAGER")
+                                                .requestMatchers("/report/**").hasAnyRole("ADMIN", "MANAGER")
                                                 .requestMatchers("/entry/**").hasAnyRole("ADMIN", "MANAGER", "USER")
                                                 .anyRequest().authenticated())
                                 .formLogin(

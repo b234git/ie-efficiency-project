@@ -1,0 +1,1392 @@
+[
+  {
+    "r": 1,
+    "c": 1,
+    "v": "REF 1"
+  },
+  {
+    "r": 1,
+    "c": 2,
+    "v": "REF 2"
+  },
+  {
+    "r": 1,
+    "c": 3,
+    "v": "Date"
+  },
+  {
+    "r": 1,
+    "c": 4,
+    "v": "Section"
+  },
+  {
+    "r": 1,
+    "c": 5,
+    "v": "Line"
+  },
+  {
+    "r": 1,
+    "c": 8,
+    "v": "DL"
+  },
+  {
+    "r": 1,
+    "c": 9,
+    "v": "DLI"
+  },
+  {
+    "r": 1,
+    "c": 10,
+    "v": "IDL"
+  },
+  {
+    "r": 1,
+    "c": 11,
+    "v": "Output"
+  },
+  {
+    "r": 1,
+    "c": 12,
+    "v": "WT"
+  },
+  {
+    "r": 1,
+    "c": 13,
+    "v": "RFT"
+  },
+  {
+    "r": 1,
+    "c": 14,
+    "v": "Article"
+  },
+  {
+    "r": 1,
+    "c": 29,
+    "v": "ARTICLE"
+  },
+  {
+    "r": 1,
+    "c": 30,
+    "v": "Allowance"
+  },
+  {
+    "r": 1,
+    "c": 31,
+    "v": "KPI"
+  },
+  {
+    "r": 1,
+    "c": 36,
+    "v": "Cycle Time"
+  },
+  {
+    "r": 1,
+    "c": 51,
+    "v": "TCT"
+  },
+  {
+    "r": 1,
+    "c": 52,
+    "v": "Quota"
+  },
+  {
+    "r": 1,
+    "c": 67,
+    "v": "Total\nQuota"
+  },
+  {
+    "r": 1,
+    "c": 68,
+    "v": "MP"
+  },
+  {
+    "r": 1,
+    "c": 83,
+    "v": "Total\nMP"
+  },
+  {
+    "r": 1,
+    "c": 84,
+    "v": "REF TIME"
+  },
+  {
+    "r": 1,
+    "c": 85,
+    "v": "FQ"
+  },
+  {
+    "r": 2,
+    "c": 7,
+    "v": "              "
+  },
+  {
+    "r": 2,
+    "c": 14,
+    "v": "07:00\n08:00"
+  },
+  {
+    "r": 2,
+    "c": 15,
+    "v": "08:00\n09:00"
+  },
+  {
+    "r": 2,
+    "c": 16,
+    "v": "09:00\n10:00"
+  },
+  {
+    "r": 2,
+    "c": 17,
+    "v": "10:00\n11:00"
+  },
+  {
+    "r": 2,
+    "c": 18,
+    "v": "11:00\n12:00"
+  },
+  {
+    "r": 2,
+    "c": 19,
+    "v": "12:00\n13:00"
+  },
+  {
+    "r": 2,
+    "c": 20,
+    "v": "13:00\n14:00"
+  },
+  {
+    "r": 2,
+    "c": 21,
+    "v": "14:00\n15:00"
+  },
+  {
+    "r": 2,
+    "c": 22,
+    "v": "15:00\n16:00"
+  },
+  {
+    "r": 2,
+    "c": 23,
+    "v": "16:00\n17:00"
+  },
+  {
+    "r": 2,
+    "c": 24,
+    "v": "17:00\n18:00"
+  },
+  {
+    "r": 2,
+    "c": 25,
+    "v": "18:00\n19:00"
+  },
+  {
+    "r": 2,
+    "c": 26,
+    "v": "19:00\n20:00"
+  },
+  {
+    "r": 2,
+    "c": 27,
+    "v": "20:00\n21:00"
+  },
+  {
+    "r": 2,
+    "c": 28,
+    "v": "21:00\n22:00"
+  },
+  {
+    "r": 2,
+    "c": 31,
+    "v": "EFF\nKPI"
+  },
+  {
+    "r": 2,
+    "c": 32,
+    "v": "EFF\nSalary"
+  },
+  {
+    "r": 2,
+    "c": 33,
+    "v": "PPH"
+  },
+  {
+    "r": 2,
+    "c": 34,
+    "v": "PT"
+  },
+  {
+    "r": 2,
+    "c": 35,
+    "v": "MH"
+  },
+  {
+    "r": 2,
+    "c": 36,
+    "v": "07:00\n08:00"
+  },
+  {
+    "r": 2,
+    "c": 37,
+    "v": "08:00\n09:00"
+  },
+  {
+    "r": 2,
+    "c": 38,
+    "v": "09:00\n10:00"
+  },
+  {
+    "r": 2,
+    "c": 39,
+    "v": "10:00\n11:00"
+  },
+  {
+    "r": 2,
+    "c": 40,
+    "v": "11:00\n12:00"
+  },
+  {
+    "r": 2,
+    "c": 41,
+    "v": "12:00\n13:00"
+  },
+  {
+    "r": 2,
+    "c": 42,
+    "v": "13:00\n14:00"
+  },
+  {
+    "r": 2,
+    "c": 43,
+    "v": "14:00\n15:00"
+  },
+  {
+    "r": 2,
+    "c": 44,
+    "v": "15:00\n16:00"
+  },
+  {
+    "r": 2,
+    "c": 45,
+    "v": "16:00\n17:00"
+  },
+  {
+    "r": 2,
+    "c": 46,
+    "v": "17:00\n18:00"
+  },
+  {
+    "r": 2,
+    "c": 47,
+    "v": "18:00\n19:00"
+  },
+  {
+    "r": 2,
+    "c": 48,
+    "v": "19:00\n20:00"
+  },
+  {
+    "r": 2,
+    "c": 49,
+    "v": "20:00\n21:00"
+  },
+  {
+    "r": 2,
+    "c": 50,
+    "v": "21:00\n22:00"
+  },
+  {
+    "r": 2,
+    "c": 52,
+    "v": "07:00\n08:00"
+  },
+  {
+    "r": 2,
+    "c": 53,
+    "v": "08:00\n09:00"
+  },
+  {
+    "r": 2,
+    "c": 54,
+    "v": "09:00\n10:00"
+  },
+  {
+    "r": 2,
+    "c": 55,
+    "v": "10:00\n11:00"
+  },
+  {
+    "r": 2,
+    "c": 56,
+    "v": "11:00\n12:00"
+  },
+  {
+    "r": 2,
+    "c": 57,
+    "v": "12:00\n13:00"
+  },
+  {
+    "r": 2,
+    "c": 58,
+    "v": "13:00\n14:00"
+  },
+  {
+    "r": 2,
+    "c": 59,
+    "v": "14:00\n15:00"
+  },
+  {
+    "r": 2,
+    "c": 60,
+    "v": "15:00\n16:00"
+  },
+  {
+    "r": 2,
+    "c": 61,
+    "v": "16:00\n17:00"
+  },
+  {
+    "r": 2,
+    "c": 62,
+    "v": "17:00\n18:00"
+  },
+  {
+    "r": 2,
+    "c": 63,
+    "v": "18:00\n19:00"
+  },
+  {
+    "r": 2,
+    "c": 64,
+    "v": "19:00\n20:00"
+  },
+  {
+    "r": 2,
+    "c": 65,
+    "v": "20:00\n21:00"
+  },
+  {
+    "r": 2,
+    "c": 66,
+    "v": "21:00\n22:00"
+  },
+  {
+    "r": 2,
+    "c": 68,
+    "v": "07:00\n08:00"
+  },
+  {
+    "r": 2,
+    "c": 69,
+    "v": "08:00\n09:00"
+  },
+  {
+    "r": 2,
+    "c": 70,
+    "v": "09:00\n10:00"
+  },
+  {
+    "r": 2,
+    "c": 71,
+    "v": "10:00\n11:00"
+  },
+  {
+    "r": 2,
+    "c": 72,
+    "v": "11:00\n12:00"
+  },
+  {
+    "r": 2,
+    "c": 73,
+    "v": "12:00\n13:00"
+  },
+  {
+    "r": 2,
+    "c": 74,
+    "v": "13:00\n14:00"
+  },
+  {
+    "r": 2,
+    "c": 75,
+    "v": "14:00\n15:00"
+  },
+  {
+    "r": 2,
+    "c": 76,
+    "v": "15:00\n16:00"
+  },
+  {
+    "r": 2,
+    "c": 77,
+    "v": "16:00\n17:00"
+  },
+  {
+    "r": 2,
+    "c": 78,
+    "v": "17:00\n18:00"
+  },
+  {
+    "r": 2,
+    "c": 79,
+    "v": "18:00\n19:00"
+  },
+  {
+    "r": 2,
+    "c": 80,
+    "v": "19:00\n20:00"
+  },
+  {
+    "r": 2,
+    "c": 81,
+    "v": "20:00\n21:00"
+  },
+  {
+    "r": 2,
+    "c": 82,
+    "v": "21:00\n22:00"
+  },
+  {
+    "r": 3,
+    "c": 1,
+    "v": "=CONCATENATE(C3,D3,E3,F3)"
+  },
+  {
+    "r": 3,
+    "c": 2,
+    "v": "=CONCATENATE(D3,E3,F3)"
+  },
+  {
+    "r": 3,
+    "c": 3,
+    "v": "2026-02-01 00:00:00"
+  },
+  {
+    "r": 3,
+    "c": 4,
+    "v": "SEW"
+  },
+  {
+    "r": 3,
+    "c": 5,
+    "v": "1"
+  },
+  {
+    "r": 3,
+    "c": 6,
+    "v": "A"
+  },
+  {
+    "r": 3,
+    "c": 11,
+    "v": "=VLOOKUP(A3,[2]summary!$A$3:$F$1489,6,0)"
+  },
+  {
+    "r": 3,
+    "c": 13,
+    "v": "=IFERROR(VLOOKUP(A3,[3]summary!$A$3:$G$1489,7,0),\"\")"
+  },
+  {
+    "r": 3,
+    "c": 29,
+    "v": "=N3"
+  },
+  {
+    "r": 3,
+    "c": 30,
+    "v": "1"
+  },
+  {
+    "r": 3,
+    "c": 31,
+    "v": "=IFERROR((K3*AY3)/(H3*L3*3600*AD3),\"\")"
+  },
+  {
+    "r": 3,
+    "c": 32,
+    "v": "=K3/(BO3/CE3*I3*AD3)"
+  },
+  {
+    "r": 3,
+    "c": 33,
+    "v": "=K3/H3/L3"
+  },
+  {
+    "r": 3,
+    "c": 36,
+    "v": "=IF(N3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,N3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(N3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 37,
+    "v": "=IF(O3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,O3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(O3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 38,
+    "v": "=IF(P3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,P3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(P3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 39,
+    "v": "=IF(Q3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,Q3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(Q3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 40,
+    "v": "=IF(R3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,R3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(R3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 41,
+    "v": "=IF(S3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,S3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(S3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 42,
+    "v": "=IF(T3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,T3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(T3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 43,
+    "v": "=IF(U3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,U3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(U3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 44,
+    "v": "=IF(V3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,V3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(V3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 45,
+    "v": "=IF(W3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,W3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(W3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 46,
+    "v": "=IF(X3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,X3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(X3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 47,
+    "v": "=IF(Y3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,Y3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(Y3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 48,
+    "v": "=IF(Z3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,Z3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(Z3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 49,
+    "v": "=IF(AA3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,AA3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(AA3,2)=\"-2\"),"
+  },
+  {
+    "r": 3,
+    "c": 50,
+    "v": "=IF(AB3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,AB3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(AB3,2)=\"-2\"),"
+  },
+  {
+    "r": 3,
+    "c": 51,
+    "v": "=IFERROR(AVERAGE(AJ3:AX3),\"\")"
+  },
+  {
+    "r": 3,
+    "c": 52,
+    "v": "=IF(N3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,N3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(N3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 53,
+    "v": "=IF(O3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,O3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(O3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 54,
+    "v": "=IF(P3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,P3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(P3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 55,
+    "v": "=IF(Q3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,Q3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(Q3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 56,
+    "v": "=IF(R3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,R3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(R3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 57,
+    "v": "=IF(S3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,S3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(S3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 58,
+    "v": "=IF(T3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,T3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(T3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 59,
+    "v": "=IF(U3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,U3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(U3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 60,
+    "v": "=IF(V3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,V3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(V3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 61,
+    "v": "=IF(W3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,W3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(W3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 62,
+    "v": "=IF(X3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,X3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(X3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 63,
+    "v": "=IF(Y3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,Y3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(Y3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 64,
+    "v": "=IF(Z3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,Z3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(Z3,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 3,
+    "c": 65,
+    "v": "=IF(AA3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,AA3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(AA3,2)=\"-2\"),"
+  },
+  {
+    "r": 3,
+    "c": 66,
+    "v": "=IF(AB3=\"\",\"\",IF($D3=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,AB3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(AB3,2)=\"-2\"),"
+  },
+  {
+    "r": 3,
+    "c": 67,
+    "v": "=IF(AY3=\"\",\"\",SUM(AZ3:BN3))"
+  },
+  {
+    "r": 3,
+    "c": 68,
+    "v": "=IFERROR(IF($D3=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,N3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(N3,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 3,
+    "c": 69,
+    "v": "=IFERROR(IF($D3=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,O3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(O3,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 3,
+    "c": 70,
+    "v": "=IFERROR(IF($D3=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,P3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(P3,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 3,
+    "c": 71,
+    "v": "=IFERROR(IF($D3=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,Q3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(Q3,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 3,
+    "c": 72,
+    "v": "=IFERROR(IF($D3=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,R3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(R3,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 3,
+    "c": 73,
+    "v": "=IFERROR(IF($D3=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,S3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(S3,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 3,
+    "c": 74,
+    "v": "=IFERROR(IF($D3=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,T3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(T3,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 3,
+    "c": 75,
+    "v": "=IFERROR(IF($D3=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,U3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(U3,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 3,
+    "c": 76,
+    "v": "=IFERROR(IF($D3=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,V3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(V3,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 3,
+    "c": 77,
+    "v": "=IFERROR(IF($D3=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,W3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(W3,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 3,
+    "c": 78,
+    "v": "=IFERROR(IF($D3=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,X3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(X3,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 3,
+    "c": 79,
+    "v": "=IFERROR(IF($D3=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,Y3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(Y3,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 3,
+    "c": 80,
+    "v": "=IFERROR(IF($D3=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,Z3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(Z3,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 3,
+    "c": 81,
+    "v": "=IFERROR(IF($D3=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,AA3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(AA3,2)=\"-2\"),AVERA"
+  },
+  {
+    "r": 3,
+    "c": 82,
+    "v": "=IFERROR(IF($D3=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,AB3),IF(AND($D3=\"BUFF\",$G3=2,RIGHT(AB3,2)=\"-2\"),AVERA"
+  },
+  {
+    "r": 3,
+    "c": 83,
+    "v": "=IFERROR(AVERAGE(BP3:CD3),\"\")"
+  },
+  {
+    "r": 3,
+    "c": 84,
+    "v": "=IF(COUNT(AZ3:BN3)>10,COUNT(AZ3:BN3)-0.5,COUNT(AZ3:BN3))"
+  },
+  {
+    "r": 3,
+    "c": 85,
+    "v": "=L3-CF3"
+  },
+  {
+    "r": 4,
+    "c": 1,
+    "v": "=CONCATENATE(C4,D4,E4,F4)"
+  },
+  {
+    "r": 4,
+    "c": 2,
+    "v": "=CONCATENATE(D4,E4,F4)"
+  },
+  {
+    "r": 4,
+    "c": 3,
+    "v": "2026-02-01 00:00:00"
+  },
+  {
+    "r": 4,
+    "c": 4,
+    "v": "SEW"
+  },
+  {
+    "r": 4,
+    "c": 5,
+    "v": "1"
+  },
+  {
+    "r": 4,
+    "c": 6,
+    "v": "B"
+  },
+  {
+    "r": 4,
+    "c": 11,
+    "v": "=VLOOKUP(A4,[2]summary!$A$3:$F$1489,6,0)"
+  },
+  {
+    "r": 4,
+    "c": 13,
+    "v": "=IFERROR(VLOOKUP(A4,[3]summary!$A$3:$G$1489,7,0),\"\")"
+  },
+  {
+    "r": 4,
+    "c": 29,
+    "v": "=N4"
+  },
+  {
+    "r": 4,
+    "c": 30,
+    "v": "1"
+  },
+  {
+    "r": 4,
+    "c": 31,
+    "v": "=IFERROR((K4*AY4)/(H4*L4*3600*AD4),\"\")"
+  },
+  {
+    "r": 4,
+    "c": 32,
+    "v": "=K4/(BO4/CE4*I4*AD4)"
+  },
+  {
+    "r": 4,
+    "c": 33,
+    "v": "=K4/H4/L4"
+  },
+  {
+    "r": 4,
+    "c": 36,
+    "v": "=IF(N4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,N4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(N4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 37,
+    "v": "=IF(O4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,O4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(O4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 38,
+    "v": "=IF(P4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,P4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(P4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 39,
+    "v": "=IF(Q4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,Q4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(Q4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 40,
+    "v": "=IF(R4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,R4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(R4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 41,
+    "v": "=IF(S4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,S4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(S4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 42,
+    "v": "=IF(T4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,T4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(T4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 43,
+    "v": "=IF(U4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,U4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(U4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 44,
+    "v": "=IF(V4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,V4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(V4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 45,
+    "v": "=IF(W4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,W4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(W4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 46,
+    "v": "=IF(X4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,X4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(X4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 47,
+    "v": "=IF(Y4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,Y4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(Y4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 48,
+    "v": "=IF(Z4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,Z4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(Z4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 49,
+    "v": "=IF(AA4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,AA4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(AA4,2)=\"-2\"),"
+  },
+  {
+    "r": 4,
+    "c": 50,
+    "v": "=IF(AB4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,AB4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(AB4,2)=\"-2\"),"
+  },
+  {
+    "r": 4,
+    "c": 51,
+    "v": "=IFERROR(AVERAGE(AJ4:AX4),\"\")"
+  },
+  {
+    "r": 4,
+    "c": 52,
+    "v": "=IF(N4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,N4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(N4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 53,
+    "v": "=IF(O4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,O4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(O4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 54,
+    "v": "=IF(P4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,P4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(P4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 55,
+    "v": "=IF(Q4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,Q4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(Q4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 56,
+    "v": "=IF(R4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,R4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(R4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 57,
+    "v": "=IF(S4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,S4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(S4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 58,
+    "v": "=IF(T4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,T4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(T4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 59,
+    "v": "=IF(U4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,U4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(U4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 60,
+    "v": "=IF(V4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,V4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(V4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 61,
+    "v": "=IF(W4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,W4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(W4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 62,
+    "v": "=IF(X4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,X4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(X4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 63,
+    "v": "=IF(Y4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,Y4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(Y4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 64,
+    "v": "=IF(Z4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,Z4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(Z4,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 4,
+    "c": 65,
+    "v": "=IF(AA4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,AA4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(AA4,2)=\"-2\"),"
+  },
+  {
+    "r": 4,
+    "c": 66,
+    "v": "=IF(AB4=\"\",\"\",IF($D4=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,AB4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(AB4,2)=\"-2\"),"
+  },
+  {
+    "r": 4,
+    "c": 67,
+    "v": "=IF(AY4=\"\",\"\",SUM(AZ4:BN4))"
+  },
+  {
+    "r": 4,
+    "c": 68,
+    "v": "=IFERROR(IF($D4=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,N4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(N4,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 4,
+    "c": 69,
+    "v": "=IFERROR(IF($D4=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,O4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(O4,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 4,
+    "c": 70,
+    "v": "=IFERROR(IF($D4=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,P4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(P4,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 4,
+    "c": 71,
+    "v": "=IFERROR(IF($D4=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,Q4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(Q4,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 4,
+    "c": 72,
+    "v": "=IFERROR(IF($D4=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,R4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(R4,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 4,
+    "c": 73,
+    "v": "=IFERROR(IF($D4=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,S4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(S4,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 4,
+    "c": 74,
+    "v": "=IFERROR(IF($D4=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,T4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(T4,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 4,
+    "c": 75,
+    "v": "=IFERROR(IF($D4=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,U4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(U4,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 4,
+    "c": 76,
+    "v": "=IFERROR(IF($D4=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,V4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(V4,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 4,
+    "c": 77,
+    "v": "=IFERROR(IF($D4=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,W4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(W4,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 4,
+    "c": 78,
+    "v": "=IFERROR(IF($D4=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,X4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(X4,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 4,
+    "c": 79,
+    "v": "=IFERROR(IF($D4=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,Y4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(Y4,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 4,
+    "c": 80,
+    "v": "=IFERROR(IF($D4=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,Z4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(Z4,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 4,
+    "c": 81,
+    "v": "=IFERROR(IF($D4=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,AA4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(AA4,2)=\"-2\"),AVERA"
+  },
+  {
+    "r": 4,
+    "c": 82,
+    "v": "=IFERROR(IF($D4=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,AB4),IF(AND($D4=\"BUFF\",$G4=2,RIGHT(AB4,2)=\"-2\"),AVERA"
+  },
+  {
+    "r": 4,
+    "c": 83,
+    "v": "=IFERROR(AVERAGE(BP4:CD4),\"\")"
+  },
+  {
+    "r": 4,
+    "c": 84,
+    "v": "=IF(COUNT(AZ4:BN4)>10,COUNT(AZ4:BN4)-0.5,COUNT(AZ4:BN4))"
+  },
+  {
+    "r": 4,
+    "c": 85,
+    "v": "=L4-CF4"
+  },
+  {
+    "r": 5,
+    "c": 1,
+    "v": "=CONCATENATE(C5,D5,E5,F5)"
+  },
+  {
+    "r": 5,
+    "c": 2,
+    "v": "=CONCATENATE(D5,E5,F5)"
+  },
+  {
+    "r": 5,
+    "c": 3,
+    "v": "2026-02-01 00:00:00"
+  },
+  {
+    "r": 5,
+    "c": 4,
+    "v": "SEW"
+  },
+  {
+    "r": 5,
+    "c": 5,
+    "v": "2"
+  },
+  {
+    "r": 5,
+    "c": 6,
+    "v": "A"
+  },
+  {
+    "r": 5,
+    "c": 11,
+    "v": "=VLOOKUP(A5,[2]summary!$A$3:$F$1489,6,0)"
+  },
+  {
+    "r": 5,
+    "c": 13,
+    "v": "=IFERROR(VLOOKUP(A5,[3]summary!$A$3:$G$1489,7,0),\"\")"
+  },
+  {
+    "r": 5,
+    "c": 29,
+    "v": "=N5"
+  },
+  {
+    "r": 5,
+    "c": 30,
+    "v": "1"
+  },
+  {
+    "r": 5,
+    "c": 31,
+    "v": "=IFERROR((K5*AY5)/(H5*L5*3600*AD5),\"\")"
+  },
+  {
+    "r": 5,
+    "c": 32,
+    "v": "=K5/(BO5/CE5*I5*AD5)"
+  },
+  {
+    "r": 5,
+    "c": 33,
+    "v": "=K5/H5/L5"
+  },
+  {
+    "r": 5,
+    "c": 36,
+    "v": "=IF(N5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,N5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(N5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 37,
+    "v": "=IF(O5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,O5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(O5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 38,
+    "v": "=IF(P5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,P5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(P5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 39,
+    "v": "=IF(Q5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,Q5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(Q5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 40,
+    "v": "=IF(R5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,R5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(R5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 41,
+    "v": "=IF(S5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,S5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(S5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 42,
+    "v": "=IF(T5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,T5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(T5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 43,
+    "v": "=IF(U5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,U5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(U5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 44,
+    "v": "=IF(V5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,V5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(V5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 45,
+    "v": "=IF(W5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,W5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(W5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 46,
+    "v": "=IF(X5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,X5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(X5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 47,
+    "v": "=IF(Y5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,Y5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(Y5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 48,
+    "v": "=IF(Z5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,Z5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(Z5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 49,
+    "v": "=IF(AA5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,AA5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(AA5,2)=\"-2\"),"
+  },
+  {
+    "r": 5,
+    "c": 50,
+    "v": "=IF(AB5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$F$3:$F$10019,DB!$B$3:$B$10019,AB5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(AB5,2)=\"-2\"),"
+  },
+  {
+    "r": 5,
+    "c": 51,
+    "v": "=IFERROR(AVERAGE(AJ5:AX5),\"\")"
+  },
+  {
+    "r": 5,
+    "c": 52,
+    "v": "=IF(N5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,N5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(N5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 53,
+    "v": "=IF(O5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,O5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(O5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 54,
+    "v": "=IF(P5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,P5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(P5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 55,
+    "v": "=IF(Q5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,Q5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(Q5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 56,
+    "v": "=IF(R5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,R5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(R5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 57,
+    "v": "=IF(S5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,S5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(S5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 58,
+    "v": "=IF(T5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,T5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(T5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 59,
+    "v": "=IF(U5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,U5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(U5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 60,
+    "v": "=IF(V5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,V5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(V5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 61,
+    "v": "=IF(W5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,W5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(W5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 62,
+    "v": "=IF(X5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,X5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(X5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 63,
+    "v": "=IF(Y5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,Y5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(Y5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 64,
+    "v": "=IF(Z5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,Z5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(Z5,2)=\"-2\"),AVE"
+  },
+  {
+    "r": 5,
+    "c": 65,
+    "v": "=IF(AA5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,AA5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(AA5,2)=\"-2\"),"
+  },
+  {
+    "r": 5,
+    "c": 66,
+    "v": "=IF(AB5=\"\",\"\",IF($D5=\"SEW\",AVERAGEIFS(DB!$I$3:$I$10019,DB!$B$3:$B$10019,AB5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(AB5,2)=\"-2\"),"
+  },
+  {
+    "r": 5,
+    "c": 67,
+    "v": "=IF(AY5=\"\",\"\",SUM(AZ5:BN5))"
+  },
+  {
+    "r": 5,
+    "c": 68,
+    "v": "=IFERROR(IF($D5=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,N5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(N5,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 5,
+    "c": 69,
+    "v": "=IFERROR(IF($D5=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,O5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(O5,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 5,
+    "c": 70,
+    "v": "=IFERROR(IF($D5=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,P5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(P5,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 5,
+    "c": 71,
+    "v": "=IFERROR(IF($D5=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,Q5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(Q5,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 5,
+    "c": 72,
+    "v": "=IFERROR(IF($D5=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,R5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(R5,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 5,
+    "c": 73,
+    "v": "=IFERROR(IF($D5=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,S5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(S5,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 5,
+    "c": 74,
+    "v": "=IFERROR(IF($D5=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,T5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(T5,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 5,
+    "c": 75,
+    "v": "=IFERROR(IF($D5=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,U5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(U5,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 5,
+    "c": 76,
+    "v": "=IFERROR(IF($D5=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,V5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(V5,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 5,
+    "c": 77,
+    "v": "=IFERROR(IF($D5=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,W5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(W5,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 5,
+    "c": 78,
+    "v": "=IFERROR(IF($D5=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,X5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(X5,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 5,
+    "c": 79,
+    "v": "=IFERROR(IF($D5=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,Y5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(Y5,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 5,
+    "c": 80,
+    "v": "=IFERROR(IF($D5=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,Z5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(Z5,2)=\"-2\"),AVERAGE"
+  },
+  {
+    "r": 5,
+    "c": 81,
+    "v": "=IFERROR(IF($D5=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,AA5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(AA5,2)=\"-2\"),AVERA"
+  },
+  {
+    "r": 5,
+    "c": 82,
+    "v": "=IFERROR(IF($D5=\"SEW\",AVERAGEIFS(DB!$G$3:$G$10019,DB!$B$3:$B$10019,AB5),IF(AND($D5=\"BUFF\",$G5=2,RIGHT(AB5,2)=\"-2\"),AVERA"
+  },
+  {
+    "r": 5,
+    "c": 83,
+    "v": "=IFERROR(AVERAGE(BP5:CD5),\"\")"
+  },
+  {
+    "r": 5,
+    "c": 84,
+    "v": "=IF(COUNT(AZ5:BN5)>10,COUNT(AZ5:BN5)-0.5,COUNT(AZ5:BN5))"
+  },
+  {
+    "r": 5,
+    "c": 85,
+    "v": "=L5-CF5"
+  }
+]

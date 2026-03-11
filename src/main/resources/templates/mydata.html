@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <title>My Production Data</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <style>
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+
+        .range-badge {
+            padding: 8px 14px;
+            background: #e7f3ff;
+            border-left: 4px solid #0d6efd;
+            border-radius: 4px;
+            font-weight: 600;
+            margin-bottom: 14px;
+        }
+
+        table th,
+        table td {
+            font-size: 0.88rem;
+            padding: 6px 10px;
+            white-space: nowrap;
+        }
+
+        td.num {
+            text-align: right;
+        }
+
+        .eff-cell {
+            font-weight: 700;
+        }
+
+        .eff-hi {
+            color: #28a745;
+        }
+
+        .eff-mid {
+            color: #fd7e14;
+        }
+
+        .eff-low {
+            color: #dc3545;
+        }
+
+        .stat-row {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 12px 18px;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .stat-card .val {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .stat-card .lbl {
+            font-size: 0.78rem;
+            color: #6c757d;
+        }
+
+        .btn-sm {
+            padding: 3px 9px;
+            font-size: 0.8rem;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .empty-msg {
+            text-align: center;
+            color: #888;
+            padding: 30px;
+        }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/layout :: navbar}"></div>
+
+    <div class="container" style="max-width:1400px; padding:20px;">
+
+        <div
+            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+            <div>
+                <h2 style="margin:0;" th:text="#{mydata.title}">My Production Data</h2>
+                <small style="color:#6c757d;" th:text="#{mydata.subtitle}">View and manage</small>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <a th:href="@{/entry/}" class="btn btn-primary">➕ <span th:text="#{mydata.addnew}">Thêm Dữ Liệu
+                        Mới</span></a>
+            </div>
+        </div>
+
+        <!-- ── Filter bar ──────────────────────────────────────────── -->
+        <form th:action="@{/entry/mydata}" method="get" class="filter-bar">
+            <div>
+                <label style="font-weight:600; margin-right:6px;" th:text="#{dashboard.viewby}">Xem theo:</label>
+                <select id="rangeSelect" name="range" class="form-control" style="width:200px; display:inline-block;"
+                    onchange="handleRangeChange(this.value)">
+                    <option value="TODAY" th:selected="${selectedRange == 'TODAY'}"
+                        th:text="'📅 ' + #{dashboard.oneday}">📅 Một ngày cụ thể</option>
+                    <option value="1M" th:selected="${selectedRange == '1M'}" th:text="'📆 ' + #{dashboard.onemonth}">📆
+                        1 month ago</option>
+                    <option value="6M" th:selected="${selectedRange == '6M'}" th:text="'🗓 ' + #{dashboard.sixmonths}">
+                        🗓 Last 6 months</option>
+                    <option value="ALL" th:selected="${selectedRange == 'ALL'}" th:text="'♾️ ' + #{dashboard.alltime}">
+                        ♾️ All time</option>
+                </select>
+            </div>
+            <div id="datePicker" th:style="${selectedRange != 'TODAY'} ? 'display:none' : ''">
+                <input type="date" name="date" th:value="${selectedDate}" class="form-control"
+                    style="width:180px; display:inline-block;" />
+            </div>
+            <div>
+                <input type="text" name="article" th:value="${article}" class="form-control"
+                    placeholder="Tìm kiếm Article..." style="width:180px; display:inline-block;" />
+            </div>
+            <button type="submit" class="btn btn-primary" th:text="#{mydata.view}">Xem</button>
+        </form>
+
+        <!-- ── Range badge ─────────────────────────────────────────── -->
+        <div th:if="${rangeLabel != null and !rangeLabel.isEmpty()}" class="range-badge">
+            🔍 Đang hiển thị: <span th:text="${rangeLabel}"></span>
+            &nbsp;·&nbsp; <strong th:text="${#lists.size(records)}">0</strong> bản ghi
+        </div>
+
+        <!-- ── Data table ──────────────────────────────────────────── -->
+        <div style="overflow-x:auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th th:text="#{table.date}">Ngày</th>
+                        <th th:text="#{table.section}">Section</th>
+                        <th th:text="#{table.line}">Line</th>
+                        <th th:text="#{table.article}">Article</th>
+                        <th th:text="#{table.mp}">MP</th>
+                        <th th:text="#{table.wt}">WT (h)</th>
+                        <th th:text="#{table.output}">Output</th>
+                        <th th:text="#{table.target}">Target</th>
+                        <th>EFF KPI</th>
+                        <th>EFF Salary</th>
+                        <th th:text="#{table.pph}">PPH</th>
+                        <th th:text="#{table.actions}">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:if="${records.isEmpty()}">
+                        <td colspan="11" class="empty-msg" th:text="#{mydata.nodata}">Không có dữ liệu cho khoảng thời
+                            gian này.</td>
+                    </tr>
+                    <tr th:each="rec, stat : ${records}">
+                        <td th:text="${stat.count}" style="color:#6c757d;"></td>
+                        <td th:text="${rec.productionDate}"></td>
+                        <td><strong th:text="${rec.section}"></strong></td>
+                        <td th:text="${rec.line}"></td>
+                        <td th:text="${rec.article}"></td>
+                        <td class="num" th:text="${rec.mp != null ? rec.mp : '-'}"></td>
+                        <td class="num" th:text="${rec.wt != null ? rec.wt : '-'}"></td>
+                        <td class="num"><strong th:text="${rec.output != null ? rec.output : '-'}"></strong></td>
+                        <td class="num"
+                            th:text="${rec.target != null ? #numbers.formatDecimal(rec.target, 1, 2) : '-'}"></td>
+
+                        <td class="num eff-cell"
+                            th:classappend="${rec.effKpi != null and rec.effKpi >= 1.0 ? 'eff-hi' : (rec.effKpi != null and rec.effKpi >= 0.8 ? 'eff-mid' : 'eff-low')}"
+                            th:text="${rec.effKpi != null ? #numbers.formatDecimal(rec.effKpi * 100, 1, 2) + '%' : '-'}">
+                        </td>
+                        <td class="num eff-cell"
+                            th:classappend="${rec.effSalary != null and rec.effSalary >= 1.0 ? 'eff-hi' : (rec.effSalary != null and rec.effSalary >= 0.8 ? 'eff-mid' : 'eff-low')}"
+                            th:text="${rec.effSalary != null ? #numbers.formatDecimal(rec.effSalary * 100, 1, 2) + '%' : '-'}">
+                        </td>
+                        <td class="num"
+                            th:text="${rec.actualPph != null ? #numbers.formatDecimal(rec.actualPph, 1, 2) : '-'}"></td>
+                        <td>
+                            <form th:action="@{/entry/delete}" method="post" style="display:inline;"
+                                onsubmit="return confirm(/*[[#{mydata.delete.confirm}]]*/ 'Delete this record?');">
+                                <input type="hidden" name="id" th:value="${rec.id}" />
+                                <input type="hidden" name="range" th:value="${selectedRange}" />
+                                <input type="hidden" name="date" th:value="${selectedDate}" />
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    🗑 <span th:text="#{mydata.delete}">Del</span>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <script>
+        function handleRangeChange(val) {
+            document.getElementById('datePicker').style.display = (val === 'TODAY') ? '' : 'none';
+        }
+    </script>
+</body>
+
+</html>

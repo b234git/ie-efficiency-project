@@ -52,8 +52,8 @@ public class DataLoader implements CommandLineRunner {
                     .articleNo("VN256L222")
                     .patternNo("2262")
                     .shoeName("GEL-LYTE III")
-                    .tct(1904.65)
-                    .sewQuota(350.0)
+                    .sewCt(1904.65)
+                    .sewQuotaDb(350.0)
                     .build());
 
             masterDbRepository.save(MasterDb.builder()
@@ -61,8 +61,8 @@ public class DataLoader implements CommandLineRunner {
                     .articleNo("VN256L223")
                     .patternNo("2262")
                     .shoeName("GEL-LYTE III")
-                    .tct(2085.66)
-                    .sewQuota(350.0)
+                    .sewCt(2085.66)
+                    .sewQuotaDb(350.0)
                     .build());
             System.out.println("Loaded Sample MasterDb data.");
         }

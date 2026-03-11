@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <title>Weekly EFF Report</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <style>
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .week-nav {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .week-nav a {
+            padding: 6px 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .week-nav a:hover {
+            background: #e9ecef;
+        }
+
+        .week-label {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #0d6efd;
+        }
+
+        .block {
+            margin-bottom: 28px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .block-header {
+            padding: 10px 16px;
+            font-weight: 700;
+            font-size: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .block table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .block th,
+        .block td {
+            padding: 6px 10px;
+            border-bottom: 1px solid #eee;
+            white-space: nowrap;
+        }
+
+        .block th {
+            background: #f8f9fa;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            color: #6c757d;
+        }
+
+        .block td.num {
+            text-align: right;
+        }
+
+        .block tr.total {
+            background: #f0f4ff;
+            font-weight: 700;
+        }
+
+        .block tr.total td {
+            border-top: 2px solid #0d6efd;
+        }
+
+        .eff-cell {
+            font-weight: 700;
+        }
+
+        .eff-hi {
+            color: #28a745;
+        }
+
+        .eff-mid {
+            color: #fd7e14;
+        }
+
+        .eff-low {
+            color: #dc3545;
+        }
+
+        .section-buff {
+            background: linear-gradient(135deg, #d9edf7, #c4e3f3);
+            color: #31708f;
+        }
+
+        .section-sf {
+            background: linear-gradient(135deg, #fcf8e3, #f7ecb5);
+            color: #8a6d3b;
+        }
+
+        .section-sew {
+            background: linear-gradient(135deg, #dff0d8, #c1e2b3);
+            color: #3c763d;
+        }
+
+        .section-assy {
+            background: linear-gradient(135deg, #f2dede, #e4b9b9);
+            color: #a94442;
+        }
+
+        .pph-compare {
+            font-size: 0.75rem;
+        }
+
+        .pph-above {
+            color: #28a745;
+        }
+
+        .pph-below {
+            color: #dc3545;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+
+        .filter-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/layout :: navbar}"></div>
+
+    <div class="container" style="max-width:1400px; padding:20px;">
+
+        <!-- Header -->
+        <div class="report-header">
+            <div>
+                <h2 style="margin:0;">📊 <span th:text="#{report.title}">Weekly EFF Report</span></h2>
+                <small style="color:#6c757d;" th:text="#{report.subtitle}">Weekly efficiency report</small>
+            </div>
+            <div class="filter-form">
+                <form th:action="@{/report/weekly}" method="get" style="display:flex; gap:8px; align-items:center;">
+                    <label style="font-weight:600;" th:text="#{report.weekstart}">Tuần bắt đầu:</label>
+                    <input type="date" name="weekStart" th:value="${weekStart}" class="form-control"
+                        style="width:170px;" />
+                    <button type="submit" class="btn btn-primary" th:text="#{report.view}">Xem</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Week navigation -->
+        <div class="week-nav" style="margin-bottom:20px;">
+            <a th:href="@{/report/weekly(weekStart=${prevWeek})}">◀ <span th:text="#{report.prevweek}">Tuần
+                    trước</span></a>
+            <span class="week-label" th:text="${weekStart} + ' → ' + ${weekEnd}"></span>
+            <a th:href="@{/report/weekly(weekStart=${nextWeek})}"><span th:text="#{report.nextweek}">Tuần sau</span>
+                ▶</a>
+            <span style="margin-left:10px; color:#6c757d;"
+                th:text="'(' + ${#lists.size(blocks)} + ' ' + #{report.sectionline} + ')'"></span>
+        </div>
+
+        <!-- Empty state -->
+        <div th:if="${blocks.isEmpty()}" class="empty-state">
+            <h3>📭 <span th:text="#{report.nodata}">Không có dữ liệu sản xuất cho tuần này</span></h3>
+            <p th:text="#{report.nodata.hint}">Hãy chọn tuần khác hoặc nhập dữ liệu tại trang Entry.</p>
+        </div>
+
+        <!-- Blocks -->
+        <div th:each="block : ${blocks}" class="block">
+            <!-- Block header -->
+            <div class="block-header" th:classappend="${block.section.toUpperCase().contains('BUFF') ? 'section-buff' :
+                              (block.section.toUpperCase().contains('STOCKFIT') || block.section.toUpperCase().contains('SF') ? 'section-sf' :
+                              (block.section.toUpperCase().contains('SEW') ? 'section-sew' : 'section-assy'))}">
+                <span>
+                    <span th:text="${block.section}">SEW</span>
+                    <span style="opacity:0.7;"> — Line </span>
+                    <span th:text="${block.line}">1A</span>
+                </span>
+                <span style="font-size:0.85rem; font-weight:400;"
+                    th:text="${block.total.dayCount} + ' ' + #{report.daycount}"></span>
+            </div>
+
+            <!-- Data table -->
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th th:text="#{table.date}">Ngày</th>
+                            <th th:text="#{table.pattern}">Pattern#</th>
+                            <th th:text="#{table.style}">Style</th>
+                            <th th:text="#{table.article}">Article#</th>
+                            <th th:text="#{table.output}">Output</th>
+                            <th th:text="#{table.mp}">DL (MP)</th>
+                            <th th:text="#{table.wt}">WT (h)</th>
+                            <th th:text="#{table.eff}">EFF%</th>
+                            <th th:text="#{table.actualpph}">ACTUAL PPH</th>
+                            <th th:text="#{table.stdpph}">STD PPH</th>
+                            <th th:text="#{table.compare}">So sánh</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="row : ${block.dailyRows}">
+                            <td th:text="${row.date}"></td>
+                            <td th:text="${row.patternNo ?: '-'}"></td>
+                            <td th:text="${row.shoeName ?: '-'}"
+                                style="max-width:200px; overflow:hidden; text-overflow:ellipsis;"></td>
+                            <td th:text="${row.articleNo ?: '-'}"></td>
+                            <td class="num"><strong th:text="${row.output ?: '-'}"></strong></td>
+                            <td class="num" th:text="${row.mp ?: '-'}"></td>
+                            <td class="num" th:text="${row.wt ?: '-'}"></td>
+                            <td class="num eff-cell"
+                                th:classappend="${row.eff != null and row.eff >= 1.0 ? 'eff-hi' : (row.eff != null and row.eff >= 0.8 ? 'eff-mid' : 'eff-low')}"
+                                th:text="${row.eff != null ? #numbers.formatDecimal(row.eff * 100, 1, 1) + '%' : '-'}">
+                            </td>
+                            <td class="num"
+                                th:text="${row.actualPph != null ? #numbers.formatDecimal(row.actualPph, 1, 1) : '-'}">
+                            </td>
+                            <td class="num"
+                                th:text="${row.stdPph != null ? #numbers.formatDecimal(row.stdPph, 1, 1) : '-'}"></td>
+                            <td class="num pph-compare"
+                                th:if="${row.actualPph != null and row.stdPph != null and row.stdPph > 0}"
+                                th:classappend="${row.actualPph >= row.stdPph ? 'pph-above' : 'pph-below'}"
+                                th:text="${row.actualPph >= row.stdPph ? '▲ +' : '▼ '} + ${#numbers.formatDecimal(((row.actualPph - row.stdPph) / row.stdPph) * 100, 1, 1)} + '%'">
+                            </td>
+                            <td th:unless="${row.actualPph != null and row.stdPph != null and row.stdPph > 0}"
+                                class="num" style="color:#ccc;">—</td>
+                        </tr>
+                        <!-- Total row -->
+                        <tr class="total">
+                            <td th:text="#{report.total}">Total</td>
+                            <td colspan="3"></td>
+                            <td class="num" th:text="${block.total.totalOutput}"></td>
+                            <td class="num"
+                                th:text="${block.total.avgMp != null ? #numbers.formatDecimal(block.total.avgMp, 1, 1) : '-'}">
+                            </td>
+                            <td class="num"
+                                th:text="${block.total.avgWt != null ? #numbers.formatDecimal(block.total.avgWt, 1, 1) : '-'}">
+                            </td>
+                            <td class="num eff-cell"
+                                th:classappend="${block.total.avgEff != null and block.total.avgEff >= 1.0 ? 'eff-hi' : (block.total.avgEff != null and block.total.avgEff >= 0.8 ? 'eff-mid' : 'eff-low')}"
+                                th:text="${block.total.avgEff != null ? #numbers.formatDecimal(block.total.avgEff * 100, 1, 1) + '%' : '-'}">
+                            </td>
+                            <td class="num"
+                                th:text="${block.total.avgActualPph != null ? #numbers.formatDecimal(block.total.avgActualPph, 1, 1) : '-'}">
+                            </td>
+                            <td class="num"
+                                th:text="${block.total.avgStdPph != null ? #numbers.formatDecimal(block.total.avgStdPph, 1, 1) : '-'}">
+                            </td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</body>
+
+</html>

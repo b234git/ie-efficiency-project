@@ -18,18 +18,32 @@ public class DailyProductionDto {
     private String line;
     private String article;
     private Integer output;
-    private Double mp; // Manpower
+    private Double mp; // DL - Direct Labor (Manpower)
+    private Double dli; // Direct Labor Indirect
+    private Double idl; // Indirect Labor
     private Double wt; // Working Time
+    private Double rft; // Right First Time (%)
+    private String patternNo; // Pattern #
+    private String shoeName; // Style
+    private Double actualPph; // Actual PPH
+    private Double stdPph; // Standard PPH
+    // Sheet D KPI fields
+    private Double effKpi;
+    private Double effSalary;
+    // Allowance = % sản lượng cho phép (1.0 = 100%, 0.8 = 80%)
+    private Double allowance;
     private String createdAt;
 
     // For calculating stats
-    private String ref; // section + line (e.g. SEW1A or ASSY1)
+    private String ref;
     private Double tct;
     private Double target;
     private Double eff;
     private Double pph;
+    private Double gap;
 
     // Time slots breakdown
     @Builder.Default
     private java.util.List<DailyProductionDetailDto> details = new java.util.ArrayList<>();
+
 }

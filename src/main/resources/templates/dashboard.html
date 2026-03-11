@@ -40,19 +40,72 @@
     <div th:replace="~{fragments/layout :: navbar}"></div>
 
     <div class="container" style="max-width: 1400px;">
-        <h2>Production Dashboard</h2>
+        <h2 th:text="#{dashboard.title}">Production Dashboard</h2>
 
-        <form th:action="@{/dashboard/}" method="get" style="margin-bottom: 20px;">
-            <label>Select Date: </label>
-            <input type="date" name="date" th:value="${selectedDate}" class="form-control"
-                style="width: 200px; display: inline-block; margin-right: 10px;" />
+        <!-- Range / Date filter -->
+        <form th:action="@{/dashboard/}" method="get"
+            style="margin-bottom: 20px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+
+            <!-- Combo box chọn phạm vi -->
+            <div>
+                <label style="font-weight:600; margin-right:6px;" th:text="#{dashboard.viewby}">Xem theo:</label>
+                <select id="rangeSelect" name="range" class="form-control" style="width:200px; display:inline-block;"
+                    onchange="handleRangeChange(this.value)">
+                    <option value="TODAY" th:selected="${selectedRange == 'TODAY'}"
+                        th:text="'📅 ' + #{dashboard.oneday}">📅 Một ngày cụ thể</option>
+                    <option value="1M" th:selected="${selectedRange == '1M'}" th:text="'📆 ' + #{dashboard.onemonth}">📆
+                        Last 1 month</option>
+                    <option value="6M" th:selected="${selectedRange == '6M'}" th:text="'🗓 ' + #{dashboard.sixmonths}">
+                        🗓 Last 6 months</option>
+                    <option value="ALL" th:selected="${selectedRange == 'ALL'}" th:text="'♾️ ' + #{dashboard.alltime}">
+                        ♾️ All time</option>
+                </select>
+            </div>
+
+            <!-- Date picker – chỉ hiện khi chọn TODAY -->
+            <div id="datePicker" th:style="${selectedRange != 'TODAY'} ? 'display:none' : ''">
+                <label style="margin-right:6px;" th:text="#{dashboard.date}">Date:</label>
+                <input type="date" name="date" th:value="${selectedDate}" class="form-control"
+                    style="width:180px; display:inline-block;" />
+            </div>
+
+            <!-- Article Search -->
+            <div>
+                <input type="text" name="article" th:value="${article}" class="form-control"
+                    placeholder="Tìm kiếm Article..." style="width: 200px; display: inline-block;" />
+            </div>
+
             <button type="submit" class="btn btn-primary">Load Data</button>
+            <button type="button" id="btnDeleteMultiple" class="btn btn-danger" style="display:none;"
+                onclick="submitMultipleDelete()">Delete Selected</button>
         </form>
+
+        <form id="deleteMultipleForm" th:action="@{/dashboard/delete-multiple}" method="post" style="display:none;">
+            <input type="hidden" name="date" th:value="${selectedDate}" />
+            <input type="hidden" name="range" th:value="${selectedRange}" />
+            <input type="hidden" name="article" th:value="${article}" />
+            <!-- Các input ẩn chứa ID sẽ được sinh ra ở đây qua JS -->
+        </form>
+
+        <!-- Label phạm vi đang hiển thị -->
+        <div th:if="${rangeLabel != null and !rangeLabel.isEmpty()}"
+            style="margin-bottom:12px; padding:8px 14px; background:#e7f3ff; border-left:4px solid #0d6efd; border-radius:4px; font-weight:600;">
+            🔍 Đang hiển thị: <span th:text="${rangeLabel}"></span>
+            &nbsp;·&nbsp; <strong th:text="${#lists.size(records)}">0</strong> bản ghi
+        </div>
+
+        <script>
+            function handleRangeChange(val) {
+                document.getElementById('datePicker').style.display = (val === 'TODAY') ? '' : 'none';
+            }
+        </script>
 
         <div style="overflow-x: auto;">
             <table>
                 <thead>
                     <tr>
+                        <th style="white-space: nowrap; text-align: center;"><input type="checkbox"
+                                id="selectAllCheckbox" onclick="toggleAll(this)" /></th>
                         <th style="white-space: nowrap;">Date</th>
                         <th style="white-space: nowrap;">Section</th>
                         <th style="white-space: nowrap;">Line</th>
@@ -78,12 +131,16 @@
                         <th style="white-space: nowrap;">21:00-22:00</th>
                         <th style="white-space: nowrap;">TCT</th>
                         <th style="white-space: nowrap;">Target</th>
-                        <th style="white-space: nowrap;">EFF %</th>
+                        <th style="white-space: nowrap;">EFF KPI</th>
+                        <th style="white-space: nowrap;">EFF Salary</th>
+                        <th style="white-space: nowrap;">PPH</th>
                         <th sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" style="white-space: nowrap;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr th:each="record : ${records}">
+                        <td style="text-align: center;"><input type="checkbox" name="recordIds" th:value="${record.id}"
+                                class="recordCheckbox" onclick="toggleSingle()" /></td>
                         <td th:text="${record.productionDate}" style="white-space: nowrap;"></td>
                         <td th:text="${record.section}"></td>
                         <td th:text="${record.line}" style="white-space: nowrap;"></td>
@@ -99,11 +156,17 @@
                                 th:text="${dt.articleNo}"></span>
                         </td>
 
-                        <td th:text="${record.tct != null ? record.tct : 'N/A'}"></td>
-                        <td th:text="${record.target != null ? #numbers.formatDecimal(record.target, 1, 0) : 'N/A'}">
+                        <td th:text="${record.tct != null ? #numbers.formatDecimal(record.tct, 1, 2) : 'N/A'}"></td>
+                        <td th:text="${record.target != null ? #numbers.formatDecimal(record.target, 1, 2) : 'N/A'}">
                         </td>
-                        <td th:text="${record.eff != null ? #numbers.formatDecimal(record.eff * 100, 1, 2) + '%' : 'N/A'}"
-                            style="font-weight: bold; color: #d9534f;">
+
+                        <td th:text="${record.effKpi != null ? #numbers.formatDecimal(record.effKpi * 100, 1, 2) + '%' : 'N/A'}"
+                            style="font-weight: bold; color: #d9534f;"></td>
+                        <td
+                            th:text="${record.effSalary != null ? #numbers.formatDecimal(record.effSalary * 100, 1, 2) + '%' : 'N/A'}">
+                        </td>
+                        <td
+                            th:text="${record.actualPph != null ? #numbers.formatDecimal(record.actualPph, 1, 2) : 'N/A'}">
                         </td>
                         <td sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" style="white-space: nowrap;">
                             <button class="btn btn-primary" th:onclick="openEditModal([[${record}]])"
@@ -111,6 +174,8 @@
                             <form th:action="@{/dashboard/delete}" method="post" style="display:inline;">
                                 <input type="hidden" name="id" th:value="${record.id}" />
                                 <input type="hidden" name="date" th:value="${selectedDate}" />
+                                <input type="hidden" name="range" th:value="${selectedRange}" />
+                                <input type="hidden" name="article" th:value="${article}" />
                                 <button type="submit" class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;"
                                     onclick="return confirm('Are you sure?')">Delete</button>
                             </form>
@@ -129,6 +194,8 @@
             <form th:action="@{/dashboard/edit}" method="post">
                 <input type="hidden" id="edit-id" name="id" />
                 <input type="hidden" id="edit-date" name="productionDate" />
+                <input type="hidden" name="range" th:value="${selectedRange}" />
+                <input type="hidden" name="article" th:value="${article}" />
 
                 <div class="form-group">
                     <label>Section</label>
@@ -184,6 +251,56 @@
             if (event.target == document.getElementById('editModal')) {
                 closeEditModal();
             }
+        }
+
+        /* ─── JS CỦA TÍNH NĂNG MULTIPLE DELETE ─── */
+        function toggleAll(source) {
+            const checkboxes = document.querySelectorAll('.recordCheckbox');
+            checkboxes.forEach(cb => cb.checked = source.checked);
+            updateDeleteButtonVisibility();
+        }
+
+        function toggleSingle() {
+            const checkboxes = document.querySelectorAll('.recordCheckbox');
+            const selectAllCb = document.getElementById('selectAllCheckbox');
+
+            // Nếu tất cả đều được check, thì đánh dấu nút Select All
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            selectAllCb.checked = allChecked;
+
+            updateDeleteButtonVisibility();
+        }
+
+        function updateDeleteButtonVisibility() {
+            const checkboxes = document.querySelectorAll('.recordCheckbox');
+            const btnDelete = document.getElementById('btnDeleteMultiple');
+            const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+
+            btnDelete.style.display = anyChecked ? 'inline-block' : 'none';
+        }
+
+        function submitMultipleDelete() {
+            const checkedBoxes = document.querySelectorAll('.recordCheckbox:checked');
+            if (checkedBoxes.length === 0) return;
+
+            if (!confirm('Are you sure you want to delete ' + checkedBoxes.length + ' selected records?')) {
+                return;
+            }
+
+            const form = document.getElementById('deleteMultipleForm');
+            // Xóa hết thẻ input ẩn sinh ra lần trước nếu có (tránh rác khi click hụt)
+            form.querySelectorAll('input[name="ids"]').forEach(el => el.remove());
+
+            // Thêm từng ID đã chọn vào mảng ids
+            checkedBoxes.forEach(cb => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'ids';
+                input.value = cb.value;
+                form.appendChild(input);
+            });
+
+            form.submit();
         }
     </script>
 </body>

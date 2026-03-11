@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 
 <head>
-    <title>Data Entry</title>
+    <title th:text="#{entry.title}">Data Entry</title>
     <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 
@@ -10,7 +10,7 @@
     <div th:replace="~{fragments/layout :: navbar}"></div>
 
     <div class="container">
-        <h2>Enter Production Data</h2>
+        <h2 th:text="#{entry.title}">Enter Production Data</h2>
 
         <div th:if="${param.success}" style="color: green; margin-bottom: 10px;">
             Entry saved successfully!
@@ -19,15 +19,16 @@
         <!-- EXCEL IMPORT SECTION -->
         <div
             style="margin-bottom: 20px; padding: 15px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;">
-            <h4>Import via Excel</h4>
+            <h4 th:text="#{masterdb.import.title}">Import via Excel</h4>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <a th:href="@{/excel/template}" class="btn"
-                    style="background: #28a745; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px;">Download
-                    Template</a>
+                    style="background: #28a745; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px;"
+                    th:text="#{masterdb.import.download}">Download Template</a>
                 <form th:action="@{/excel/import}" method="post" enctype="multipart/form-data"
                     style="display: flex; gap: 10px;">
                     <input type="file" name="file" accept=".xlsx" required />
-                    <button type="submit" class="btn btn-primary" style="padding: 8px 15px;">Upload & Import</button>
+                    <button type="submit" class="btn btn-primary" style="padding: 8px 15px;"
+                        th:text="#{masterdb.import.upload}">Upload & Import</button>
                 </form>
             </div>
         </div>
@@ -36,15 +37,16 @@
         <h4>Or Manual Entry</h4>
 
         <form th:action="@{/entry/save}" th:object="${production}" method="post">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+            <!-- ROW 1: Date / Section / Line -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;margin-bottom:16px;">
                 <div class="form-group">
-                    <label>Date</label>
+                    <label>Date <span style="color:red">*</span></label>
                     <input type="date" th:field="*{productionDate}" class="form-control" required />
                 </div>
                 <div class="form-group">
-                    <label>Section</label>
+                    <label>Section <span style="color:red">*</span></label>
                     <select th:field="*{section}" class="form-control" required>
-                        <option value="" disabled selected>-- Select Section --</option>
+                        <option value="" disabled selected>-- Select --</option>
                         <option value="SEW">SEW</option>
                         <option value="BUFFING 1ST">BUFFING 1ST</option>
                         <option value="BUFFING 2ND">BUFFING 2ND</option>
@@ -56,83 +58,121 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Line</label>
+                    <label>Line <span style="color:red">*</span></label>
                     <input type="text" th:field="*{line}" class="form-control" placeholder="e.g. 1A" required />
-                </div>
-                <div class="form-group">
-                    <label>Manpower (MP)</label>
-                    <input type="number" step="0.1" th:field="*{mp}" class="form-control" required min="0" />
-                </div>
-                <div class="form-group">
-                    <label>Working Time (WT)</label>
-                    <input type="number" step="0.1" th:field="*{wt}" class="form-control" required min="0" />
-                </div>
-                <div class="form-group">
-                    <label>Tổng Sản Lượng (Total Output)</label>
-                    <input type="number" th:field="*{output}" class="form-control" required min="0" />
                 </div>
             </div>
 
-            <h4 style="margin-top: 20px;">Hourly Breakdown (Chỉ Nhập Article - Không bắt buộc nếu có Default)</h4>
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
-                <div th:each="detail, stat : *{details}"
-                    style="border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
+            <!-- ROW 2: DL(MP) / DLI / IDL / WT -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:15px;margin-bottom:16px;">
+                <div class="form-group">
+                    <label title="Direct Labor - Direct Manpower">DL / MP <span style="color:red">*</span></label>
+                    <input type="number" step="0.1" id="fMp" th:field="*{mp}" class="form-control" required min="0" />
+                </div>
+                <div class="form-group">
+                    <label title="Direct Labor Indirect">DLI</label>
+                    <input type="number" step="0.1" th:field="*{dli}" class="form-control" min="0" />
+                </div>
+                <div class="form-group">
+                    <label title="Indirect Labor">IDL</label>
+                    <input type="number" step="0.1" th:field="*{idl}" class="form-control" min="0" />
+                </div>
+                <div class="form-group">
+                    <label title="Working Time (giờ)">WT <span style="color:red">*</span></label>
+                    <input type="number" step="0.1" id="fWt" th:field="*{wt}" class="form-control" required min="0" />
+                </div>
+            </div>
+
+            <!-- ROW 3: Output / RFT / Allowance -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;margin-bottom:16px;">
+                <div class="form-group">
+                    <label>Total Output <span style="color:red">*</span></label>
+                    <input type="number" id="fOutput" th:field="*{output}" class="form-control" required min="0" />
+                </div>
+                <div class="form-group">
+                    <label title="Right First Time - % of products passing on first attempt">RFT (%)</label>
+                    <input type="number" step="0.1" th:field="*{rft}" class="form-control" min="0" max="100"
+                        placeholder="e.g. 95" />
+                </div>
+                <div class="form-group">
+                    <label title="Allowance % impacts EFF calculation">
+                        Allowance (%) <span style="color:red">*</span>
+                        <span style="font-size:0.8em;color:#6c757d;">— affects %EFF</span>
+                    </label>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <input type="range" id="fAllowanceSlider" min="80" max="100" step="1" value="100"
+                            style="flex:1;" oninput="syncAllowance(this.value)" />
+                        <input type="number" id="fAllowanceNum" th:field="*{allowance}" class="form-control" min="80"
+                            max="100" step="1" style="width:80px;" oninput="syncAllowance(this.value)"
+                            placeholder="100" />
+                        <span style="min-width:20px;font-weight:600;">%</span>
+                    </div>
+                </div>
+            </div>
+
+            <h4 style="margin-top:20px;">Hourly Breakdown — Article per Time Slot</h4>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:15px;">
+                <div th:each="detail, stat : *{details}" style="border:1px solid #ccc;padding:10px;border-radius:5px;">
                     <strong th:text="${detail.timeSlot}"></strong>
                     <input type="hidden" th:field="*{details[__${stat.index}__].timeSlot}" />
-
-                    <div style="margin-top: 10px;">
-                        <label style="font-size: 0.9em;">Article No.</label>
+                    <div style="margin-top:10px;">
+                        <label style="font-size:0.9em;">Article No.</label>
                         <input type="text" th:field="*{details[__${stat.index}__].articleNo}"
                             th:id="|articleSlot_${detail.timeSlot}|" class="form-control"
-                            style="width: 100%; padding: 5px;" placeholder="e.g. Y1234..."
+                            style="width:100%;padding:5px;" placeholder="e.g. Y1234..."
                             th:attr="data-slot=${detail.timeSlot}"
                             oninput="checkBreakTime(this.getAttribute('data-slot'))" />
                     </div>
                 </div>
             </div>
 
-            <div class="form-group" style="margin-top: 20px;">
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Save Entry</button>
+            <div class="form-group" style="margin-top:20px;">
+                <button type="submit" class="btn btn-primary" style="width:100%;">💾 Save Entry</button>
             </div>
         </form>
 
         <script>
+            // ── Allowance slider <-> number sync ────────────────────────────────
+            function syncAllowance(val) {
+                var v = Math.max(80, Math.min(100, parseFloat(val) || 100));
+                document.getElementById('fAllowanceSlider').value = v;
+                document.getElementById('fAllowanceNum').value = v;
+            }
+
+            // ── Break time logic ─────────────────────────────────────────────────
             function checkBreakTime(changedSlot) {
-                // Get the elements
                 var slot11 = document.getElementById("articleSlot_11:00-12:00");
                 var slot12 = document.getElementById("articleSlot_12:00-13:00");
-
                 if (!slot11 || !slot12) return;
-
                 if (changedSlot === '11:00-12:00') {
                     if (slot11.value.trim() !== "") {
-                        // User enters work for 11:00 -> Disable 12:00
-                        slot12.disabled = true;
-                        slot12.value = "";
-                        slot12.placeholder = "Giờ Nghỉ Trưa";
+                        slot12.disabled = true; slot12.value = "";
+                        slot12.placeholder = "Lunch Break";
                         slot12.style.backgroundColor = "#e9ecef";
                     } else {
-                        // Cleared 11:00 -> Re-eanble 12:00
                         slot12.disabled = false;
                         slot12.placeholder = "e.g. Y1234...";
                         slot12.style.backgroundColor = "";
                     }
                 } else if (changedSlot === '12:00-13:00') {
                     if (slot12.value.trim() !== "") {
-                        // User enters work for 12:00 -> Disable 11:00
-                        slot11.disabled = true;
-                        slot11.value = "";
-                        slot11.placeholder = "Giờ Nghỉ Trưa";
+                        slot11.disabled = true; slot11.value = "";
+                        slot11.placeholder = "Lunch Break";
                         slot11.style.backgroundColor = "#e9ecef";
                     } else {
-                        // Cleared 12:00 -> Re-eanble 11:00
                         slot11.disabled = false;
                         slot11.placeholder = "e.g. Y1234...";
                         slot11.style.backgroundColor = "";
                     }
                 }
             }
+
+            // Init: set allowance slider to 100
+            window.addEventListener('DOMContentLoaded', function () {
+                syncAllowance(100);
+            });
         </script>
+
 
         <h3 style="margin-top: 40px;">Your Recent Entries</h3>
         <table>
@@ -146,7 +186,9 @@
                     <th>Output</th>
                     <th>MP</th>
                     <th>WT</th>
-                    <th>EFF %</th>
+                    <th>EFF KPI</th>
+                    <th>EFF Salary</th>
+                    <th>PPH</th>
                 </tr>
             </thead>
             <tbody>
@@ -159,7 +201,13 @@
                     <td th:text="${record.output}"></td>
                     <td th:text="${record.mp}"></td>
                     <td th:text="${record.wt}"></td>
-                    <td th:text="${record.eff != null ? #numbers.formatDecimal(record.eff * 100, 1, 2) + '%' : 'N/A'}">
+                    <td
+                        th:text="${record.effKpi != null ? #numbers.formatDecimal(record.effKpi * 100, 1, 2) + '%' : 'N/A'}">
+                    </td>
+                    <td
+                        th:text="${record.effSalary != null ? #numbers.formatDecimal(record.effSalary * 100, 1, 2) + '%' : 'N/A'}">
+                    </td>
+                    <td th:text="${record.actualPph != null ? #numbers.formatDecimal(record.actualPph, 1, 2) : 'N/A'}">
                     </td>
                 </tr>
             </tbody>
