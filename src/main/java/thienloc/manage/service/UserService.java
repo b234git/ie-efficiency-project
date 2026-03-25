@@ -35,7 +35,7 @@ public class UserService {
     }
 
     public User updateRole(Long id, String newRole) {
-        User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findById(id).orElseThrow(() -> new thienloc.manage.exception.ResourceNotFoundException("User not found"));
         user.setRole(newRole);
         return userRepository.save(user);
     }

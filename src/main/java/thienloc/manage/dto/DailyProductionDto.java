@@ -33,6 +33,7 @@ public class DailyProductionDto {
     // Allowance = % sản lượng cho phép (1.0 = 100%, 0.8 = 80%)
     private Double allowance;
     private String createdAt;
+    private String createdBy; // username of creator
 
     // For calculating stats
     private String ref;
@@ -42,8 +43,15 @@ public class DailyProductionDto {
     private Double pph;
     private Double gap;
 
+    // Reasons when EFF values cannot be calculated
+    private String effKpiReason;
+    private String effSalaryReason;
+
     // Time slots breakdown
     @Builder.Default
     private java.util.List<DailyProductionDetailDto> details = new java.util.ArrayList<>();
+
+    // JSON map of timeSlot -> articleNo for client-side edit population
+    private String articlesJson;
 
 }

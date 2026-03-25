@@ -235,12 +235,10 @@
                 </small>
             </div>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <!-- MANAGER/ADMIN: thêm mới -->
                 <button sec:authorize="hasAnyRole('MANAGER','ADMIN')" class="btn btn-primary" onclick="openAddModal()">+
-                    Add New</button>
-                <!-- USER: cũng được thêm mới -->
-                <button sec:authorize="hasRole('USER')" class="btn btn-primary" onclick="openAddModal()">+ Thêm
-                    Mới</button>
+                    <span th:text="#{masterdb.addnew}">Add New</span></button>
+                <button sec:authorize="hasRole('USER')" class="btn btn-primary" onclick="openAddModal()">+
+                    <span th:text="#{masterdb.addnew}">Add New</span></button>
             </div>
         </div>
 
@@ -250,27 +248,34 @@
 
         <!-- ── Import Excel Panel ──────────────────────────────── -->
         <div class="import-panel">
-            <h5>📥 Import Excel (Sheet "DB")</h5>
+            <h5>📥 <span th:text="#{masterdb.import.title}">Import Excel (Sheet "DB")</span></h5>
             <div class="import-row">
                 <a th:href="@{/masterdb/template}" class="btn btn-success btn-sm"
-                    style="padding:7px 14px; font-size:0.9rem;">⬇ Download Template</a>
+                    style="padding:7px 14px; font-size:0.9rem;">⬇ <span th:text="#{masterdb.import.download}">Download Template</span></a>
                 <form th:action="@{/masterdb/import}" method="post" enctype="multipart/form-data"
                     style="display:flex; gap:8px; align-items:center;">
+                    <label style="font-weight:600; font-size:0.9rem;" th:text="#{masterdb.import.month}">Month:</label>
+                    <input type="month" name="dataMonth" required class="form-control"
+                        style="width:160px; font-size:0.9rem;" />
                     <input type="file" name="file" accept=".xlsx" required style="font-size:0.9rem;" />
-                    <button type="submit" class="btn btn-primary" style="padding:7px 14px; font-size:0.9rem;">Upload
-                        &amp; Import</button>
+                    <button type="submit" class="btn btn-primary" style="padding:7px 14px; font-size:0.9rem;"
+                        th:text="#{masterdb.import.upload}">Upload &amp; Import</button>
                 </form>
             </div>
             <small style="color:#6c757d; margin-top:6px; display:block;">
-                ⚠️ File must contain a sheet named <code>DB</code>, data starts from row 3 (skip 2 header rows).
-                Các bản ghi có cùng <code>ref</code> sẽ được cập nhật (upsert).
+                ⚠️ <span th:text="#{masterdb.import.note.full}">File must have sheet DB, data from row 3. Select month before importing.</span>
             </small>
         </div>
 
         <!-- ── Search bar ──────────────────────────────────────── -->
         <form th:action="@{/masterdb/}" method="get" class="search-bar" style="margin-bottom:16px;">
+            <select name="dataMonth" class="form-control" style="width:160px;">
+                <option value="" th:text="#{masterdb.month.all.opt}">-- All months --</option>
+                <option th:each="m : ${availableMonths}" th:value="${m}" th:text="${m}"
+                    th:selected="${dataMonth == m}"></option>
+            </select>
             <input type="text" name="keyword" th:value="${keyword}" class="form-control" style="width:280px;"
-                placeholder="Tìm theo Ref hoặc Article No..." />
+                th:placeholder="#{masterdb.search}" />
             <button type="submit" class="btn btn-primary" th:text="#{masterdb.searchbtn}">Search</button>
             <a th:href="@{/masterdb/}" class="btn"
                 style="border:1px solid #ccc; padding:8px 14px; text-decoration:none; color:#333;"
@@ -283,13 +288,14 @@
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>Ref</th>
-                        <th>Article No</th>
-                        <th>Pattern No</th>
-                        <th>Shoe Name</th>
-                        <th>OS Code</th>
-                        <th>Sew Quota</th>
-                        <th>TCT (s)</th>
+                        <th th:text="#{masterdb.col.month}">Month</th>
+                        <th th:text="#{masterdb.col.ref}">Ref</th>
+                        <th th:text="#{masterdb.col.articleno}">Article No</th>
+                        <th th:text="#{masterdb.col.patternno}">Pattern No</th>
+                        <th th:text="#{masterdb.col.shoename}">Shoe Name</th>
+                        <th th:text="#{masterdb.col.oscode}">OS Code</th>
+                        <th th:text="#{masterdb.col.sewquota}">Sew Quota</th>
+                        <th th:text="#{masterdb.col.tct}">TCT (s)</th>
                         <th style="background:#dff0d8;">SEW PPH</th>
                         <th style="background:#d9edf7;">BUFF 1ST</th>
                         <th style="background:#d9edf7;">BUFF 2ND</th>
@@ -298,16 +304,18 @@
                         <th style="background:#fcf8e3;">SF 2ND</th>
                         <th style="background:#f2dede;">ASSEM BIG</th>
                         <th style="background:#f2dede;">ASSEM SMALL</th>
-                        <th>Actions</th>
+                        <th th:text="#{table.actions}">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr th:if="${records.isEmpty()}">
-                        <td colspan="17" style="text-align:center; color:#888; padding:20px;" th:text="#{table.nodata}">
+                        <td colspan="18" style="text-align:center; color:#888; padding:20px;" th:text="#{table.nodata}">
                             No data available.</td>
                     </tr>
                     <tr th:each="rec, stat : ${records.content}">
                         <td th:text="${currentPage * 10 + stat.index + 1}" style="color:#6c757d;"></td>
+                        <td th:text="${rec.dataMonth != null ? rec.dataMonth : '-'}"
+                            style="font-size:0.8rem; color:#0d6efd;"></td>
                         <td style="font-weight:600;" th:text="${rec.ref}"></td>
                         <td th:text="${rec.articleNo}"></td>
                         <td th:text="${rec.patternNo != null ? rec.patternNo : '-'}"></td>
@@ -359,7 +367,8 @@
                                              data-sf1st=${rec.stockfit1stPph ?: 0},
                                              data-sf2nd=${rec.stockfit2ndPph ?: 0},
                                              data-assembig=${rec.assemBigPph ?: 0},
-                                             data-assemsmall=${rec.assemSmallPph ?: 0}">
+                                             data-assemsmall=${rec.assemSmallPph ?: 0}"
+                                th:text="#{masterdb.edit.btn}">
                                 ✏️ Edit
                             </button>
                             <!-- Delete — MANAGER/ADMIN only -->
@@ -373,8 +382,8 @@
                                     Delete</button>
                             </form>
                             <!-- USER: chỉ xem, không có nút -->
-                            <span sec:authorize="hasRole('USER')" style="color:#6c757d; font-size:0.8rem;">📖 View
-                                only</span>
+                            <span sec:authorize="hasRole('USER')" style="color:#6c757d; font-size:0.8rem;"
+                                th:text="#{masterdb.viewonly}">📖 View only</span>
                         </td>
                     </tr>
                 </tbody>
@@ -385,32 +394,31 @@
         <div th:if="${totalPages > 1}">
             <ul class="pagination">
                 <li>
-                    <a th:if="${currentPage > 0}" th:href="@{/masterdb/(page=0, keyword=${keyword})}">« First</a>
-                    <span th:if="${currentPage == 0}" class="disabled">« First</span>
+                    <a th:if="${currentPage > 0}" th:href="@{/masterdb/(page=0, keyword=${keyword}, dataMonth=${dataMonth})}" th:text="#{pagination.first}">« First</a>
+                    <span th:if="${currentPage == 0}" class="disabled" th:text="#{pagination.first}">« First</span>
                 </li>
                 <li>
-                    <a th:if="${currentPage > 0}" th:href="@{/masterdb/(page=${currentPage - 1}, keyword=${keyword})}">‹
-                        Prev</a>
-                    <span th:if="${currentPage == 0}" class="disabled">‹ Prev</span>
+                    <a th:if="${currentPage > 0}" th:href="@{/masterdb/(page=${currentPage - 1}, keyword=${keyword}, dataMonth=${dataMonth})}" th:text="#{pagination.prev}">‹ Prev</a>
+                    <span th:if="${currentPage == 0}" class="disabled" th:text="#{pagination.prev}">‹ Prev</span>
                 </li>
 
                 <!-- Page numbers window: show up to 5 pages around current -->
                 <li th:each="pg : ${#numbers.sequence(T(java.lang.Math).max(0, currentPage - 2),
                                                    T(java.lang.Math).min(totalPages - 1, currentPage + 2))}">
                     <span th:if="${pg == currentPage}" class="active" th:text="${pg + 1}"></span>
-                    <a th:if="${pg != currentPage}" th:href="@{/masterdb/(page=${pg}, keyword=${keyword})}"
+                    <a th:if="${pg != currentPage}" th:href="@{/masterdb/(page=${pg}, keyword=${keyword}, dataMonth=${dataMonth})}"
                         th:text="${pg + 1}"></a>
                 </li>
 
                 <li>
                     <a th:if="${currentPage < totalPages - 1}"
-                        th:href="@{/masterdb/(page=${currentPage + 1}, keyword=${keyword})}">Next ›</a>
-                    <span th:if="${currentPage >= totalPages - 1}" class="disabled">Next ›</span>
+                        th:href="@{/masterdb/(page=${currentPage + 1}, keyword=${keyword}, dataMonth=${dataMonth})}" th:text="#{pagination.next}">Next ›</a>
+                    <span th:if="${currentPage >= totalPages - 1}" class="disabled" th:text="#{pagination.next}">Next ›</span>
                 </li>
                 <li>
                     <a th:if="${currentPage < totalPages - 1}"
-                        th:href="@{/masterdb/(page=${totalPages - 1}, keyword=${keyword})}">Last »</a>
-                    <span th:if="${currentPage >= totalPages - 1}" class="disabled">Last »</span>
+                        th:href="@{/masterdb/(page=${totalPages - 1}, keyword=${keyword}, dataMonth=${dataMonth})}" th:text="#{pagination.last}">Last »</a>
+                    <span th:if="${currentPage >= totalPages - 1}" class="disabled" th:text="#{pagination.last}">Last »</span>
                 </li>
             </ul>
         </div>
@@ -422,8 +430,8 @@
     <!-- ═══════════════════════════════════════════════════════════ -->
     <div id="masterdbModal" class="modal-overlay" onclick="closeModalOnOverlay(event)">
         <div class="modal-box">
-            <button class="modal-close" onclick="closeModal()" title="Đóng">×</button>
-            <h3 id="modalTitle" class="modal-title">Add New Record</h3>
+            <button class="modal-close" onclick="closeModal()" title="×">×</button>
+            <h3 id="modalTitle" class="modal-title" th:text="#{masterdb.modal.add}">Add New Record</h3>
 
             <form th:action="@{/masterdb/save}" method="post" id="masterdbForm">
                 <input type="hidden" id="f-id" name="id" />
@@ -461,7 +469,7 @@
                             placeholder="E.g: 450" min="0" oninput="calcTCT()" />
                     </div>
                     <div class="form-group">
-                        <label>TCT (seconds) <small style="color:#6c757d;">– auto-calculated from Quota</small></label>
+                        <label>TCT (seconds) <small style="color:#6c757d;" th:text="#{masterdb.modal.tct.hint}">– auto-calculated from Quota</small></label>
                         <input type="number" step="0.0001" id="f-tct" name="tct" class="form-control"
                             placeholder="Or enter manually" />
                     </div>
@@ -469,7 +477,7 @@
 
                 <!-- PPH section -->
                 <div style="margin-top:18px;">
-                    <div class="section-header">PPH theo Section</div>
+                    <div class="section-header" th:text="#{masterdb.pph.section}">PPH by Section</div>
                     <div class="pph-grid">
                         <div class="form-group">
                             <label style="font-size:0.85rem; color:#28a745;">SEW PPH</label>
@@ -516,8 +524,10 @@
 
                 <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
                     <button type="button" class="btn" onclick="closeModal()"
-                        style="border:1px solid #ccc; padding:8px 20px;">Hủy</button>
-                    <button type="submit" class="btn btn-primary" style="padding:8px 24px;">💾 Lưu</button>
+                        style="border:1px solid #ccc; padding:8px 20px;"
+                        th:text="#{masterdb.modal.cancel}">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="padding:8px 24px;"
+                        th:text="#{masterdb.modal.save}">💾 Save</button>
                 </div>
             </form>
         </div>
@@ -526,16 +536,22 @@
     <!-- ═══════════════════════════════════════════════════════════ -->
     <!--  JS                                                        -->
     <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- Thymeleaf i18n constants for JavaScript -->
+    <script th:inline="javascript">
+        const MSG_MODAL_ADD  = /*[[#{masterdb.modal.add}]]*/ 'Add New Record';
+        const MSG_MODAL_EDIT = /*[[#{masterdb.modal.edit}]]*/ 'Edit Record';
+    </script>
+
     <script>
         function openAddModal() {
-            document.getElementById('modalTitle').textContent = 'Add New Record';
+            document.getElementById('modalTitle').textContent = MSG_MODAL_ADD;
             resetForm();
             document.getElementById('masterdbModal').style.display = 'block';
         }
 
         function openEditModal(btn) {
             const d = btn.dataset;
-            document.getElementById('modalTitle').textContent = 'Edit Record';
+            document.getElementById('modalTitle').textContent = MSG_MODAL_EDIT;
             document.getElementById('f-id').value = d.id;
             document.getElementById('f-ref').value = d.ref || '';
             document.getElementById('f-articleNo').value = d.articleno || '';

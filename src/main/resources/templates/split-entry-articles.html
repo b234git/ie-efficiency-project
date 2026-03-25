@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <title th:text="#{splitentry.articles.title}">Step 3: Allowance &amp; Articles</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+
+<body>
+    <div th:replace="~{fragments/layout :: navbar}"></div>
+
+    <div class="container">
+        <div style="margin-bottom:16px;">
+            <a th:href="@{/split-entry/}" style="color:#007bff; text-decoration:none;">&larr; <span th:text="#{splitentry.title}">Split Entry</span></a>
+        </div>
+
+        <h2 style="color:#fd7e14;" th:text="#{splitentry.articles.title}">Step 3: Allowance &amp; Articles</h2>
+
+        <!-- Excel Import Section (MANAGER/ADMIN only) -->
+        <div sec:authorize="hasAnyRole('MANAGER','ADMIN')"
+             style="margin-bottom:20px; padding:15px; background:#fff8f0; border:1px solid #ffd8a8; border-radius:5px;">
+            <h4 style="margin:0 0 10px 0; color:#fd7e14;" th:text="#{splitentry.import.articles.title}">Import Articles from Excel</h4>
+            <p style="color:#6c757d; font-size:0.85em; margin:0 0 10px 0;" th:text="#{splitentry.import.articles.hint}">
+                Upload an Excel file with columns: Date, Section, Line, Allowance, and Article No. per time slot.
+            </p>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <a th:href="@{/split-entry/articles/template}" class="btn"
+                   style="padding:8px 15px; background:#6c757d; color:white; border-radius:4px; text-decoration:none; font-size:0.9em;"
+                   th:text="#{splitentry.import.download.template}">Download Template</a>
+                <form th:action="@{/split-entry/articles/import/preview}" method="post" enctype="multipart/form-data"
+                      style="display:flex; gap:10px; align-items:center;">
+                    <input type="file" name="file" accept=".xlsx,.xls" required />
+                    <button type="submit" class="btn btn-primary"
+                            style="padding:8px 15px; background:#fd7e14; border-color:#fd7e14; white-space:nowrap; font-size:0.9em;"
+                            th:text="#{splitentry.import.preview.btn}">Preview &amp; Import</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Import flash messages -->
+        <div th:if="${importError}" style="color:#dc3545; margin-bottom:10px; padding:10px; background:#f8d7da; border-radius:4px;">
+            <span th:text="${importError}"></span>
+        </div>
+        <div th:if="${importSuccess}" style="color:#155724; margin-bottom:10px; padding:10px; background:#d4edda; border-radius:4px;">
+            <span th:text="#{splitentry.import.success(${importSuccess})}">Imported rows successfully!</span>
+        </div>
+
+        <hr sec:authorize="hasAnyRole('MANAGER','ADMIN')" style="margin-bottom:20px;">
+        <h4 sec:authorize="hasAnyRole('MANAGER','ADMIN')" style="color:#6c757d; margin-bottom:16px;" th:text="#{entry.manual}">Or Manual Entry</h4>
+
+        <!-- Flash messages -->
+        <div th:if="${success}" style="color:green; margin-bottom:10px;" th:text="#{splitentry.save.success}">Saved!</div>
+
+        <!-- Status indicator -->
+        <div th:if="${splitEntry.id != null}" style="margin-bottom:16px; padding:10px 16px; background:#fff8f0; border-left:4px solid #fd7e14; border-radius:4px;">
+            <span style="font-weight:600;">Record found</span> &mdash;
+            👥 MP: <span th:if="${splitEntry.manpowerFilled}" style="color:#28a745; font-weight:bold;" th:text="#{splitentry.filled}">Filled</span>
+            <span th:unless="${splitEntry.manpowerFilled}" style="color:#adb5bd;" th:text="#{splitentry.pending}">Pending</span> |
+            📦 Output: <span th:if="${splitEntry.outputFilled}" style="color:#28a745; font-weight:bold;" th:text="#{splitentry.filled}">Filled</span>
+            <span th:unless="${splitEntry.outputFilled}" style="color:#adb5bd;" th:text="#{splitentry.pending}">Pending</span> |
+            📋 Articles: <span th:if="${splitEntry.articlesFilled}" style="color:#28a745; font-weight:bold;" th:text="#{splitentry.filled}">Filled</span>
+            <span th:unless="${splitEntry.articlesFilled}" style="color:#adb5bd;" th:text="#{splitentry.pending}">Pending</span>
+            <span th:if="${splitEntry.status == 'SYNCED'}" style="margin-left:10px; background:#28a745; color:white; padding:2px 8px; border-radius:10px; font-size:0.85em;" th:text="#{splitentry.synced.notice}">Synced</span>
+        </div>
+
+        <form id="articlesForm" th:action="@{/split-entry/articles}" th:object="${splitEntry}" method="post">
+
+            <!-- ROW 1: Date / Section / Line -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;margin-bottom:16px;">
+                <div class="form-group">
+                    <label><span th:text="#{entry.label.date}">Date</span> <span style="color:red">*</span></label>
+                    <input type="date" th:field="*{productionDate}" class="form-control" required />
+                </div>
+                <div class="form-group">
+                    <label><span th:text="#{entry.label.section}">Section</span> <span style="color:red">*</span></label>
+                    <select th:field="*{section}" class="form-control" required>
+                        <option value="" disabled th:text="#{entry.select}">-- Select --</option>
+                        <option value="SEW">SEW</option>
+                        <option value="BUFFING" style="font-weight:bold; background:#f0f0f0;">BUFFING</option>
+                        <option value="BUFFING 1ST">&nbsp;&nbsp;&nbsp; BUFFING 1ST</option>
+                        <option value="BUFFING 2ND">&nbsp;&nbsp;&nbsp; BUFFING 2ND</option>
+                        <option value="STOCKFIT" style="font-weight:bold; background:#f0f0f0;">STOCKFIT</option>
+                        <option value="STOCKFIT UV">&nbsp;&nbsp;&nbsp; STOCKFIT UV</option>
+                        <option value="STOCKFIT 1ST">&nbsp;&nbsp;&nbsp; STOCKFIT 1ST</option>
+                        <option value="STOCKFIT 2ND">&nbsp;&nbsp;&nbsp; STOCKFIT 2ND</option>
+                        <option value="ASSEMBLY" style="font-weight:bold; background:#f0f0f0;">ASSEMBLY</option>
+                        <option value="ASSEMBLY BIG">&nbsp;&nbsp;&nbsp; ASSEMBLY BIG</option>
+                        <option value="ASSEMBLY SMALL">&nbsp;&nbsp;&nbsp; ASSEMBLY SMALL</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><span th:text="#{entry.label.line}">Line</span> <span style="color:red">*</span></label>
+                    <input type="text" th:field="*{line}" class="form-control" placeholder="e.g. 1A" required />
+                </div>
+            </div>
+
+            <!-- Allowance -->
+            <div style="display:grid;grid-template-columns:1fr;gap:15px;margin-bottom:16px; max-width:400px;">
+                <div class="form-group">
+                    <label title="Allowance % impacts EFF calculation">
+                        <span th:text="#{entry.label.allowance}">Allowance (%)</span> <span style="color:red">*</span>
+                        <span style="font-size:0.8em;color:#6c757d;" th:text="#{entry.label.allowance.hint}">— affects %EFF</span>
+                    </label>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <input type="range" id="fAllowanceSlider" min="80" max="100" step="1"
+                            th:value="${splitEntry.allowance != null ? splitEntry.allowance : 100}"
+                            style="flex:1;" oninput="syncAllowance(this.value)" />
+                        <input type="number" id="fAllowanceNum" th:field="*{allowance}" class="form-control" min="80"
+                            max="100" step="1" style="width:80px;" oninput="syncAllowance(this.value)"
+                            placeholder="100" />
+                        <span style="min-width:20px;font-weight:600;">%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WT display (from Step 2, read-only context) -->
+            <div th:if="${splitEntry.wt != null}" style="margin-bottom:16px; padding:10px 16px; background:#f0fff4; border-left:4px solid #28a745; border-radius:4px;">
+                <span style="font-weight:600;" th:text="#{entry.label.wt}">WT (hrs)</span>:
+                <strong th:text="${splitEntry.wt}"></strong>h
+                <span style="color:#6c757d; font-size:0.85em; margin-left:8px;">(from Step 2)</span>
+            </div>
+            <input type="hidden" id="wtValue" th:value="${splitEntry.wt}" />
+
+            <!-- Time Slots -->
+            <h4 style="margin-top:20px;" th:text="#{entry.hourly}">Hourly Breakdown — Article per Time Slot</h4>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:15px;">
+                <div th:each="detail, stat : *{details}" style="border:1px solid #ccc;padding:10px;border-radius:5px;">
+                    <strong th:text="${detail.timeSlot}"></strong>
+                    <input type="hidden" th:field="*{details[__${stat.index}__].timeSlot}" />
+                    <div style="margin-top:10px;">
+                        <label style="font-size:0.9em;">Article No.</label>
+                        <input type="text" th:field="*{details[__${stat.index}__].articleNo}"
+                            th:id="|articleSlot_${detail.timeSlot}|" class="form-control"
+                            style="width:100%;padding:5px;" placeholder="e.g. Y1234..."
+                            th:attr="data-slot=${detail.timeSlot}"
+                            oninput="checkBreakTime(this.getAttribute('data-slot'))" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top:20px;">
+                <button type="submit" class="btn btn-primary" style="width:100%; background:#fd7e14; border-color:#fd7e14;" th:text="#{splitentry.save.btn}">Save</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // ── All available time slots (in order) ─────────────────────────────
+        var ALL_SLOTS = ['07:00-08:00','08:00-09:00','09:00-10:00','10:00-11:00','11:00-12:00',
+                         '12:00-13:00','13:00-14:00','14:00-15:00','15:00-16:00','16:00-17:00',
+                         '17:00-18:00','18:00-19:00','19:00-20:00','20:00-21:00','21:00-22:00'];
+
+        var LUNCH_A = '11:00-12:00';
+        var LUNCH_B = '12:00-13:00';
+
+        function getLunchSlot() {
+            var inputA = document.getElementById('articleSlot_' + LUNCH_A);
+            var inputB = document.getElementById('articleSlot_' + LUNCH_B);
+            var aVal = (inputA && !inputA.disabled) ? inputA.value.trim() : '';
+            var bVal = (inputB && !inputB.disabled) ? inputB.value.trim() : '';
+
+            if (aVal && !bVal) return { hard: LUNCH_B, soft: null };
+            if (bVal && !aVal) return { hard: LUNCH_A, soft: null };
+            if (!aVal && !bVal) return { hard: null, soft: null };
+            return { hard: null, soft: null };
+        }
+
+        function updateActiveSlots() {
+            var wtEl = document.getElementById('wtValue');
+            var wt = parseFloat(wtEl ? wtEl.value : 0) || 0;
+            var lunch = getLunchSlot();
+            var hasLunch = lunch.hard || lunch.soft;
+            var maxWork = hasLunch ? ALL_SLOTS.length - 1 : ALL_SLOTS.length;
+            var targetWork = wt > 0 ? Math.min(Math.ceil(wt), maxWork) : maxWork;
+            var workCount = 0;
+
+            ALL_SLOTS.forEach(function(slot) {
+                var input = document.getElementById('articleSlot_' + slot);
+                if (!input) return;
+
+                if (slot === lunch.hard) {
+                    input.disabled = true;
+                    input.value = '';
+                    input.style.backgroundColor = '#e9ecef';
+                    input.style.color = '#6c757d';
+                    input.placeholder = '— lunch break';
+                    return;
+                }
+
+                if (slot === lunch.soft) {
+                    input.disabled = false;
+                    input.style.backgroundColor = '#e9ecef';
+                    input.style.color = '#6c757d';
+                    if (!input.value) input.placeholder = '— lunch break';
+                    return;
+                }
+
+                if (workCount < targetWork) {
+                    workCount++;
+                    input.disabled = false;
+                    input.style.backgroundColor = '';
+                    input.style.color = '';
+                    if (!input.value) input.placeholder = 'e.g. Y1234...';
+                } else {
+                    input.disabled = true;
+                    input.value = '';
+                    input.style.backgroundColor = '#e9ecef';
+                    input.style.color = '#6c757d';
+                    input.placeholder = '— outside WT';
+                }
+            });
+        }
+
+        function checkBreakTime(changedSlot) {
+            if (changedSlot === LUNCH_A || changedSlot === LUNCH_B) {
+                updateActiveSlots();
+            }
+        }
+
+        // ── Allowance slider <-> number sync ────────────────────────────────
+        function syncAllowance(val) {
+            var v = Math.max(80, Math.min(100, parseFloat(val) || 100));
+            var slider = document.getElementById('fAllowanceSlider');
+            var num = document.getElementById('fAllowanceNum');
+            if (slider) slider.value = v;
+            if (num) num.value = v;
+        }
+
+        window.addEventListener('DOMContentLoaded', function () {
+            var num = document.getElementById('fAllowanceNum');
+            if (num && num.value) {
+                syncAllowance(num.value);
+            } else {
+                syncAllowance(100);
+            }
+            updateActiveSlots();
+        });
+
+        // ── Auto-lookup existing record when Date/Section/Line are filled ──
+        (function() {
+            var dateInput = document.querySelector('[name="productionDate"]');
+            var sectionInput = document.querySelector('[name="section"]');
+            var lineInput = document.querySelector('[name="line"]');
+
+            function tryLookup() {
+                var date = dateInput.value;
+                var section = sectionInput.value;
+                var line = lineInput.value.trim();
+                if (!date || !section || !line) return;
+
+                var params = new URLSearchParams(window.location.search);
+                if (params.get('date') === date && params.get('section') === section && params.get('line') === line) return;
+
+                window.location.href = window.location.pathname
+                    + '?date=' + encodeURIComponent(date)
+                    + '&section=' + encodeURIComponent(section)
+                    + '&line=' + encodeURIComponent(line);
+            }
+
+            dateInput.addEventListener('change', tryLookup);
+            sectionInput.addEventListener('change', tryLookup);
+            lineInput.addEventListener('change', tryLookup);
+        })();
+    </script>
+</body>
+
+</html>

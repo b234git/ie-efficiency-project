@@ -1,9 +1,13 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 
 <head>
     <title th:text="#{entry.title}">Data Entry</title>
     <link rel="stylesheet" th:href="@{/css/main.css}">
+    <style>
+        .eff-hi { color: #28a745; }
+        .eff-low { color: #dc3545; }
+    </style>
 </head>
 
 <body>
@@ -12,41 +16,60 @@
     <div class="container">
         <h2 th:text="#{entry.title}">Enter Production Data</h2>
 
-        <div th:if="${param.success}" style="color: green; margin-bottom: 10px;">
-            Entry saved successfully!
-        </div>
+        <!-- Flash messages -->
+        <div th:if="${param.success}" style="color:green; margin-bottom:10px;" th:text="#{entry.save.success}">Entry saved successfully!</div>
+        <div th:if="${param.edited}" style="color:green; margin-bottom:10px;" th:text="#{entry.edit.success}">Entry updated successfully!</div>
+        <div th:if="${param.deleted}" style="color:#dc3545; margin-bottom:10px;" th:text="#{entry.delete.success}">Entry deleted.</div>
+        <div th:if="${param.requestSent}" style="color:#17a2b8; margin-bottom:10px;" th:text="#{entry.request.sent}">Edit request sent to manager/admin!</div>
 
         <!-- EXCEL IMPORT SECTION -->
-        <div
-            style="margin-bottom: 20px; padding: 15px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;">
+        <div style="margin-bottom: 20px; padding: 15px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;">
             <h4 th:text="#{masterdb.import.title}">Import via Excel</h4>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <a th:href="@{/excel/template}" class="btn"
                     style="background: #28a745; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px;"
                     th:text="#{masterdb.import.download}">Download Template</a>
-                <form th:action="@{/excel/import}" method="post" enctype="multipart/form-data"
+                <form th:action="@{/excel/preview}" method="post" enctype="multipart/form-data"
                     style="display: flex; gap: 10px;">
                     <input type="file" name="file" accept=".xlsx" required />
                     <button type="submit" class="btn btn-primary" style="padding: 8px 15px;"
-                        th:text="#{masterdb.import.upload}">Upload & Import</button>
+                        th:text="#{entry.import.preview}">Preview &amp; Validate</button>
                 </form>
             </div>
         </div>
 
         <hr style="margin-bottom: 20px;">
-        <h4>Or Manual Entry</h4>
+        <h4 th:text="#{entry.manual}">Or Manual Entry</h4>
 
-        <form th:action="@{/entry/save}" th:object="${production}" method="post">
+        <form id="entryForm"
+              th:action="@{/entry/save}"
+              th:data-save-url="@{/entry/save}"
+              th:data-edit-url="@{/entry/edit}"
+              th:object="${production}" method="post">
+
+            <!-- Hidden fields for edit mode (empty = new entry) -->
+            <input type="hidden" id="editingId" name="id" value="" />
+            <input type="hidden" id="editingPage" name="page" value="0" />
+
+            <!-- Edit Mode Banner (hidden by default) -->
+            <div id="editBanner" style="display:none; background:#fff3cd; border-left:4px solid #ffc107; border-radius:4px; padding:12px 16px; margin-bottom:16px; align-items:center; justify-content:space-between; gap:10px;">
+                <span style="font-weight:600;">✏️ <span th:text="#{entry.edit.modal.title}">Edit Entry</span> #<span id="editBannerId"></span></span>
+                <button type="button" onclick="cancelEdit()"
+                    style="background:#6c757d;color:white;border:none;padding:5px 14px;border-radius:4px;cursor:pointer;white-space:nowrap;">
+                    ✕ <span th:text="#{masterdb.modal.cancel}">Cancel</span>
+                </button>
+            </div>
+
             <!-- ROW 1: Date / Section / Line -->
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;margin-bottom:16px;">
                 <div class="form-group">
-                    <label>Date <span style="color:red">*</span></label>
+                    <label><span th:text="#{entry.label.date}">Date</span> <span style="color:red">*</span></label>
                     <input type="date" th:field="*{productionDate}" class="form-control" required />
                 </div>
                 <div class="form-group">
-                    <label>Section <span style="color:red">*</span></label>
+                    <label><span th:text="#{entry.label.section}">Section</span> <span style="color:red">*</span></label>
                     <select th:field="*{section}" class="form-control" required>
-                        <option value="" disabled selected>-- Select --</option>
+                        <option value="" disabled selected th:text="#{entry.select}">-- Select --</option>
                         <option value="SEW">SEW</option>
                         <option value="BUFFING 1ST">BUFFING 1ST</option>
                         <option value="BUFFING 2ND">BUFFING 2ND</option>
@@ -58,7 +81,7 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Line <span style="color:red">*</span></label>
+                    <label><span th:text="#{entry.label.line}">Line</span> <span style="color:red">*</span></label>
                     <input type="text" th:field="*{line}" class="form-control" placeholder="e.g. 1A" required />
                 </div>
             </div>
@@ -66,38 +89,38 @@
             <!-- ROW 2: DL(MP) / DLI / IDL / WT -->
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:15px;margin-bottom:16px;">
                 <div class="form-group">
-                    <label title="Direct Labor - Direct Manpower">DL / MP <span style="color:red">*</span></label>
+                    <label title="Direct Labor - Direct Manpower"><span th:text="#{entry.label.dl}">DL / MP</span> <span style="color:red">*</span></label>
                     <input type="number" step="0.1" id="fMp" th:field="*{mp}" class="form-control" required min="0" />
                 </div>
                 <div class="form-group">
-                    <label title="Direct Labor Indirect">DLI</label>
+                    <label title="Direct Labor Indirect" th:text="#{entry.label.dli}">DLI</label>
                     <input type="number" step="0.1" th:field="*{dli}" class="form-control" min="0" />
                 </div>
                 <div class="form-group">
-                    <label title="Indirect Labor">IDL</label>
-                    <input type="number" step="0.1" th:field="*{idl}" class="form-control" min="0" />
+                    <label title="Indirect Labor" th:text="#{entry.label.idl}">IDL</label>
+                    <input type="number" step="0.01" th:field="*{idl}" class="form-control" min="0" />
                 </div>
                 <div class="form-group">
-                    <label title="Working Time (giờ)">WT <span style="color:red">*</span></label>
-                    <input type="number" step="0.1" id="fWt" th:field="*{wt}" class="form-control" required min="0" />
+                    <label><span th:text="#{entry.label.wt}">WT (hrs)</span> <span style="color:red">*</span></label>
+                    <input type="number" step="0.1" id="fWt" th:field="*{wt}" class="form-control" required min="0" oninput="updateActiveSlots()" />
                 </div>
             </div>
 
             <!-- ROW 3: Output / RFT / Allowance -->
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;margin-bottom:16px;">
                 <div class="form-group">
-                    <label>Total Output <span style="color:red">*</span></label>
+                    <label><span th:text="#{entry.label.output}">Total Output</span> <span style="color:red">*</span></label>
                     <input type="number" id="fOutput" th:field="*{output}" class="form-control" required min="0" />
                 </div>
                 <div class="form-group">
-                    <label title="Right First Time - % of products passing on first attempt">RFT (%)</label>
+                    <label title="Right First Time - % of products passing on first attempt" th:text="#{entry.label.rft}">RFT (%)</label>
                     <input type="number" step="0.1" th:field="*{rft}" class="form-control" min="0" max="100"
                         placeholder="e.g. 95" />
                 </div>
                 <div class="form-group">
                     <label title="Allowance % impacts EFF calculation">
-                        Allowance (%) <span style="color:red">*</span>
-                        <span style="font-size:0.8em;color:#6c757d;">— affects %EFF</span>
+                        <span th:text="#{entry.label.allowance}">Allowance (%)</span> <span style="color:red">*</span>
+                        <span style="font-size:0.8em;color:#6c757d;" th:text="#{entry.label.allowance.hint}">— affects %EFF</span>
                     </label>
                     <div style="display:flex;align-items:center;gap:10px;">
                         <input type="range" id="fAllowanceSlider" min="80" max="100" step="1" value="100"
@@ -110,7 +133,7 @@
                 </div>
             </div>
 
-            <h4 style="margin-top:20px;">Hourly Breakdown — Article per Time Slot</h4>
+            <h4 style="margin-top:20px;" th:text="#{entry.hourly}">Hourly Breakdown — Article per Time Slot</h4>
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:15px;">
                 <div th:each="detail, stat : *{details}" style="border:1px solid #ccc;padding:10px;border-radius:5px;">
                     <strong th:text="${detail.timeSlot}"></strong>
@@ -127,126 +150,560 @@
             </div>
 
             <div class="form-group" style="margin-top:20px;">
-                <button type="submit" class="btn btn-primary" style="width:100%;">💾 Save Entry</button>
+                <button type="submit" id="submitBtn" class="btn btn-primary" style="width:100%;" th:text="#{entry.save.btn}">💾 Save Entry</button>
             </div>
         </form>
 
-        <script>
-            // ── Allowance slider <-> number sync ────────────────────────────────
-            function syncAllowance(val) {
-                var v = Math.max(80, Math.min(100, parseFloat(val) || 100));
-                document.getElementById('fAllowanceSlider').value = v;
-                document.getElementById('fAllowanceNum').value = v;
-            }
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <h3 style="margin-top: 40px;" th:text="#{entry.recent}">Your Recent Entries</h3>
 
-            // ── Break time logic ─────────────────────────────────────────────────
-            function checkBreakTime(changedSlot) {
-                var slot11 = document.getElementById("articleSlot_11:00-12:00");
-                var slot12 = document.getElementById("articleSlot_12:00-13:00");
-                if (!slot11 || !slot12) return;
-                if (changedSlot === '11:00-12:00') {
-                    if (slot11.value.trim() !== "") {
-                        slot12.disabled = true; slot12.value = "";
-                        slot12.placeholder = "Lunch Break";
-                        slot12.style.backgroundColor = "#e9ecef";
-                    } else {
-                        slot12.disabled = false;
-                        slot12.placeholder = "e.g. Y1234...";
-                        slot12.style.backgroundColor = "";
-                    }
-                } else if (changedSlot === '12:00-13:00') {
-                    if (slot12.value.trim() !== "") {
-                        slot11.disabled = true; slot11.value = "";
-                        slot11.placeholder = "Lunch Break";
-                        slot11.style.backgroundColor = "#e9ecef";
-                    } else {
-                        slot11.disabled = false;
-                        slot11.placeholder = "e.g. Y1234...";
-                        slot11.style.backgroundColor = "";
-                    }
-                }
-            }
+        <!-- Filter bar -->
+        <form th:action="@{/entry/}" method="get"
+              style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:18px;">
+            <div>
+                <label style="font-weight:600; margin-right:6px;" th:text="#{dashboard.viewby}">View by:</label>
+                <select id="rangeSelect" name="range" class="form-control" style="width:200px; display:inline-block;"
+                        onchange="handleRangeChange(this.value)">
+                    <option value="TODAY" th:selected="${selectedRange == 'TODAY'}"
+                        th:text="'📅 ' + #{dashboard.oneday}">📅 One day</option>
+                    <option value="MONTH" th:selected="${selectedRange == 'MONTH'}"
+                        th:text="'🗓️ ' + #{dashboard.specificmonth}">🗓️ Specific month</option>
+                    <option value="1M" th:selected="${selectedRange == '1M'}"
+                        th:text="'📆 ' + #{dashboard.onemonth}">📆 1 month</option>
+                    <option value="6M" th:selected="${selectedRange == '6M'}"
+                        th:text="'🗓 ' + #{dashboard.sixmonths}">🗓 6 months</option>
+                    <option value="ALL" th:selected="${selectedRange == 'ALL'}"
+                        th:text="'♾️ ' + #{dashboard.alltime}">♾️ All time</option>
+                </select>
+            </div>
+            <div id="entryDatePicker" th:style="${selectedRange != 'TODAY'} ? 'display:none' : ''">
+                <input type="date" name="date" th:value="${selectedDate}" class="form-control"
+                       style="width:180px; display:inline-block;" />
+            </div>
+            <div id="entryMonthPicker" th:style="${selectedRange != 'MONTH'} ? 'display:none' : ''">
+                <input type="month" name="month" th:value="${selectedMonth}" class="form-control"
+                       style="width:180px; display:inline-block;" />
+            </div>
+            <div>
+                <input type="text" name="article" th:value="${article}" class="form-control"
+                       th:placeholder="#{mydata.search.article}" placeholder="Search article..."
+                       style="width:180px; display:inline-block;" />
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+                <input type="checkbox" id="errorsOnly" name="errorsOnly" value="true"
+                       th:checked="${errorsOnly}"
+                       style="width:16px; height:16px; cursor:pointer;" />
+                <label for="errorsOnly" style="cursor:pointer; font-weight:600; color:#dc3545; margin:0;"
+                       th:text="#{entry.filter.errorsonly}">Errors only</label>
+            </div>
+            <button type="submit" class="btn btn-primary" th:text="#{mydata.view}">View</button>
+        </form>
 
-            // Init: set allowance slider to 100
-            window.addEventListener('DOMContentLoaded', function () {
-                syncAllowance(100);
-            });
-        </script>
+        <!-- Hidden form for bulk delete (outside table to avoid nested-form issue) -->
+        <form id="bulkDeleteForm" th:action="@{/entry/bulk-delete}" method="post" style="display:none;"></form>
 
+        <!-- Bulk action bar (fixed, appears when rows are selected) -->
+        <div id="bulkActionBar"
+             style="display:none; position:fixed; top:16px; left:50%; transform:translateX(-50%);
+                    background:#343a40; color:white; padding:10px 22px; border-radius:8px;
+                    box-shadow:0 4px 16px rgba(0,0,0,0.35); z-index:2000;
+                    align-items:center; gap:14px; white-space:nowrap;">
+            <span id="bulkCountLabel" style="font-weight:600;"></span>
+            <button type="button" onclick="clearSelection()"
+                    style="background:#6c757d;color:white;border:none;padding:5px 14px;border-radius:4px;cursor:pointer;">
+                ✕ Deselect all
+            </button>
+            <span sec:authorize="hasAnyRole('ADMIN','MANAGER')">
+                <button type="button" onclick="bulkDelete()"
+                        style="background:#dc3545;color:white;border:none;padding:5px 14px;border-radius:4px;cursor:pointer;">
+                    🗑️ Delete selected
+                </button>
+            </span>
+        </div>
 
-        <h3 style="margin-top: 40px;">Your Recent Entries</h3>
+        <div style="overflow-x:auto;">
         <table>
             <thead>
                 <tr>
-                    <th>Time Inserted</th>
-                    <th>Date</th>
-                    <th>Section</th>
-                    <th>Line</th>
-                    <th>Article</th>
-                    <th>Output</th>
-                    <th>MP</th>
-                    <th>WT</th>
-                    <th>EFF KPI</th>
-                    <th>EFF Salary</th>
-                    <th>PPH</th>
+                    <th style="width:36px; text-align:center;">
+                        <input type="checkbox" id="selectAll" title="Select all"
+                               style="width:16px;height:16px;cursor:pointer;"
+                               onchange="toggleSelectAll(this.checked)" />
+                    </th>
+                    <th>#</th>
+                    <th th:text="#{table.date}">Date</th>
+                    <th th:text="#{table.section}">Section</th>
+                    <th th:text="#{table.line}">Line</th>
+                    <th th:text="#{table.article}">Article</th>
+                    <th th:text="#{table.output}">Output</th>
+                    <th th:text="#{table.mp}">MP</th>
+                    <th th:text="#{table.wt}">WT (h)</th>
+                    <th th:text="#{entry.label.effkpi}">EFF KPI</th>
+                    <th th:text="#{entry.label.effsalary}">EFF Salary</th>
+                    <th sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:text="#{table.pph}">PPH</th>
+                    <th th:text="#{table.actions}">Actions</th>
                 </tr>
             </thead>
             <tbody>
-                <tr th:each="record : ${historyPage.content}">
-                    <td th:text="${record.createdAt}"></td>
+                <tr th:if="${entries.isEmpty()}">
+                    <td colspan="13" style="text-align:center; color:#888; padding:30px;"
+                        th:text="#{mydata.nodata}">No data for this period.</td>
+                </tr>
+                <tr th:each="record, stat : ${entries}">
+                    <td style="text-align:center;">
+                        <input type="checkbox" class="row-checkbox"
+                               th:value="${record.id}"
+                               style="width:16px;height:16px;cursor:pointer;"
+                               onchange="onCheckboxChange(this)" />
+                    </td>
+                    <td style="color:#6c757d;" th:text="${currentPage * pageSize + stat.count}"></td>
                     <td th:text="${record.productionDate}"></td>
-                    <td th:text="${record.section}"></td>
+                    <td><strong th:text="${record.section}"></strong></td>
                     <td th:text="${record.line}"></td>
                     <td th:text="${record.article}"></td>
                     <td th:text="${record.output}"></td>
                     <td th:text="${record.mp}"></td>
                     <td th:text="${record.wt}"></td>
-                    <td
-                        th:text="${record.effKpi != null ? #numbers.formatDecimal(record.effKpi * 100, 1, 2) + '%' : 'N/A'}">
+                    <td style="font-weight:700;"
+                        th:classappend="${record.effKpi != null and record.effKpi >= 0.795 ? 'eff-hi' : 'eff-low'}">
+                        <span th:if="${record.effKpi != null}" th:text="${#numbers.formatDecimal(record.effKpi * 100, 1, 2) + '%'}"></span>
+                        <span th:if="${record.effKpi == null}" style="cursor:help;"
+                              th:title="${record.effKpiReason != null ? record.effKpiReason : 'Unknown reason'}">-
+                            <span style="display:inline-block; width:16px; height:16px; line-height:16px; text-align:center; border-radius:50%; background:#ffc107; color:#000; font-size:11px; font-weight:bold; vertical-align:middle;">!</span>
+                        </span>
                     </td>
-                    <td
-                        th:text="${record.effSalary != null ? #numbers.formatDecimal(record.effSalary * 100, 1, 2) + '%' : 'N/A'}">
+                    <td style="font-weight:700;"
+                        th:classappend="${record.effSalary != null and record.effSalary >= 0.795 ? 'eff-hi' : 'eff-low'}">
+                        <span th:if="${record.effSalary != null}" th:text="${#numbers.formatDecimal(record.effSalary * 100, 1, 2) + '%'}"></span>
+                        <span th:if="${record.effSalary == null}" style="cursor:help;"
+                              th:title="${record.effSalaryReason != null ? record.effSalaryReason : 'Unknown reason'}">-
+                            <span style="display:inline-block; width:16px; height:16px; line-height:16px; text-align:center; border-radius:50%; background:#ffc107; color:#000; font-size:11px; font-weight:bold; vertical-align:middle;">!</span>
+                        </span>
                     </td>
-                    <td th:text="${record.actualPph != null ? #numbers.formatDecimal(record.actualPph, 1, 2) : 'N/A'}">
+                    <td sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:text="${record.actualPph != null ? #numbers.formatDecimal(record.actualPph, 1, 2) : '-'}"></td>
+                    <td style="white-space:nowrap;">
+                        <!-- MANAGER / ADMIN: Edit + Delete -->
+                        <span sec:authorize="hasAnyRole('MANAGER','ADMIN')">
+                            <button type="button"
+                                th:data-id="${record.id}"
+                                th:data-date="${record.productionDate}"
+                                th:data-section="${record.section}"
+                                th:data-line="${record.line}"
+                                th:data-mp="${record.mp}"
+                                th:data-dli="${record.dli}"
+                                th:data-idl="${record.idl}"
+                                th:data-wt="${record.wt}"
+                                th:data-output="${record.output}"
+                                th:data-rft="${record.rft}"
+                                th:data-allowance="${record.allowance}"
+                                data-page="0"
+                                th:data-articles="${record.articlesJson}"
+                                onclick="openEditModal(this)"
+                                style="background:#ffc107;color:#000;padding:4px 8px;border:none;border-radius:3px;cursor:pointer;margin-right:4px;">
+                                ✏️ <span th:text="#{entry.edit.btn}">Edit</span>
+                            </button>
+                            <form th:action="@{/entry/admin-delete}" method="post" style="display:inline;"
+                                  onsubmit="return confirm(this.dataset.confirm)"
+                                  th:data-confirm="#{entry.delete.confirm}">
+                                <input type="hidden" name="id" th:value="${record.id}" />
+                                <button type="submit"
+                                    style="background:#dc3545;color:white;padding:4px 8px;border:none;border-radius:3px;cursor:pointer;">
+                                    🗑️ <span th:text="#{entry.delete.btn}">Delete</span>
+                                </button>
+                            </form>
+                        </span>
+                        <!-- USER: Request Edit only -->
+                        <span sec:authorize="!hasAnyRole('MANAGER','ADMIN')">
+                            <button type="button"
+                                th:data-id="${record.id}"
+                                onclick="openRequestModal(this.dataset.id)"
+                                style="background:#17a2b8;color:white;padding:4px 8px;border:none;border-radius:3px;cursor:pointer;">
+                                📝 <span th:text="#{entry.request.btn}">Request Edit</span>
+                            </button>
+                        </span>
                     </td>
                 </tr>
             </tbody>
         </table>
+        </div>
 
         <!-- Pagination -->
-        <div th:if="${historyPage.totalPages > 1}" style="margin-top: 20px;">
-            <ul style="display: flex; list-style: none; padding: 0; gap: 5px;">
-                <li style="display:inline;">
-                    <a th:if="${!historyPage.first}" th:href="@{/entry/(page=0)}" class="btn"
-                        style="padding: 5px 10px; border: 1px solid #ccc; text-decoration: none; color: black;">First</a>
-                    <span th:if="${historyPage.first}" class="btn"
-                        style="padding: 5px 10px; border: 1px solid #ccc; background: #eee; color: #aaa;">First</span>
-                </li>
-                <li style="display:inline;">
-                    <a th:if="${!historyPage.first}" th:href="@{/entry/(page=${historyPage.number - 1})}" class="btn"
-                        style="padding: 5px 10px; border: 1px solid #ccc; text-decoration: none; color: black;">Prev</a>
-                    <span th:if="${historyPage.first}" class="btn"
-                        style="padding: 5px 10px; border: 1px solid #ccc; background: #eee; color: #aaa;">Prev</span>
-                </li>
-                <li style="display:inline; padding: 5px 10px;">
-                    Page <span th:text="${historyPage.number + 1}">1</span> of <span
-                        th:text="${historyPage.totalPages}">1</span>
-                </li>
-                <li style="display:inline;">
-                    <a th:if="${!historyPage.last}" th:href="@{/entry/(page=${historyPage.number + 1})}" class="btn"
-                        style="padding: 5px 10px; border: 1px solid #ccc; text-decoration: none; color: black;">Next</a>
-                    <span th:if="${historyPage.last}" class="btn"
-                        style="padding: 5px 10px; border: 1px solid #ccc; background: #eee; color: #aaa;">Next</span>
-                </li>
-                <li style="display:inline;">
-                    <a th:if="${!historyPage.last}" th:href="@{/entry/(page=${historyPage.totalPages - 1})}" class="btn"
-                        style="padding: 5px 10px; border: 1px solid #ccc; text-decoration: none; color: black;">Last</a>
-                    <span th:if="${historyPage.last}" class="btn"
-                        style="padding: 5px 10px; border: 1px solid #ccc; background: #eee; color: #aaa;">Last</span>
-                </li>
-            </ul>
+        <div th:if="${totalPages > 1}"
+             style="display:flex; justify-content:center; align-items:center; gap:6px; margin-top:20px; flex-wrap:wrap;">
+            <!-- First -->
+            <a th:if="${currentPage > 0}"
+               th:href="@{/entry/(range=${selectedRange}, date=${selectedDate}, month=${selectedMonth}, article=${article}, errorsOnly=${errorsOnly}, page=0)}"
+               style="padding:6px 12px; border:1px solid #dee2e6; border-radius:4px; text-decoration:none; color:#007bff; background:white;"
+               title="First page">&laquo;&laquo;</a>
+            <span th:unless="${currentPage > 0}"
+               style="padding:6px 12px; border:1px solid #e9ecef; border-radius:4px; color:#adb5bd; background:#f8f9fa; cursor:default;"
+               >&laquo;&laquo;</span>
+            <!-- Prev -->
+            <a th:if="${currentPage > 0}"
+               th:href="@{/entry/(range=${selectedRange}, date=${selectedDate}, month=${selectedMonth}, article=${article}, errorsOnly=${errorsOnly}, page=${currentPage - 1})}"
+               style="padding:6px 12px; border:1px solid #dee2e6; border-radius:4px; text-decoration:none; color:#007bff; background:white;"
+               title="Previous page">&laquo;</a>
+            <span th:unless="${currentPage > 0}"
+               style="padding:6px 12px; border:1px solid #e9ecef; border-radius:4px; color:#adb5bd; background:#f8f9fa; cursor:default;"
+               >&laquo;</span>
+            <!-- Page info -->
+            <span style="padding:6px 14px; font-size:0.9em; color:#495057;">
+                Page <strong th:text="${currentPage + 1}"></strong> / <strong th:text="${totalPages}"></strong>
+                &nbsp;(<span th:text="${totalRecords}"></span> records)
+            </span>
+            <!-- Next -->
+            <a th:if="${currentPage < totalPages - 1}"
+               th:href="@{/entry/(range=${selectedRange}, date=${selectedDate}, month=${selectedMonth}, article=${article}, errorsOnly=${errorsOnly}, page=${currentPage + 1})}"
+               style="padding:6px 12px; border:1px solid #dee2e6; border-radius:4px; text-decoration:none; color:#007bff; background:white;"
+               title="Next page">&raquo;</a>
+            <span th:unless="${currentPage < totalPages - 1}"
+               style="padding:6px 12px; border:1px solid #e9ecef; border-radius:4px; color:#adb5bd; background:#f8f9fa; cursor:default;"
+               >&raquo;</span>
+            <!-- Last -->
+            <a th:if="${currentPage < totalPages - 1}"
+               th:href="@{/entry/(range=${selectedRange}, date=${selectedDate}, month=${selectedMonth}, article=${article}, errorsOnly=${errorsOnly}, page=${totalPages - 1})}"
+               style="padding:6px 12px; border:1px solid #dee2e6; border-radius:4px; text-decoration:none; color:#007bff; background:white;"
+               title="Last page">&raquo;&raquo;</a>
+            <span th:unless="${currentPage < totalPages - 1}"
+               style="padding:6px 12px; border:1px solid #e9ecef; border-radius:4px; color:#adb5bd; background:#f8f9fa; cursor:default;"
+               >&raquo;&raquo;</span>
+        </div>
+        <div th:if="${totalPages <= 1 and totalRecords > 0}"
+             style="text-align:center; color:#6c757d; font-size:0.85em; margin-top:12px;"
+             th:text="${totalRecords} + ' records'"></div>
+    </div>
+
+    <!-- ═══════════ REQUEST EDIT MODAL (USER only) ═══════════ -->
+    <div id="requestModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9000; justify-content:center; align-items:center;">
+        <div style="background:white; padding:30px; border-radius:8px; width:440px; max-width:95vw;">
+            <h3 th:text="#{entry.request.modal.title}">Request Edit</h3>
+            <p style="color:#6c757d; font-size:0.85em;" th:text="#{entry.request.modal.desc}">Describe what you want changed. A notification will be sent to the manager/admin.</p>
+            <form th:action="@{/entry/request-edit}" method="post">
+                <input type="hidden" id="requestId" name="id" />
+                <input type="hidden" id="requestPage" name="page" />
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label th:text="#{entry.request.reason}">Reason / Description</label>
+                    <textarea name="reason" class="form-control" rows="4" required
+                        style="width:100%; resize:vertical;"
+                        th:placeholder="#{entry.request.reason.placeholder}">
+                    </textarea>
+                </div>
+                <div style="display:flex; gap:10px; justify-content:flex-end;">
+                    <button type="button" onclick="closeRequestModal()"
+                        style="padding:8px 16px; border:1px solid #ccc; border-radius:4px; cursor:pointer; background:white;"
+                        th:text="#{masterdb.modal.cancel}">Cancel</button>
+                    <button type="submit"
+                        style="padding:8px 16px; background:#17a2b8; color:white; border:none; border-radius:4px; cursor:pointer;"
+                        th:text="#{entry.request.send}">Send Request</button>
+                </div>
+            </form>
         </div>
     </div>
+
+    <script>
+        // ── All available time slots (in order) ─────────────────────────────
+        var ALL_SLOTS = ['07:00-08:00','08:00-09:00','09:00-10:00','10:00-11:00','11:00-12:00',
+                         '12:00-13:00','13:00-14:00','14:00-15:00','15:00-16:00','16:00-17:00',
+                         '17:00-18:00','18:00-19:00','19:00-20:00','20:00-21:00','21:00-22:00'];
+
+        // Lunch candidates: either 11:00-12:00 or 12:00-13:00 is the lunch break
+        var LUNCH_A = '11:00-12:00';
+        var LUNCH_B = '12:00-13:00';
+
+        // Determine which slot is hard-locked (disabled) vs soft-lunch (enabled but styled)
+        function getLunchSlot() {
+            var inputA = document.getElementById('articleSlot_' + LUNCH_A);
+            var inputB = document.getElementById('articleSlot_' + LUNCH_B);
+            var aVal = (inputA && !inputA.disabled) ? inputA.value.trim() : '';
+            var bVal = (inputB && !inputB.disabled) ? inputB.value.trim() : '';
+
+            if (aVal && !bVal) return { hard: LUNCH_B, soft: null };  // 11:00 working → 12:00 is hard lunch
+            if (bVal && !aVal) return { hard: LUNCH_A, soft: null };  // 12:00 working → 11:00 is hard lunch
+            if (!aVal && !bVal) return { hard: null, soft: null }; // both empty: no lunch shown yet
+            return { hard: null, soft: null };                          // both filled: show normally
+        }
+
+        // ── Enable only slots within WT hours; lunch break excluded from WT count ──
+        function updateActiveSlots() {
+            var wtEl = document.querySelector('#entryForm [name="wt"]');
+            var wt = parseFloat(wtEl ? wtEl.value : 0) || 0;
+            var lunch = getLunchSlot();
+            // WT counts only working slots; subtract 1 if a lunch slot exists
+            var hasLunch = lunch.hard || lunch.soft;
+            var maxWork = hasLunch ? ALL_SLOTS.length - 1 : ALL_SLOTS.length;
+            var targetWork = wt > 0 ? Math.min(Math.ceil(wt), maxWork) : maxWork;
+            var workCount = 0;
+
+            ALL_SLOTS.forEach(function(slot) {
+                var input = document.getElementById('articleSlot_' + slot);
+                if (!input) return;
+
+                if (slot === lunch.hard) {
+                    // Hard lunch: truly disabled, cannot type
+                    input.disabled = true;
+                    input.value = '';
+                    input.style.backgroundColor = '#e9ecef';
+                    input.style.color = '#6c757d';
+                    input.placeholder = '— lunch break';
+                    return;
+                }
+
+                if (slot === lunch.soft) {
+                    // Soft lunch: enabled so user can type to switch; not counted toward WT
+                    input.disabled = false;
+                    input.style.backgroundColor = '#e9ecef';
+                    input.style.color = '#6c757d';
+                    if (!input.value) input.placeholder = '— lunch break';
+                    return;
+                }
+
+                if (workCount < targetWork) {
+                    workCount++;
+                    input.disabled = false;
+                    input.style.backgroundColor = '';
+                    input.style.color = '';
+                    if (!input.value) input.placeholder = 'e.g. Y1234...';
+                } else {
+                    input.disabled = true;
+                    input.value = '';
+                    input.style.backgroundColor = '#e9ecef';
+                    input.style.color = '#6c757d';
+                    input.placeholder = '— outside WT';
+                }
+            });
+        }
+
+        // ── Allowance slider <-> number sync ────────────────────────────────
+        function syncAllowance(val) {
+            var v = Math.max(80, Math.min(100, parseFloat(val) || 100));
+            var slider = document.getElementById('fAllowanceSlider');
+            var num = document.querySelector('#entryForm [name="allowance"]');
+            if (slider) slider.value = v;
+            if (num) num.value = v;
+        }
+
+        // ── Break time logic ─────────────────────────────────────────────────
+        // Re-evaluate lunch break when either lunch candidate slot changes
+        function checkBreakTime(changedSlot) {
+            if (changedSlot === LUNCH_A || changedSlot === LUNCH_B) {
+                updateActiveSlots();
+            }
+        }
+
+        // Init
+        window.addEventListener('DOMContentLoaded', function () {
+            syncAllowance(100);
+            updateActiveSlots();
+            restoreCheckboxes();
+        });
+
+        // Helper: set a form field value by its name attribute (works regardless of id)
+        function setField(name, value) {
+            var el = document.querySelector('#entryForm [name="' + name + '"]');
+            if (el) el.value = value;
+        }
+
+        // ── Load edit data into main form & scroll up ────────────────────────
+        function openEditModal(btn) {
+            var form = document.getElementById('entryForm');
+
+            // Populate hidden fields
+            document.getElementById('editingId').value = btn.dataset.id;
+            document.getElementById('editingPage').value = btn.dataset.page || '0';
+
+            // Populate main form fields using name selector (avoids id ambiguity from th:field)
+            setField('productionDate', btn.dataset.date || '');
+            setField('section',        btn.dataset.section || '');
+            setField('line',           btn.dataset.line || '');
+            setField('mp',             btn.dataset.mp || '');
+            setField('dli',            btn.dataset.dli || '');
+            setField('idl',            btn.dataset.idl || '');
+            setField('wt',             btn.dataset.wt || '');
+            setField('output',         btn.dataset.output || '');
+            var rftRaw = parseFloat(btn.dataset.rft);
+            var rftDisplay = (!isNaN(rftRaw) && rftRaw > 0 && rftRaw <= 1.0) ? rftRaw * 100 : rftRaw;
+            setField('rft', isNaN(rftDisplay) ? '' : rftDisplay);
+
+            // Allowance: stored as decimal (0.9 = 90%), display as integer %
+            var allowancePct = Math.round((parseFloat(btn.dataset.allowance) || 1.0) * 100);
+            syncAllowance(allowancePct);
+
+            // First apply WT restrictions (12:00-13:00 starts as soft lunch = enabled)
+            updateActiveSlots();
+            var articles = {};
+            try { articles = JSON.parse(btn.dataset.articles || '{}'); } catch(e) {}
+            ALL_SLOTS.forEach(function(slot) {
+                var input = document.getElementById('articleSlot_' + slot);
+                if (input && !input.disabled) {
+                    input.value = articles[slot] || '';
+                }
+            });
+            // Re-run to update lunch lock based on actual article values
+            updateActiveSlots();
+
+            // Switch form action to edit endpoint
+            form.action = form.dataset.editUrl;
+
+            // Show edit banner
+            document.getElementById('editBannerId').textContent = btn.dataset.id;
+            document.getElementById('editBanner').style.display = 'flex';
+
+            // Style the form to signal edit mode
+            form.style.outline = '2px solid #ffc107';
+            form.style.borderRadius = '6px';
+            form.style.padding = '12px';
+
+            // Change submit button appearance
+            var submitBtn = document.getElementById('submitBtn');
+            submitBtn.style.background = '#e0a800';
+            submitBtn.style.borderColor = '#e0a800';
+
+            // Scroll to top of form smoothly
+            form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function cancelEdit() {
+            var form = document.getElementById('entryForm');
+
+            // Reset all form fields
+            form.reset();
+            document.getElementById('editingId').value = '';
+            document.getElementById('editingPage').value = '0';
+
+            // Restore original save action
+            form.action = form.dataset.saveUrl;
+
+            // Hide banner & restore form style
+            document.getElementById('editBanner').style.display = 'none';
+            form.style.outline = '';
+            form.style.borderRadius = '';
+            form.style.padding = '';
+
+            // Restore submit button
+            var submitBtn = document.getElementById('submitBtn');
+            submitBtn.style.background = '';
+            submitBtn.style.borderColor = '';
+
+            // Reset allowance slider to default
+            syncAllowance(100);
+            // Re-enable all slots (WT is now empty)
+            updateActiveSlots();
+        }
+
+        // ── Request Edit Modal ───────────────────────────────────────────────
+        function openRequestModal(id) {
+            document.getElementById('requestId').value = id;
+            document.getElementById('requestModal').style.display = 'flex';
+        }
+
+        // ── Filter range change ──────────────────────────────────────────────
+        function handleRangeChange(val) {
+            document.getElementById('entryDatePicker').style.display = (val === 'TODAY') ? '' : 'none';
+            document.getElementById('entryMonthPicker').style.display = (val === 'MONTH') ? '' : 'none';
+        }
+
+        function closeRequestModal() {
+            document.getElementById('requestModal').style.display = 'none';
+        }
+
+        // Close request modal on backdrop click
+        document.getElementById('requestModal').addEventListener('click', function(e) {
+            if (e.target === this) closeRequestModal();
+        });
+
+        // ── Multi-select / Bulk actions (cross-page via sessionStorage) ─────
+        function getSelectionKey() {
+            var p = new URLSearchParams(window.location.search);
+            return 'sel_' + (p.get('range')||'') + '_' + (p.get('month')||'') +
+                   '_' + (p.get('date')||'') + '_' + (p.get('article')||'') +
+                   '_' + (p.get('errorsOnly')||'');
+        }
+
+        function loadSelectedIds() {
+            try { return new Set(JSON.parse(sessionStorage.getItem(getSelectionKey()) || '[]')); }
+            catch(e) { return new Set(); }
+        }
+
+        function saveSelectedIds(ids) {
+            sessionStorage.setItem(getSelectionKey(), JSON.stringify(Array.from(ids)));
+        }
+
+        function restoreCheckboxes() {
+            var ids = loadSelectedIds();
+            document.querySelectorAll('.row-checkbox').forEach(function(cb) {
+                cb.checked = ids.has(cb.value);
+            });
+            updateBulkBar();
+        }
+
+        function onCheckboxChange(cb) {
+            var ids = loadSelectedIds();
+            if (cb.checked) ids.add(cb.value); else ids.delete(cb.value);
+            saveSelectedIds(ids);
+            updateBulkBar();
+        }
+
+        function toggleSelectAll(checked) {
+            var ids = loadSelectedIds();
+            document.querySelectorAll('.row-checkbox').forEach(function(cb) {
+                cb.checked = checked;
+                if (checked) ids.add(cb.value); else ids.delete(cb.value);
+            });
+            saveSelectedIds(ids);
+            updateBulkBar();
+        }
+
+        function updateBulkBar() {
+            var all = document.querySelectorAll('.row-checkbox');
+            var checkedOnPage = document.querySelectorAll('.row-checkbox:checked');
+            var selectAllCb = document.getElementById('selectAll');
+            if (checkedOnPage.length === 0) {
+                selectAllCb.checked = false;
+                selectAllCb.indeterminate = false;
+            } else if (checkedOnPage.length === all.length) {
+                selectAllCb.checked = true;
+                selectAllCb.indeterminate = false;
+            } else {
+                selectAllCb.checked = false;
+                selectAllCb.indeterminate = true;
+            }
+            var totalSelected = loadSelectedIds().size;
+            var bar = document.getElementById('bulkActionBar');
+            if (totalSelected > 0) {
+                bar.style.display = 'flex';
+                document.getElementById('bulkCountLabel').textContent = totalSelected + ' selected';
+            } else {
+                bar.style.display = 'none';
+            }
+        }
+
+        function clearSelection() {
+            document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+            var sa = document.getElementById('selectAll');
+            sa.checked = false;
+            sa.indeterminate = false;
+            saveSelectedIds(new Set());
+            document.getElementById('bulkActionBar').style.display = 'none';
+        }
+
+        function bulkDelete() {
+            var ids = Array.from(loadSelectedIds());
+            if (ids.length === 0) return;
+            if (!confirm('Delete ' + ids.length + ' selected record(s)?')) return;
+            var form = document.getElementById('bulkDeleteForm');
+            form.querySelectorAll('input[name="ids"]').forEach(el => el.remove());
+            ids.forEach(function(id) {
+                var inp = document.createElement('input');
+                inp.type = 'hidden';
+                inp.name = 'ids';
+                inp.value = id;
+                form.appendChild(inp);
+            });
+            saveSelectedIds(new Set());
+            form.submit();
+        }
+    </script>
+
 </body>
 
 </html>

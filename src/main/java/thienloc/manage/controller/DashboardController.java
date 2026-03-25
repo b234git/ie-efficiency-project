@@ -43,9 +43,9 @@ public class DashboardController {
                 model.addAttribute("rangeLabel", "Last 6 months (" + fromDate + " → " + toDate + ")");
                 break;
             case "ALL":
-                records = productionService.getDashboardDataAllTime();
-                model.addAttribute("rangeLabel", "All time");
-                fromDate = today;
+                fromDate = today.minusMonths(12);
+                records = productionService.getDashboardDataRange(fromDate, toDate);
+                model.addAttribute("rangeLabel", "Last 12 months (" + fromDate + " → " + toDate + ")");
                 break;
             default: // TODAY or explicit date
                 if (date == null)

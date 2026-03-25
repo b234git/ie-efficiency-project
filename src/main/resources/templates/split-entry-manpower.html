@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <title th:text="#{splitentry.manpower.title}">Step 1: Manpower</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+
+<body>
+    <div th:replace="~{fragments/layout :: navbar}"></div>
+
+    <div class="container">
+        <div style="margin-bottom:16px;">
+            <a th:href="@{/split-entry/}" style="color:#007bff; text-decoration:none;">&larr; <span th:text="#{splitentry.title}">Split Entry</span></a>
+        </div>
+
+        <h2 style="color:#007bff;" th:text="#{splitentry.manpower.title}">Step 1: Manpower</h2>
+
+        <!-- Flash messages -->
+        <div th:if="${success}" style="color:green; margin-bottom:10px;" th:text="#{splitentry.save.success}">Saved!</div>
+        <div th:if="${importError}" style="color:#dc3545; margin-bottom:10px; padding:10px; background:#f8d7da; border-radius:4px;">
+            Import error: <span th:text="${importError}"></span>
+        </div>
+
+        <!-- Excel Import Section -->
+        <div style="margin-bottom:20px; padding:15px; background:#f0f7ff; border:1px solid #b6d4fe; border-radius:5px;">
+            <h4 style="margin:0 0 10px 0; color:#007bff;">Import LineSummaryReport (.xls)</h4>
+            <p style="color:#6c757d; font-size:0.85em; margin:0 0 10px 0;">
+                Upload a LineSummaryReport file (ASSY / SEW / SF). Section, date, DLI, and IDL will be extracted automatically.
+            </p>
+            <form th:action="@{/split-entry/import/preview}" method="post" enctype="multipart/form-data"
+                  style="display:flex; gap:10px; align-items:center;">
+                <input type="file" name="file" accept=".xls,.xlsx" required />
+                <button type="submit" class="btn btn-primary" style="padding:8px 15px; background:#007bff; white-space:nowrap;">
+                    Preview &amp; Import
+                </button>
+            </form>
+        </div>
+
+        <hr style="margin-bottom:20px;">
+        <h4 style="color:#6c757d;">Or Manual Entry</h4>
+
+        <!-- Status indicator -->
+        <div th:if="${splitEntry.id != null}" style="margin-bottom:16px; padding:10px 16px; background:#f0f7ff; border-left:4px solid #007bff; border-radius:4px;">
+            <span style="font-weight:600;">Record found</span> &mdash;
+            👥 MP: <span th:if="${splitEntry.manpowerFilled}" style="color:#28a745; font-weight:bold;" th:text="#{splitentry.filled}">Filled</span>
+            <span th:unless="${splitEntry.manpowerFilled}" style="color:#adb5bd;" th:text="#{splitentry.pending}">Pending</span> |
+            📦 Output: <span th:if="${splitEntry.outputFilled}" style="color:#28a745; font-weight:bold;" th:text="#{splitentry.filled}">Filled</span>
+            <span th:unless="${splitEntry.outputFilled}" style="color:#adb5bd;" th:text="#{splitentry.pending}">Pending</span> |
+            📋 Articles: <span th:if="${splitEntry.articlesFilled}" style="color:#28a745; font-weight:bold;" th:text="#{splitentry.filled}">Filled</span>
+            <span th:unless="${splitEntry.articlesFilled}" style="color:#adb5bd;" th:text="#{splitentry.pending}">Pending</span>
+            <span th:if="${splitEntry.status == 'SYNCED'}" style="margin-left:10px; background:#28a745; color:white; padding:2px 8px; border-radius:10px; font-size:0.85em;" th:text="#{splitentry.synced.notice}">Synced</span>
+        </div>
+
+        <form th:action="@{/split-entry/manpower}" th:object="${splitEntry}" method="post">
+
+            <!-- ROW 1: Date / Section / Line -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;margin-bottom:16px;">
+                <div class="form-group">
+                    <label><span th:text="#{entry.label.date}">Date</span> <span style="color:red">*</span></label>
+                    <input type="date" th:field="*{productionDate}" class="form-control" required />
+                </div>
+                <div class="form-group">
+                    <label><span th:text="#{entry.label.section}">Section</span> <span style="color:red">*</span></label>
+                    <select th:field="*{section}" class="form-control" required>
+                        <option value="" disabled th:text="#{entry.select}">-- Select --</option>
+                        <option value="SEW">SEW</option>
+                        <option value="BUFFING" style="font-weight:bold; background:#f0f0f0;">BUFFING</option>
+                        <option value="BUFFING 1ST">&nbsp;&nbsp;&nbsp; BUFFING 1ST</option>
+                        <option value="BUFFING 2ND">&nbsp;&nbsp;&nbsp; BUFFING 2ND</option>
+                        <option value="STOCKFIT" style="font-weight:bold; background:#f0f0f0;">STOCKFIT</option>
+                        <option value="STOCKFIT UV">&nbsp;&nbsp;&nbsp; STOCKFIT UV</option>
+                        <option value="STOCKFIT 1ST">&nbsp;&nbsp;&nbsp; STOCKFIT 1ST</option>
+                        <option value="STOCKFIT 2ND">&nbsp;&nbsp;&nbsp; STOCKFIT 2ND</option>
+                        <option value="ASSEMBLY" style="font-weight:bold; background:#f0f0f0;">ASSEMBLY</option>
+                        <option value="ASSEMBLY BIG">&nbsp;&nbsp;&nbsp; ASSEMBLY BIG</option>
+                        <option value="ASSEMBLY SMALL">&nbsp;&nbsp;&nbsp; ASSEMBLY SMALL</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><span th:text="#{entry.label.line}">Line</span> <span style="color:red">*</span></label>
+                    <input type="text" th:field="*{line}" class="form-control" placeholder="e.g. 1A" required />
+                </div>
+            </div>
+
+            <!-- ROW 2: DL(MP) / DLI / IDL -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;margin-bottom:16px;">
+                <div class="form-group">
+                    <label title="Direct Labor - Direct Manpower"><span th:text="#{entry.label.dl}">DL / MP</span> <span style="color:red">*</span></label>
+                    <input type="number" step="0.1" th:field="*{mp}" class="form-control" required min="0" />
+                </div>
+                <div class="form-group">
+                    <label title="Direct Labor Indirect" th:text="#{entry.label.dli}">DLI</label>
+                    <input type="number" step="0.1" th:field="*{dli}" class="form-control" min="0" />
+                </div>
+                <div class="form-group">
+                    <label title="Indirect Labor" th:text="#{entry.label.idl}">IDL</label>
+                    <input type="number" step="0.01" th:field="*{idl}" class="form-control" min="0" />
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top:20px;">
+                <button type="submit" class="btn btn-primary" style="width:100%; background:#007bff;" th:text="#{splitentry.save.btn}">Save</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+    (function() {
+        var dateInput = document.querySelector('[name="productionDate"]');
+        var sectionInput = document.querySelector('[name="section"]');
+        var lineInput = document.querySelector('[name="line"]');
+
+        function tryLookup() {
+            var date = dateInput.value;
+            var section = sectionInput.value;
+            var line = lineInput.value.trim();
+            if (!date || !section || !line) return;
+
+            var params = new URLSearchParams(window.location.search);
+            if (params.get('date') === date && params.get('section') === section && params.get('line') === line) return;
+
+            window.location.href = window.location.pathname
+                + '?date=' + encodeURIComponent(date)
+                + '&section=' + encodeURIComponent(section)
+                + '&line=' + encodeURIComponent(line);
+        }
+
+        dateInput.addEventListener('change', tryLookup);
+        sectionInput.addEventListener('change', tryLookup);
+        lineInput.addEventListener('change', tryLookup);
+    })();
+    </script>
+</body>
+
+</html>

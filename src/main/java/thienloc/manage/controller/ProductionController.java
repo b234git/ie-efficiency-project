@@ -6,9 +6,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import thienloc.manage.dto.DailyProductionDto;
+import thienloc.manage.service.NotificationService;
 import thienloc.manage.service.ProductionService;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
 import java.security.Principal;
 import java.time.LocalDate;
@@ -24,9 +23,17 @@ public class ProductionController {
     @Autowired
     private thienloc.manage.service.SystemLogService systemLogService;
 
+    @Autowired
+    private NotificationService notificationService;
+
     /* ── Entry Form ───────────────────────────────────────────── */
     @GetMapping({ "", "/" })
     public String showEntryForm(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false, defaultValue = "TODAY") String range,
+            @RequestParam(required = false) String article,
+            @RequestParam(required = false, defaultValue = "false") boolean errorsOnly,
+            @RequestParam(required = false) String month,
             @RequestParam(defaultValue = "0") int page,
             Model model,
             Principal principal) {
@@ -46,8 +53,79 @@ public class ProductionController {
         }
 
         model.addAttribute("production", dto);
-        Pageable pageable = PageRequest.of(page, 10);
-        model.addAttribute("historyPage", productionService.getUserEntries(principal.getName(), pageable));
+
+        // ── Filtered history (current user only) ────────────────────────
+        String username = principal.getName();
+        LocalDate today = LocalDate.now();
+        List<DailyProductionDto> records;
+
+        java.time.YearMonth selectedYearMonth = java.time.YearMonth.from(today);
+        if ("MONTH".equals(range) && month != null && !month.isBlank()) {
+            try { selectedYearMonth = java.time.YearMonth.parse(month); } catch (Exception ignored) {}
+        }
+
+        switch (range) {
+            case "1M":
+                records = productionService.getMyDataRange(username, today.minusMonths(1), today);
+                break;
+            case "6M":
+                records = productionService.getMyDataRange(username, today.minusMonths(6), today);
+                break;
+            case "ALL":
+                records = productionService.getMyDataRange(username, today.minusMonths(12), today);
+                break;
+            case "MONTH":
+                records = productionService.getMyDataRange(username,
+                        selectedYearMonth.atDay(1), selectedYearMonth.atEndOfMonth());
+                break;
+            default:
+                if (date == null) date = today;
+                records = productionService.getMyDataRange(username, date, date);
+                break;
+        }
+
+        if (article != null && !article.trim().isEmpty()) {
+            String lowerArticle = article.toLowerCase().trim();
+            records = records.stream()
+                    .filter(r -> (r.getArticle() != null && r.getArticle().toLowerCase().contains(lowerArticle)) ||
+                            (r.getDetails() != null && r.getDetails().stream()
+                                    .anyMatch(d -> d.getArticleNo() != null
+                                            && d.getArticleNo().toLowerCase().contains(lowerArticle))))
+                    .collect(java.util.stream.Collectors.toList());
+        }
+
+        if (errorsOnly) {
+            records = records.stream()
+                    .filter(r -> r.getEffKpi() == null)
+                    .collect(java.util.stream.Collectors.toList());
+        }
+
+        // ── Pagination ───────────────────────────────────────────────────────
+        int pageSize = 25;
+        int totalRecords = records.size();
+        int totalPages = (int) Math.ceil((double) totalRecords / pageSize);
+        page = Math.max(0, totalPages > 0 ? Math.min(page, totalPages - 1) : 0);
+        int fromIndex = page * pageSize;
+        int toIndex = Math.min(fromIndex + pageSize, totalRecords);
+        List<DailyProductionDto> pagedRecords = records.subList(fromIndex, toIndex);
+
+        model.addAttribute("entries", pagedRecords);
+        model.addAttribute("selectedDate", date != null ? date : today);
+        model.addAttribute("selectedRange", range);
+        model.addAttribute("selectedMonth", selectedYearMonth.toString());
+        model.addAttribute("article", article);
+        model.addAttribute("errorsOnly", errorsOnly);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("totalRecords", totalRecords);
+        model.addAttribute("pageSize", pageSize);
+
+        int totalOutput = records.stream().mapToInt(r -> r.getOutput() != null ? r.getOutput() : 0).sum();
+        long effCount = records.stream().filter(r -> r.getEff() != null).count();
+        double avgEff = records.stream().filter(r -> r.getEff() != null).mapToDouble(r -> r.getEff()).average().orElse(0);
+        model.addAttribute("totalOutput", totalOutput);
+        model.addAttribute("avgEff", effCount > 0 ? avgEff : null);
+
         return "entry";
     }
 
@@ -60,67 +138,49 @@ public class ProductionController {
         return "redirect:/entry/?success";
     }
 
-    /* ── My Data View ─────────────────────────────────────────── */
-    @GetMapping("/mydata")
-    public String myData(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam(required = false, defaultValue = "TODAY") String range,
-            @RequestParam(required = false) String article,
-            Model model,
+    /* ── Edit Entry (MANAGER / ADMIN only) ────────────────────── */
+    @PostMapping("/edit")
+    public String editEntry(@ModelAttribute DailyProductionDto dto, Principal principal) {
+        productionService.saveDailyProduction(dto, principal.getName());
+        systemLogService.logAction("EDIT_ENTRY",
+                "Edited production entry ID: " + dto.getId()
+                        + ", Section: " + dto.getSection()
+                        + ", Line: " + dto.getLine());
+        return "redirect:/entry/?edited";
+    }
+
+    /* ── Delete Entry (MANAGER / ADMIN only) ──────────────────── */
+    @PostMapping("/admin-delete")
+    public String adminDeleteEntry(@RequestParam Long id) {
+        productionService.deleteRecord(id);
+        systemLogService.logAction("DELETE_ENTRY", "Deleted production entry ID: " + id);
+        return "redirect:/entry/?deleted";
+    }
+
+    /* ── Request Edit (USER only — sends notification) ────────── */
+    @PostMapping("/request-edit")
+    public String requestEdit(@RequestParam Long id,
+            @RequestParam String reason,
             Principal principal) {
+        DailyProductionDto record = productionService.getById(id);
+        String title = "Edit Request - Entry #" + id + " by " + principal.getName();
+        String message = "User '" + principal.getName() + "' requests edit for Entry #" + id
+                + "\nDate: " + record.getProductionDate()
+                + " | Section: " + record.getSection()
+                + " | Line: " + record.getLine()
+                + " | Output: " + record.getOutput()
+                + "\n\nReason: " + reason;
+        notificationService.notifyAdminAndManager(title, message, "INFO");
+        return "redirect:/entry/?requestSent";
+    }
 
-        String username = principal.getName();
-        LocalDate today = LocalDate.now();
-        List<DailyProductionDto> records;
-        String rangeLabel;
-
-        switch (range) {
-            case "1M":
-                records = productionService.getMyDataRange(username, today.minusMonths(1), today);
-                rangeLabel = "Last 1 month (" + today.minusMonths(1) + " → " + today + ")";
-                break;
-            case "6M":
-                records = productionService.getMyDataRange(username, today.minusMonths(6), today);
-                rangeLabel = "Last 6 months (" + today.minusMonths(6) + " → " + today + ")";
-                break;
-            case "ALL":
-                records = productionService.getMyDataAllTime(username);
-                rangeLabel = "All time";
-                break;
-            default:
-                if (date == null)
-                    date = today;
-                records = productionService.getMyDataRange(username, date, date);
-                rangeLabel = "";
-                break;
-        }
-
-        // Filter by article if provided
-        if (article != null && !article.trim().isEmpty()) {
-            String lowerArticle = article.toLowerCase().trim();
-            records = records.stream()
-                    .filter(r -> (r.getArticle() != null && r.getArticle().toLowerCase().contains(lowerArticle)) ||
-                            (r.getDetails() != null && r.getDetails().stream()
-                                    .anyMatch(d -> d.getArticleNo() != null
-                                            && d.getArticleNo().toLowerCase().contains(lowerArticle))))
-                    .collect(java.util.stream.Collectors.toList());
-        }
-
-        model.addAttribute("selectedDate", date != null ? date : today);
-        model.addAttribute("selectedRange", range);
-        model.addAttribute("rangeLabel", rangeLabel);
-        model.addAttribute("article", article);
-        model.addAttribute("records", records);
-
-        // Pre-compute stats (Thymeleaf SpEL does NOT support lambdas)
-        int totalOutput = records.stream().mapToInt(r -> r.getOutput() != null ? r.getOutput() : 0).sum();
-        double avgEff = records.stream().filter(r -> r.getEff() != null)
-                .mapToDouble(r -> r.getEff()).average().orElse(0);
-        long effCount = records.stream().filter(r -> r.getEff() != null).count();
-        model.addAttribute("totalOutput", totalOutput);
-        model.addAttribute("avgEff", effCount > 0 ? avgEff : null);
-
-        return "mydata";
+    /* ── Bulk Delete (MANAGER / ADMIN only) ──────────────────── */
+    @PostMapping("/bulk-delete")
+    public String bulkDelete(@RequestParam List<Long> ids) {
+        ids.forEach(productionService::deleteRecord);
+        systemLogService.logAction("BULK_DELETE_ENTRY",
+                "Bulk deleted " + ids.size() + " entries: " + ids);
+        return "redirect:/entry/?deleted";
     }
 
     /* ── Delete own entry ─────────────────────────────────────── */
@@ -130,7 +190,7 @@ public class ProductionController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) String article) {
         productionService.deleteRecord(id);
-        String redirect = "redirect:/entry/mydata?range=" + range;
+        String redirect = "redirect:/entry/?deleted&range=" + range;
         if (date != null)
             redirect += "&date=" + date;
         if (article != null && !article.trim().isEmpty())

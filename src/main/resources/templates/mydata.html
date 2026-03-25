@@ -184,11 +184,11 @@
                             th:text="${rec.target != null ? #numbers.formatDecimal(rec.target, 1, 2) : '-'}"></td>
 
                         <td class="num eff-cell"
-                            th:classappend="${rec.effKpi != null and rec.effKpi >= 1.0 ? 'eff-hi' : (rec.effKpi != null and rec.effKpi >= 0.8 ? 'eff-mid' : 'eff-low')}"
+                            th:classappend="${rec.effKpi != null and rec.effKpi >= 0.795 ? 'eff-hi' : 'eff-low'}"
                             th:text="${rec.effKpi != null ? #numbers.formatDecimal(rec.effKpi * 100, 1, 2) + '%' : '-'}">
                         </td>
                         <td class="num eff-cell"
-                            th:classappend="${rec.effSalary != null and rec.effSalary >= 1.0 ? 'eff-hi' : (rec.effSalary != null and rec.effSalary >= 0.8 ? 'eff-mid' : 'eff-low')}"
+                            th:classappend="${rec.effSalary != null and rec.effSalary >= 0.795 ? 'eff-hi' : 'eff-low'}"
                             th:text="${rec.effSalary != null ? #numbers.formatDecimal(rec.effSalary * 100, 1, 2) + '%' : '-'}">
                         </td>
                         <td class="num"

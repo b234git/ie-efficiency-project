@@ -1,7 +1,9 @@
 package thienloc.manage;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import thienloc.manage.entity.MasterDb;
@@ -9,17 +11,23 @@ import thienloc.manage.entity.User;
 import thienloc.manage.repository.MasterDbRepository;
 import thienloc.manage.repository.UserRepository;
 
+@Profile("dev")
 @Component
 public class DataLoader implements CommandLineRunner {
 
-    @Autowired
-    private UserRepository userRepository;
+    private static final Logger log = LoggerFactory.getLogger(DataLoader.class);
 
-    @Autowired
-    private MasterDbRepository masterDbRepository;
+    private final UserRepository userRepository;
+    private final MasterDbRepository masterDbRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    public DataLoader(UserRepository userRepository,
+                      MasterDbRepository masterDbRepository,
+                      PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.masterDbRepository = masterDbRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     @Override
     public void run(String... args) throws Exception {
@@ -31,7 +39,7 @@ public class DataLoader implements CommandLineRunner {
                     .role("ROLE_ADMIN")
                     .build();
             userRepository.save(admin);
-            System.out.println("Created default admin user (admin/admin)");
+            log.info("Created default admin user (admin/admin)");
         }
 
         // Create Manager if not exists
@@ -42,7 +50,7 @@ public class DataLoader implements CommandLineRunner {
                     .role("ROLE_MANAGER")
                     .build();
             userRepository.save(manager);
-            System.out.println("Created default manager user (manager/manager)");
+            log.info("Created default manager user (manager/manager)");
         }
 
         // Add some dummy MasterDb data based on the Excel
@@ -64,7 +72,7 @@ public class DataLoader implements CommandLineRunner {
                     .sewCt(2085.66)
                     .sewQuotaDb(350.0)
                     .build());
-            System.out.println("Loaded Sample MasterDb data.");
+            log.info("Loaded Sample MasterDb data.");
         }
     }
 }

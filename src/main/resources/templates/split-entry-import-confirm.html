@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title>Confirm Import Manpower</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <style>
+        .summary-cards { display:flex; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
+        .summary-card { padding:16px 24px; border-radius:8px; border:1px solid #dee2e6; min-width:140px; text-align:center; }
+        .summary-card .number { font-size:2rem; font-weight:700; display:block; }
+        .summary-card .label { font-size:0.85rem; color:#6c757d; }
+        .card-total { background:#f8f9fa; }
+        .card-active { background:#d1e7dd; border-color:#badbcc; }
+        .card-skipped { background:#fff3cd; border-color:#ffecb5; }
+        .row-inactive { opacity:0.45; }
+        .badge-active { background:#198754; color:white; padding:2px 8px; border-radius:10px; font-size:0.8rem; }
+        .badge-skip { background:#adb5bd; color:white; padding:2px 8px; border-radius:10px; font-size:0.8rem; }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/layout :: navbar}"></div>
+
+    <div class="container" style="max-width:1000px; padding:20px;">
+
+        <h2 style="color:#007bff;">Confirm Import Manpower</h2>
+        <p style="color:#6c757d;">
+            File: <strong th:text="${preview.filename}">file.xls</strong>
+            &nbsp;&middot;&nbsp;
+            Section: <strong th:text="${preview.section}">ASSEMBLY</strong>
+            &nbsp;&middot;&nbsp;
+            Date: <strong th:text="${preview.date}">2026-03-09</strong>
+        </p>
+
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+            <div class="summary-card card-total">
+                <span class="number" th:text="${preview.totalLines}">0</span>
+                <span class="label">Total lines</span>
+            </div>
+            <div class="summary-card card-active">
+                <span class="number" th:text="${preview.totalLines - preview.skippedLines}">0</span>
+                <span class="label">Will import</span>
+            </div>
+            <div class="summary-card card-skipped" th:if="${preview.skippedLines > 0}">
+                <span class="number" th:text="${preview.skippedLines}">0</span>
+                <span class="label">Skipped (no workers)</span>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display:flex; gap:10px; margin-bottom:24px;">
+            <form th:action="@{/split-entry/import/commit}" method="post" style="display:inline;">
+                <button type="submit" onclick="return confirm('Import all active lines?')"
+                        style="padding:10px 24px; font-size:1rem; border:none; border-radius:6px; cursor:pointer; font-weight:600; background:#007bff; color:white;">
+                    Confirm Import
+                </button>
+            </form>
+            <form th:action="@{/split-entry/import/cancel}" method="post" style="display:inline;">
+                <button type="submit"
+                        style="padding:10px 24px; font-size:1rem; border:none; border-radius:6px; cursor:pointer; font-weight:600; background:#6c757d; color:white;">
+                    Cancel
+                </button>
+            </form>
+        </div>
+
+        <!-- Preview Table -->
+        <div style="overflow-x:auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Status</th>
+                        <th>Line</th>
+                        <th>DL/MP (Total)</th>
+                        <th>DLI (MP)</th>
+                        <th>IDL (Sup+Mech+Mon+LL)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row, stat : ${preview.rows}"
+                        th:classappend="${!row.active} ? 'row-inactive' : ''">
+                        <td style="color:#6c757d;" th:text="${stat.index + 1}"></td>
+                        <td>
+                            <span th:if="${row.active}" class="badge-active">Import</span>
+                            <span th:unless="${row.active}" class="badge-skip">Skip</span>
+                        </td>
+                        <td style="font-weight:600;" th:text="${row.line}"></td>
+                        <td th:text="${row.total}"></td>
+                        <td th:text="${row.dli}"></td>
+                        <td th:text="${row.idl}"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</body>
+
+</html>

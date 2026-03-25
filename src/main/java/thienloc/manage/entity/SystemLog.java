@@ -9,7 +9,9 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "system_logs")
+@Table(name = "system_logs", indexes = {
+    @Index(name = "idx_syslog_timestamp", columnList = "timestamp")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

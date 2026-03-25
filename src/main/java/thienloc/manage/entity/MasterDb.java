@@ -7,7 +7,15 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "master_db")
+@Table(name = "master_db",
+    uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"ref", "data_month"})
+    },
+    indexes = {
+        @Index(name = "idx_mdb_article_no", columnList = "articleNo"),
+        @Index(name = "idx_mdb_data_month", columnList = "data_month")
+    }
+)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -18,8 +26,11 @@ public class MasterDb {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false)
     private String ref; // E.g: 46024SEW1A
+
+    @Column(name = "data_month", length = 7)
+    private String dataMonth; // "2026-01", "2026-02", etc.
 
     @Column(nullable = false)
     private String articleNo;
@@ -30,7 +41,8 @@ public class MasterDb {
 
     private String osCode;
 
-    private Double tct;
+    @Builder.Default
+    private Double tct = 0.0;
 
     // SEW
     private Double sewCt;
@@ -83,7 +95,7 @@ public class MasterDb {
     @PrePersist
     @PreUpdate
     protected void onSaveOrUpdate() {
-        this.tct = round(this.tct);
+        this.tct = (this.tct != null) ? round(this.tct) : 0.0;
 
         this.sewCt = round(this.sewCt);
         this.sewMp = round(this.sewMp);

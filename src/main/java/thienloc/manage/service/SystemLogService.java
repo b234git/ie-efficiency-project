@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import thienloc.manage.entity.SystemLog;
 import thienloc.manage.repository.SystemLogRepository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -36,5 +38,9 @@ public class SystemLogService {
 
     public List<SystemLog> getAllLogs() {
         return systemLogRepository.findAllByOrderByTimestampDesc();
+    }
+
+    public Page<SystemLog> getLogsPage(Pageable pageable) {
+        return systemLogRepository.findAllByOrderByTimestampDesc(pageable);
     }
 }

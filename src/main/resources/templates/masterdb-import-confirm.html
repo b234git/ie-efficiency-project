@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title th:text="#{masterdb.import.confirm.header}">Confirm Import</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <style>
+        .confirm-header {
+            margin-bottom: 20px;
+        }
+
+        .summary-cards {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .summary-card {
+            padding: 16px 24px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            min-width: 140px;
+            text-align: center;
+        }
+
+        .summary-card .number {
+            font-size: 2rem;
+            font-weight: 700;
+            display: block;
+        }
+
+        .summary-card .label {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+
+        .card-total {
+            background: #f8f9fa;
+        }
+
+        .card-new {
+            background: #d1e7dd;
+            border-color: #badbcc;
+        }
+
+        .card-update {
+            background: #cfe2ff;
+            border-color: #b6d4fe;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            margin-bottom: 24px;
+        }
+
+        table th, table td {
+            white-space: nowrap;
+            font-size: 0.88rem;
+            padding: 6px 10px;
+        }
+
+        .badge-new {
+            background: #198754;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+        }
+
+        .badge-update {
+            background: #0d6efd;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+        }
+
+        .action-bar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .btn-lg {
+            padding: 10px 24px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/layout :: navbar}"></div>
+
+    <div class="container" style="max-width:1400px; padding: 20px;">
+
+        <div class="confirm-header">
+            <h2 th:text="#{masterdb.import.confirm.header}">Confirm Import Master DB</h2>
+            <p style="color:#6c757d;">
+                <span th:text="#{masterdb.import.confirm.file}">File</span>:
+                <strong th:text="${preview.filename}">file.xlsx</strong>
+                &nbsp;·&nbsp;
+                <span th:text="#{masterdb.import.confirm.month.label}">Month</span>:
+                <strong th:text="${preview.dataMonth != null ? preview.dataMonth : '—'}">2026-03</strong>
+            </p>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+            <div class="summary-card card-total">
+                <span class="number" th:text="${preview.totalRows}">0</span>
+                <span class="label" th:text="#{masterdb.import.confirm.total}">Total records</span>
+            </div>
+            <div class="summary-card card-new">
+                <span class="number" th:text="${preview.newCount}">0</span>
+                <span class="label" th:text="#{masterdb.import.confirm.new}">New records</span>
+            </div>
+            <div class="summary-card card-update" th:if="${preview.updateCount > 0}">
+                <span class="number" th:text="${preview.updateCount}">0</span>
+                <span class="label" th:text="#{masterdb.import.confirm.update}">Update</span>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-bar">
+            <form th:action="@{/masterdb/import/commit}" method="post" style="display:inline;">
+                <button type="submit" class="btn-lg"
+                    style="background:#0d6efd; color:white;"
+                    th:attr="data-confirm=#{masterdb.import.confirm.import.js}"
+                    onclick="return confirm(this.dataset.confirm)"
+                    th:text="#{masterdb.import.confirm.import.btn}">
+                    Confirm Import
+                </button>
+            </form>
+
+            <form th:action="@{/masterdb/import/cancel}" method="post" style="display:inline;">
+                <button type="submit" class="btn-lg"
+                    style="background:#6c757d; color:white;"
+                    th:text="#{masterdb.import.confirm.cancel}">
+                    Cancel
+                </button>
+            </form>
+        </div>
+
+        <!-- Preview Table -->
+        <div class="table-wrapper" style="margin-top: 24px;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th th:text="#{masterdb.import.confirm.status}">Status</th>
+                        <th th:text="#{masterdb.col.ref}">Ref</th>
+                        <th th:text="#{masterdb.col.articleno}">Article No</th>
+                        <th th:text="#{masterdb.col.patternno}">Pattern No</th>
+                        <th th:text="#{masterdb.col.shoename}">Shoe Name</th>
+                        <th th:text="#{masterdb.col.oscode}">OS Code</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row, stat : ${preview.rows}">
+                        <td th:text="${stat.index + 1}" style="color:#6c757d;"></td>
+                        <td>
+                            <span th:if="${row.status == 'NEW'}" class="badge-new">NEW</span>
+                            <span th:if="${row.status == 'UPDATE'}" class="badge-update">UPDATE</span>
+                        </td>
+                        <td style="font-weight:600;" th:text="${row.ref}"></td>
+                        <td th:text="${row.articleNo}"></td>
+                        <td th:text="${row.patternNo ?: '-'}"></td>
+                        <td th:text="${row.shoeName ?: '-'}"></td>
+                        <td th:text="${row.osCode ?: '-'}"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</body>
+
+</html>

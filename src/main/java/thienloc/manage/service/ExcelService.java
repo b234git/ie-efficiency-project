@@ -4,21 +4,21 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import thienloc.manage.entity.DailyProduction;
 import thienloc.manage.entity.DailyProductionDetail;
 import thienloc.manage.entity.User;
 import thienloc.manage.repository.DailyProductionRepository;
 
+import thienloc.manage.dto.EntryImportPreviewDto;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class ExcelService {
@@ -111,12 +111,25 @@ public class ExcelService {
         }
     }
 
+    @Transactional
     public void importExcel(MultipartFile file, String username) throws IOException {
+        importExcel(file.getInputStream(), username);
+    }
+
+    @Transactional
+    public void importExcel(byte[] fileBytes, String username) throws IOException {
+        importExcel(new java.io.ByteArrayInputStream(fileBytes), username);
+    }
+
+    @Transactional
+    public void importExcel(java.io.InputStream inputStream, String username) throws IOException {
         User user = userService.findByUsername(username);
         if (user == null)
-            throw new RuntimeException("User not found");
+            throw new thienloc.manage.exception.ResourceNotFoundException("User not found");
 
-        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+        List<DailyProduction> productions = new ArrayList<>();
+
+        try (Workbook workbook = new XSSFWorkbook(inputStream)) {
             // Try to find the "DB" sheet; fall back to first sheet
             Sheet sheet = workbook.getSheet("DB");
             if (sheet == null)
@@ -150,12 +163,24 @@ public class ExcelService {
                 Double wt = getCellValueAsDouble(row.getCell(COL_WT));
                 Integer output = getCellValueAsInteger(row.getCell(COL_OUTPUT));
                 Double rft = getCellValueAsDouble(row.getCell(COL_RFT));
+                // Excel percentage-formatted cells store 0.87 internally for 87%
+                if (rft != null && rft > 0 && rft <= 1.0) {
+                    rft = rft * 100.0;
+                }
                 Double allowance = getCellValueAsDouble(row.getCell(COL_ALLOWANCE));
+                if (allowance != null && allowance > 0 && allowance <= 1.0) {
+                    allowance = allowance * 100.0;
+                }
 
                 if (output == null)
                     output = 0;
                 if (allowance == null)
                     allowance = 100.0; // default 100%
+
+                // Skip rows missing required fields
+                if (section == null || section.isBlank() || line == null || line.isBlank()
+                        || mp == null || wt == null)
+                    continue;
 
                 DailyProduction production = DailyProduction.builder()
                         .productionDate(productionDate)
@@ -187,9 +212,105 @@ public class ExcelService {
                 }
 
                 production.getDetails().addAll(details);
-                productionRepository.save(production);
+                productions.add(production);
             }
         }
+
+        // Batch save — 1 transaction thay vì N transaction riêng lẻ
+        productionRepository.saveAll(productions);
+    }
+
+    /**
+     * Parse Excel file and return preview data (without saving).
+     */
+    public EntryImportPreviewDto parseForPreview(MultipartFile file) throws IOException {
+        List<EntryImportPreviewDto.RowPreview> rows = new ArrayList<>();
+
+        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+            Sheet sheet = workbook.getSheet("DB");
+            if (sheet == null)
+                sheet = workbook.getSheetAt(0);
+
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+
+                Cell dateCell = row.getCell(COL_DATE);
+                if (dateCell == null || dateCell.getCellType() == CellType.BLANK)
+                    continue;
+
+                EntryImportPreviewDto.RowPreview preview = new EntryImportPreviewDto.RowPreview();
+                preview.setRowNum(i + 1); // 1-based, row 1 is header
+                preview.setValid(true);
+
+                try {
+                    // Parse date
+                    if (dateCell.getCellType() == CellType.NUMERIC) {
+                        Date javaDate = DateUtil.getJavaDate(dateCell.getNumericCellValue());
+                        preview.setProductionDate(javaDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
+                    } else {
+                        preview.setProductionDate(LocalDate.parse(dateCell.getStringCellValue().trim()));
+                    }
+                } catch (Exception e) {
+                    preview.setValid(false);
+                    preview.setErrorMessage("Invalid date: " + e.getMessage());
+                }
+
+                preview.setSection(getCellValueAsString(row.getCell(COL_SECTION)));
+                preview.setLine(getCellValueAsString(row.getCell(COL_LINE)));
+                preview.setMp(getCellValueAsDouble(row.getCell(COL_MP)));
+                preview.setDli(getCellValueAsDouble(row.getCell(COL_DLI)));
+                preview.setIdl(getCellValueAsDouble(row.getCell(COL_IDL)));
+                preview.setWt(getCellValueAsDouble(row.getCell(COL_WT)));
+                preview.setTotalOutput(getCellValueAsInteger(row.getCell(COL_OUTPUT)));
+                Double rft = getCellValueAsDouble(row.getCell(COL_RFT));
+                if (rft != null && rft > 0 && rft <= 1.0) {
+                    rft = rft * 100.0;
+                }
+                preview.setRft(rft);
+                Double allowance = getCellValueAsDouble(row.getCell(COL_ALLOWANCE));
+                if (allowance != null && allowance > 0 && allowance <= 1.0) {
+                    allowance = allowance * 100.0;
+                }
+                preview.setAllowance(allowance != null ? allowance : 100.0);
+
+                // Count articles
+                Map<String, String> articles = new LinkedHashMap<>();
+                int colIdx = COL_SLOTS_START;
+                for (String slot : TIME_SLOTS) {
+                    String article = getCellValueAsString(row.getCell(colIdx++));
+                    if (article != null && !article.trim().isEmpty()) {
+                        articles.put(slot, article.trim());
+                    }
+                }
+                preview.setArticles(articles);
+                preview.setArticleCount(articles.size());
+
+                // Validate required fields
+                if (preview.isValid()) {
+                    List<String> missing = new ArrayList<>();
+                    if (preview.getSection() == null || preview.getSection().isBlank()) missing.add("Section");
+                    if (preview.getLine() == null || preview.getLine().isBlank()) missing.add("Line");
+                    if (preview.getMp() == null) missing.add("MP");
+                    if (!missing.isEmpty()) {
+                        preview.setValid(false);
+                        preview.setErrorMessage("Missing: " + String.join(", ", missing));
+                    }
+                }
+
+                rows.add(preview);
+            }
+        }
+
+        int validCount = (int) rows.stream().filter(EntryImportPreviewDto.RowPreview::isValid).count();
+
+        return EntryImportPreviewDto.builder()
+                .filename(file.getOriginalFilename())
+                .totalRows(rows.size())
+                .validRows(validCount)
+                .errorRows(rows.size() - validCount)
+                .rows(rows)
+                .build();
     }
 
     private Cell createStyledCell(Row row, int col, String value, CellStyle style) {

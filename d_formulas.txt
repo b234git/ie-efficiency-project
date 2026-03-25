@@ -1,2 +1,0 @@
-Headers: ['=N5', 1, '=IFERROR((K5*AY5)/(H5*L5*3600*AD5),"")', '=K5/(BO5/CE5*I5*AD5)', '=K5/H5/L5', None, None]
-Formulas: ['=N6', 1, '=IFERROR((K6*AY6)/(H6*L6*3600*AD6),"")', '=K6/(BO6/CE6*I6*AD6)', '=K6/H6/L6', None, None]

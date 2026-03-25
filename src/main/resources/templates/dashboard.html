@@ -160,8 +160,9 @@
                         <td th:text="${record.target != null ? #numbers.formatDecimal(record.target, 1, 2) : 'N/A'}">
                         </td>
 
-                        <td th:text="${record.effKpi != null ? #numbers.formatDecimal(record.effKpi * 100, 1, 2) + '%' : 'N/A'}"
-                            style="font-weight: bold; color: #d9534f;"></td>
+                        <td class="eff-cell"
+                            th:classappend="${record.effKpi != null and record.effKpi >= 0.795 ? 'eff-hi' : 'eff-low'}"
+                            th:text="${record.effKpi != null ? #numbers.formatDecimal(record.effKpi * 100, 1, 2) + '%' : 'N/A'}"></td>
                         <td
                             th:text="${record.effSalary != null ? #numbers.formatDecimal(record.effSalary * 100, 1, 2) + '%' : 'N/A'}">
                         </td>

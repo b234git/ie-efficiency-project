@@ -20,14 +20,23 @@
 
             <a sec:authorize="hasAnyRole('USER', 'MANAGER', 'ADMIN')" th:href="@{/entry/}"
                 th:text="#{nav.entry}">Entry</a>
-            <a sec:authorize="hasAnyRole('USER', 'MANAGER', 'ADMIN')" th:href="@{/entry/mydata}"
-                th:text="#{nav.mydata}">My Data</a>
-            <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/dashboard/}"
-                th:text="#{nav.dashboard}">Dashboard</a>
+            <a sec:authorize="hasAnyRole('USER', 'MANAGER', 'ADMIN')" th:href="@{/split-entry/}"
+                th:text="#{nav.splitentry}">Split Entry</a>
             <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/report/}" th:text="#{nav.report}">Report</a>
+            <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/report/weekly}" th:text="#{nav.weekly}">Weekly</a>
             <a sec:authorize="hasAnyRole('USER', 'MANAGER', 'ADMIN')" th:href="@{/masterdb/}"
                 th:text="#{nav.masterdb}">Master DB</a>
             <a sec:authorize="hasRole('ADMIN')" th:href="@{/admin/}" th:text="#{nav.admin}">Admin</a>
+
+            <!-- Notification bell — ADMIN/MANAGER only -->
+            <a sec:authorize="hasAnyRole('MANAGER', 'ADMIN')" th:href="@{/notifications}"
+                style="position:relative; text-decoration:none; margin-left:6px;">
+                &#x1F514;
+                <span th:if="${notificationCount != null && notificationCount > 0}"
+                    style="position:absolute; top:-6px; right:-8px; background:#dc3545; color:white;
+                           font-size:0.7rem; padding:1px 5px; border-radius:10px; font-weight:700;"
+                    th:text="${notificationCount}"></span>
+            </a>
 
             <!-- Language toggle -->
             <span style="margin-left:10px; border-left:1px solid rgba(255,255,255,0.3); padding-left:10px;">

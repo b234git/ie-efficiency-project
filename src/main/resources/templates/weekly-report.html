@@ -175,7 +175,7 @@
         </div>
 
         <!-- Week navigation -->
-        <div class="week-nav" style="margin-bottom:20px;">
+        <div class="week-nav" style="margin-bottom:14px;">
             <a th:href="@{/report/weekly(weekStart=${prevWeek})}">◀ <span th:text="#{report.prevweek}">Tuần
                     trước</span></a>
             <span class="week-label" th:text="${weekStart} + ' → ' + ${weekEnd}"></span>
@@ -185,6 +185,25 @@
                 th:text="'(' + ${#lists.size(blocks)} + ' ' + #{report.sectionline} + ')'"></span>
         </div>
 
+        <!-- Section category filter bar -->
+        <div id="sectionFilterBar"
+            style="margin-bottom:20px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; background:#f8f9fa; padding:10px 14px; border-radius:6px; border:1px solid #dee2e6;">
+            <span style="font-weight:600; color:#495057; margin-right:4px;">🔍 Filter:</span>
+            <button class="btn btn-primary btn-sm" id="filterBtn_ALL" onclick="filterSection('ALL')">All</button>
+
+            <span style="border-left:1px solid #ccc; height:24px; margin:0 6px;"></span>
+
+            <form th:action="@{/report/weekly}" method="get" style="display:flex; gap:6px; align-items:center; margin:0;">
+                <input type="hidden" name="weekStart" th:value="${weekStart}" />
+                <label style="font-weight:600; color:#495057; font-size:0.85em;" th:text="#{report.filterdate}">Date:</label>
+                <input type="date" name="filterDate" th:value="${filterDate}" class="form-control"
+                       style="width:160px; height:30px; font-size:0.85em;" th:min="${weekStart}" th:max="${weekEnd}" />
+                <button type="submit" class="btn btn-primary btn-sm" th:text="#{report.view}">View</button>
+                <a th:href="@{/report/weekly(weekStart=${weekStart})}" class="btn btn-outline-secondary btn-sm"
+                   th:if="${filterDate != null}" th:text="#{masterdb.clearfilter}">Clear</a>
+            </form>
+        </div>
+
         <!-- Empty state -->
         <div th:if="${blocks.isEmpty()}" class="empty-state">
             <h3>📭 <span th:text="#{report.nodata}">Không có dữ liệu sản xuất cho tuần này</span></h3>
@@ -192,7 +211,7 @@
         </div>
 
         <!-- Blocks -->
-        <div th:each="block : ${blocks}" class="block">
+        <div th:each="block : ${blocks}" class="block" th:data-section="${block.section}">
             <!-- Block header -->
             <div class="block-header" th:classappend="${block.section.toUpperCase().contains('BUFF') ? 'section-buff' :
                               (block.section.toUpperCase().contains('STOCKFIT') || block.section.toUpperCase().contains('SF') ? 'section-sf' :
@@ -235,7 +254,7 @@
                             <td class="num" th:text="${row.mp ?: '-'}"></td>
                             <td class="num" th:text="${row.wt ?: '-'}"></td>
                             <td class="num eff-cell"
-                                th:classappend="${row.eff != null and row.eff >= 1.0 ? 'eff-hi' : (row.eff != null and row.eff >= 0.8 ? 'eff-mid' : 'eff-low')}"
+                                th:classappend="${row.eff != null and row.eff >= 0.795 ? 'eff-hi' : 'eff-low'}"
                                 th:text="${row.eff != null ? #numbers.formatDecimal(row.eff * 100, 1, 1) + '%' : '-'}">
                             </td>
                             <td class="num"
@@ -263,7 +282,7 @@
                                 th:text="${block.total.avgWt != null ? #numbers.formatDecimal(block.total.avgWt, 1, 1) : '-'}">
                             </td>
                             <td class="num eff-cell"
-                                th:classappend="${block.total.avgEff != null and block.total.avgEff >= 1.0 ? 'eff-hi' : (block.total.avgEff != null and block.total.avgEff >= 0.8 ? 'eff-mid' : 'eff-low')}"
+                                th:classappend="${block.total.avgEff != null and block.total.avgEff >= 0.795 ? 'eff-hi' : 'eff-low'}"
                                 th:text="${block.total.avgEff != null ? #numbers.formatDecimal(block.total.avgEff * 100, 1, 1) + '%' : '-'}">
                             </td>
                             <td class="num"
@@ -280,6 +299,52 @@
         </div>
 
     </div>
+
+    <script>
+        function getSectionCat(section) {
+            var s = section.toUpperCase();
+            if (s.includes('BUFF')) return 'BUFFING';
+            if (s.includes('SEW')) return 'SEW';
+            if (s.includes('STOCKFIT') || s.includes(' SF') || s === 'SF') return 'SF';
+            if (s.includes('ASSY')) return 'ASSY';
+            return section; // fallback: dùng tên gốc
+        }
+
+        function filterSection(cat) {
+            // Update button styles
+            document.querySelectorAll('#sectionFilterBar button').forEach(function (btn) {
+                var isActive = btn.id === 'filterBtn_' + cat;
+                btn.className = isActive ? 'btn btn-primary btn-sm' : 'btn btn-outline-secondary btn-sm';
+            });
+            // Show/hide blocks
+            document.querySelectorAll('.block[data-section]').forEach(function (block) {
+                var blockCat = getSectionCat(block.dataset.section);
+                block.style.display = (cat === 'ALL' || blockCat === cat) ? '' : 'none';
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var blocks = document.querySelectorAll('.block[data-section]');
+            var cats = [];
+            var seen = new Set();
+            blocks.forEach(function (b) {
+                var cat = getSectionCat(b.dataset.section);
+                if (!seen.has(cat)) {
+                    seen.add(cat);
+                    cats.push(cat);
+                }
+            });
+            var bar = document.getElementById('sectionFilterBar');
+            cats.forEach(function (cat) {
+                var btn = document.createElement('button');
+                btn.id = 'filterBtn_' + cat;
+                btn.className = 'btn btn-outline-secondary btn-sm';
+                btn.textContent = cat;
+                btn.onclick = function () { filterSection(cat); };
+                bar.appendChild(btn);
+            });
+        });
+    </script>
 </body>
 
 </html>

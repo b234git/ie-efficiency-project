@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title th:text="#{entry.import.confirm.header}">Confirm Import</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <style>
+        .summary-cards {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .summary-card {
+            padding: 16px 24px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            min-width: 140px;
+            text-align: center;
+        }
+
+        .summary-card .number {
+            font-size: 2rem;
+            font-weight: 700;
+            display: block;
+        }
+
+        .summary-card .label {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+
+        .card-total { background: #f8f9fa; }
+        .card-valid { background: #d1e7dd; border-color: #badbcc; }
+        .card-error { background: #f8d7da; border-color: #f5c2c7; }
+
+        .table-wrapper {
+            overflow-x: auto;
+            margin-bottom: 24px;
+        }
+
+        table th, table td {
+            white-space: nowrap;
+            font-size: 0.88rem;
+            padding: 6px 10px;
+        }
+
+        .badge-valid {
+            background: #198754;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+        }
+
+        .badge-error {
+            background: #dc3545;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+        }
+
+        .action-bar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .btn-lg {
+            padding: 10px 24px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .row-error { background: #fff5f5; }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/layout :: navbar}"></div>
+
+    <div class="container" style="max-width:1400px; padding: 20px;">
+
+        <div style="margin-bottom:16px;">
+            <a th:href="@{/entry}" style="color:#007bff; text-decoration:none;">&larr; <span th:text="#{entry.title}">Entry</span></a>
+        </div>
+
+        <h2 th:text="#{entry.import.confirm.header}">Confirm Import Production Data</h2>
+        <p style="color:#6c757d;">
+            <span th:text="#{masterdb.import.confirm.file}">File</span>:
+            <strong th:text="${preview.filename}">file.xlsx</strong>
+        </p>
+
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+            <div class="summary-card card-total">
+                <span class="number" th:text="${preview.totalRows}">0</span>
+                <span class="label" th:text="#{entry.import.total}">Total rows</span>
+            </div>
+            <div class="summary-card card-valid">
+                <span class="number" th:text="${preview.validRows}">0</span>
+                <span class="label" th:text="#{entry.import.valid}">Valid</span>
+            </div>
+            <div class="summary-card card-error" th:if="${preview.errorRows > 0}">
+                <span class="number" th:text="${preview.errorRows}">0</span>
+                <span class="label" th:text="#{entry.import.errors}">Errors</span>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-bar">
+            <form th:action="@{/excel/import/confirm}" method="post" style="display:inline;"
+                  th:if="${preview.validRows > 0}">
+                <button type="submit" class="btn-lg"
+                    style="background:#0d6efd; color:white;"
+                    th:attr="data-confirm=#{entry.import.confirm.js}"
+                    onclick="return confirm(this.dataset.confirm)"
+                    th:text="#{entry.import.confirm.btn}">
+                    Confirm Import
+                </button>
+            </form>
+
+            <form th:action="@{/excel/import/cancel}" method="post" style="display:inline;">
+                <button type="submit" class="btn-lg"
+                    style="background:#6c757d; color:white;"
+                    th:text="#{masterdb.import.confirm.cancel}">
+                    Cancel
+                </button>
+            </form>
+        </div>
+
+        <!-- Preview Table -->
+        <div class="table-wrapper" style="margin-top: 24px;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th th:text="#{masterdb.import.confirm.status}">Status</th>
+                        <th th:text="#{table.date}">Date</th>
+                        <th th:text="#{table.section}">Section</th>
+                        <th th:text="#{table.line}">Line</th>
+                        <th th:text="#{table.mp}">MP</th>
+                        <th>DLI</th>
+                        <th>IDL</th>
+                        <th th:text="#{table.wt}">WT</th>
+                        <th th:text="#{table.output}">Output</th>
+                        <th>RFT (%)</th>
+                        <th th:text="#{entry.label.allowance}">Allowance</th>
+                        <th th:text="#{entry.import.articles}">Articles</th>
+                        <th th:text="#{entry.import.note}">Note</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row, stat : ${preview.rows}" th:classappend="${!row.valid ? 'row-error' : ''}">
+                        <td th:text="${stat.index + 1}" style="color:#6c757d;"></td>
+                        <td>
+                            <span th:if="${row.valid}" class="badge-valid">OK</span>
+                            <span th:unless="${row.valid}" class="badge-error">ERROR</span>
+                        </td>
+                        <td th:text="${row.productionDate}"></td>
+                        <td style="font-weight:600;" th:text="${row.section ?: '-'}"></td>
+                        <td th:text="${row.line ?: '-'}"></td>
+                        <td th:text="${row.mp != null ? row.mp : '-'}"></td>
+                        <td th:text="${row.dli != null ? row.dli : '-'}"></td>
+                        <td th:text="${row.idl != null ? row.idl : '-'}"></td>
+                        <td th:text="${row.wt != null ? row.wt : '-'}"></td>
+                        <td th:text="${row.totalOutput != null ? row.totalOutput : '-'}"></td>
+                        <td th:text="${row.rft != null ? #numbers.formatDecimal(row.rft, 1, 2) + '%' : '-'}"></td>
+                        <td th:text="${row.allowance != null ? #numbers.formatDecimal(row.allowance, 1, 0) + '%' : '-'}"></td>
+                        <td th:text="${row.articleCount}"></td>
+                        <td style="color:#dc3545; font-size:0.85em;" th:text="${row.errorMessage ?: ''}"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</body>
+
+</html>
