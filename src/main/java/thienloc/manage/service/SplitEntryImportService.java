@@ -1,0 +1,320 @@
+package thienloc.manage.service;
+
+import org.apache.poi.ss.usermodel.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import thienloc.manage.dto.DailyProductionDetailDto;
+import thienloc.manage.dto.SplitEntryDto;
+import thienloc.manage.dto.SplitEntryImportPreviewDto;
+import thienloc.manage.dto.SplitEntryImportPreviewDto.RowPreview;
+
+import java.io.IOException;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.*;
+
+@Service
+public class SplitEntryImportService {
+
+    @Autowired
+    private SplitEntryService splitEntryService;
+
+    private static final List<String> TIME_SLOTS = Arrays.asList(
+            "07:00-08:00", "08:00-09:00", "09:00-10:00", "10:00-11:00",
+            "11:00-12:00", "12:00-13:00", "13:00-14:00", "14:00-15:00",
+            "15:00-16:00", "16:00-17:00", "17:00-18:00", "18:00-19:00",
+            "19:00-20:00", "20:00-21:00", "21:00-22:00");
+
+    private static final List<String> VALID_SECTIONS = Arrays.asList(
+            "SEW", "BUFFING", "BUFFING 1ST", "BUFFING 2ND",
+            "STOCKFIT", "STOCKFIT UV", "STOCKFIT 1ST", "STOCKFIT 2ND",
+            "ASSEMBLY", "ASSEMBLY BIG", "ASSEMBLY SMALL");
+
+    // ─── Parse Output Excel ─────────────────────────────────────────────
+
+    public SplitEntryImportPreviewDto parseOutputFile(MultipartFile file) throws IOException {
+        SplitEntryImportPreviewDto preview = new SplitEntryImportPreviewDto();
+        preview.setFilename(file.getOriginalFilename());
+        preview.setImportType("OUTPUT");
+
+        try (Workbook wb = WorkbookFactory.create(file.getInputStream())) {
+            Sheet sheet = wb.getSheetAt(0);
+            int lastRow = sheet.getLastRowNum();
+            int valid = 0, errors = 0;
+
+            for (int i = 1; i <= lastRow; i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+
+                RowPreview rp = new RowPreview();
+                rp.setRowNum(i + 1);
+                List<String> missing = new ArrayList<>();
+
+                try {
+                    // Date (col 0)
+                    LocalDate date = parseDateCell(row.getCell(0));
+                    if (date == null) missing.add("Date");
+                    rp.setProductionDate(date);
+
+                    // Section (col 1)
+                    String section = getCellString(row.getCell(1));
+                    if (section == null || section.isBlank()) {
+                        missing.add("Section");
+                    } else {
+                        section = section.trim().toUpperCase();
+                        if (!VALID_SECTIONS.contains(section)) {
+                            missing.add("Section invalid: " + section);
+                        }
+                    }
+                    rp.setSection(section);
+
+                    // Line (col 2)
+                    String line = getCellString(row.getCell(2));
+                    if (line == null || line.isBlank()) missing.add("Line");
+                    rp.setLine(line != null ? line.trim() : null);
+
+                    // WT (col 3)
+                    Double wt = getCellDouble(row.getCell(3));
+                    if (wt == null || wt <= 0) missing.add("WT");
+                    rp.setWt(wt);
+
+                    // Total Output (col 4)
+                    Integer output = getCellInteger(row.getCell(4));
+                    if (output == null || output < 0) missing.add("Total Output");
+                    rp.setTotalOutput(output);
+
+                    // RFT (col 5) - optional
+                    Double rft = getCellDouble(row.getCell(5));
+                    if (rft != null && rft <= 1.0 && rft > 0) rft = rft * 100;
+                    rp.setRft(rft);
+
+                    if (!missing.isEmpty()) {
+                        rp.setValid(false);
+                        rp.setErrorMessage("Missing: " + String.join(", ", missing));
+                        errors++;
+                    } else {
+                        rp.setValid(true);
+                        valid++;
+                    }
+                } catch (Exception e) {
+                    rp.setValid(false);
+                    rp.setErrorMessage("Parse error: " + e.getMessage());
+                    errors++;
+                }
+
+                preview.getRows().add(rp);
+            }
+
+            preview.setTotalRows(preview.getRows().size());
+            preview.setValidRows(valid);
+            preview.setErrorRows(errors);
+        }
+
+        return preview;
+    }
+
+    // ─── Parse Articles Excel ───────────────────────────────────────────
+
+    public SplitEntryImportPreviewDto parseArticlesFile(MultipartFile file) throws IOException {
+        SplitEntryImportPreviewDto preview = new SplitEntryImportPreviewDto();
+        preview.setFilename(file.getOriginalFilename());
+        preview.setImportType("ARTICLES");
+
+        try (Workbook wb = WorkbookFactory.create(file.getInputStream())) {
+            Sheet sheet = wb.getSheetAt(0);
+            int lastRow = sheet.getLastRowNum();
+            int valid = 0, errors = 0;
+
+            for (int i = 1; i <= lastRow; i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+
+                RowPreview rp = new RowPreview();
+                rp.setRowNum(i + 1);
+                List<String> missing = new ArrayList<>();
+
+                try {
+                    // Date (col 0)
+                    LocalDate date = parseDateCell(row.getCell(0));
+                    if (date == null) missing.add("Date");
+                    rp.setProductionDate(date);
+
+                    // Section (col 1)
+                    String section = getCellString(row.getCell(1));
+                    if (section == null || section.isBlank()) {
+                        missing.add("Section");
+                    } else {
+                        section = section.trim().toUpperCase();
+                        if (!VALID_SECTIONS.contains(section)) {
+                            missing.add("Section invalid: " + section);
+                        }
+                    }
+                    rp.setSection(section);
+
+                    // Line (col 2)
+                    String line = getCellString(row.getCell(2));
+                    if (line == null || line.isBlank()) missing.add("Line");
+                    rp.setLine(line != null ? line.trim() : null);
+
+                    // Allowance (col 3) - optional, defaults to 100
+                    Double allowance = getCellDouble(row.getCell(3));
+                    if (allowance == null) {
+                        allowance = 100.0;
+                    } else if (allowance <= 1.0 && allowance > 0) {
+                        allowance = allowance * 100;
+                    }
+                    rp.setAllowance(allowance);
+
+                    // Time slot articles (col 4 through 18)
+                    Map<String, String> articles = new LinkedHashMap<>();
+                    int articleCount = 0;
+                    for (int j = 0; j < TIME_SLOTS.size(); j++) {
+                        String articleNo = getCellString(row.getCell(4 + j));
+                        if (articleNo != null && !articleNo.isBlank()) {
+                            articles.put(TIME_SLOTS.get(j), articleNo.trim());
+                            articleCount++;
+                        }
+                    }
+                    rp.setArticles(articles);
+                    rp.setArticleCount(articleCount);
+
+                    if (!missing.isEmpty()) {
+                        rp.setValid(false);
+                        rp.setErrorMessage("Missing: " + String.join(", ", missing));
+                        errors++;
+                    } else if (articleCount == 0) {
+                        rp.setValid(false);
+                        rp.setErrorMessage("No articles");
+                        errors++;
+                    } else {
+                        rp.setValid(true);
+                        valid++;
+                    }
+                } catch (Exception e) {
+                    rp.setValid(false);
+                    rp.setErrorMessage("Parse error: " + e.getMessage());
+                    errors++;
+                }
+
+                preview.getRows().add(rp);
+            }
+
+            preview.setTotalRows(preview.getRows().size());
+            preview.setValidRows(valid);
+            preview.setErrorRows(errors);
+        }
+
+        return preview;
+    }
+
+    // ─── Commit Imports ─────────────────────────────────────────────────
+
+    public int commitOutputImport(SplitEntryImportPreviewDto preview, String username) {
+        int count = 0;
+        for (RowPreview row : preview.getRows()) {
+            if (!row.isValid()) continue;
+
+            SplitEntryDto dto = new SplitEntryDto();
+            dto.setProductionDate(row.getProductionDate());
+            dto.setSection(row.getSection());
+            dto.setLine(row.getLine());
+            dto.setWt(row.getWt());
+            dto.setTotalOutput(row.getTotalOutput());
+            dto.setRft(row.getRft());
+
+            splitEntryService.saveOutput(dto, username);
+            count++;
+        }
+        return count;
+    }
+
+    public int commitArticlesImport(SplitEntryImportPreviewDto preview, String username) {
+        int count = 0;
+        for (RowPreview row : preview.getRows()) {
+            if (!row.isValid()) continue;
+
+            SplitEntryDto dto = new SplitEntryDto();
+            dto.setProductionDate(row.getProductionDate());
+            dto.setSection(row.getSection());
+            dto.setLine(row.getLine());
+            dto.setAllowance(row.getAllowance());
+
+            List<DailyProductionDetailDto> details = new ArrayList<>();
+            if (row.getArticles() != null) {
+                for (String slot : TIME_SLOTS) {
+                    String articleNo = row.getArticles().get(slot);
+                    if (articleNo != null && !articleNo.isBlank()) {
+                        details.add(DailyProductionDetailDto.builder()
+                                .timeSlot(slot)
+                                .articleNo(articleNo.trim())
+                                .build());
+                    }
+                }
+            }
+            dto.setDetails(details);
+
+            splitEntryService.saveArticles(dto, username);
+            count++;
+        }
+        return count;
+    }
+
+    // ─── Cell helpers ───────────────────────────────────────────────────
+
+    private LocalDate parseDateCell(Cell cell) {
+        if (cell == null) return null;
+        try {
+            if (cell.getCellType() == CellType.NUMERIC) {
+                Date javaDate = DateUtil.getJavaDate(cell.getNumericCellValue());
+                return javaDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+            } else if (cell.getCellType() == CellType.STRING) {
+                String val = cell.getStringCellValue().trim();
+                if (val.isEmpty()) return null;
+                return LocalDate.parse(val);
+            }
+        } catch (Exception e) {
+            return null;
+        }
+        return null;
+    }
+
+    private String getCellString(Cell cell) {
+        if (cell == null) return null;
+        return switch (cell.getCellType()) {
+            case STRING -> cell.getStringCellValue();
+            case NUMERIC -> String.valueOf((long) cell.getNumericCellValue());
+            default -> null;
+        };
+    }
+
+    private Double getCellDouble(Cell cell) {
+        if (cell == null) return null;
+        return switch (cell.getCellType()) {
+            case NUMERIC -> cell.getNumericCellValue();
+            case STRING -> {
+                try {
+                    yield Double.parseDouble(cell.getStringCellValue().trim());
+                } catch (Exception e) {
+                    yield null;
+                }
+            }
+            default -> null;
+        };
+    }
+
+    private Integer getCellInteger(Cell cell) {
+        if (cell == null) return null;
+        return switch (cell.getCellType()) {
+            case NUMERIC -> (int) cell.getNumericCellValue();
+            case STRING -> {
+                try {
+                    yield Integer.parseInt(cell.getStringCellValue().trim());
+                } catch (Exception e) {
+                    yield null;
+                }
+            }
+            default -> null;
+        };
+    }
+}

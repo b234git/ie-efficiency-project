@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title th:text="#{splitentry.import.confirm.output}">Confirm Import Output</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <style>
+        .summary-cards { display:flex; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
+        .summary-card { padding:16px 24px; border-radius:8px; border:1px solid #dee2e6; min-width:140px; text-align:center; }
+        .summary-card .number { font-size:2rem; font-weight:700; display:block; }
+        .summary-card .label { font-size:0.85rem; color:#6c757d; }
+        .card-total { background:#f8f9fa; }
+        .card-valid { background:#d1e7dd; border-color:#badbcc; }
+        .card-error { background:#f8d7da; border-color:#f5c2c7; }
+        .row-error { background:#fff5f5; }
+        .badge-import { background:#198754; color:white; padding:2px 8px; border-radius:10px; font-size:0.8rem; }
+        .badge-error { background:#dc3545; color:white; padding:2px 8px; border-radius:10px; font-size:0.8rem; }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/layout :: navbar}"></div>
+
+    <div class="container" style="max-width:1100px; padding:20px;">
+
+        <h2 style="color:#28a745;" th:text="#{splitentry.import.confirm.output}">Confirm Import Output</h2>
+        <p style="color:#6c757d;">
+            File: <strong th:text="${preview.filename}">file.xlsx</strong>
+        </p>
+
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+            <div class="summary-card card-total">
+                <span class="number" th:text="${preview.totalRows}">0</span>
+                <span class="label" th:text="#{entry.import.total}">Total rows</span>
+            </div>
+            <div class="summary-card card-valid">
+                <span class="number" th:text="${preview.validRows}">0</span>
+                <span class="label" th:text="#{entry.import.valid}">Valid</span>
+            </div>
+            <div class="summary-card card-error" th:if="${preview.errorRows > 0}">
+                <span class="number" th:text="${preview.errorRows}">0</span>
+                <span class="label" th:text="#{entry.import.errors}">Errors</span>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display:flex; gap:10px; margin-bottom:24px;">
+            <form th:action="@{/split-entry/output/import/commit}" method="post" style="display:inline;">
+                <button type="submit" onclick="return confirm('Import all valid rows?')"
+                        style="padding:10px 24px; font-size:1rem; border:none; border-radius:6px; cursor:pointer; font-weight:600; background:#28a745; color:white;"
+                        th:disabled="${preview.validRows == 0}"
+                        th:text="#{entry.import.confirm.btn}">
+                    Confirm Import
+                </button>
+            </form>
+            <form th:action="@{/split-entry/output/import/cancel}" method="post" style="display:inline;">
+                <button type="submit"
+                        style="padding:10px 24px; font-size:1rem; border:none; border-radius:6px; cursor:pointer; font-weight:600; background:#6c757d; color:white;"
+                        th:text="#{masterdb.import.confirm.cancel}">
+                    Cancel
+                </button>
+            </form>
+        </div>
+
+        <!-- Preview Table -->
+        <div style="overflow-x:auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th th:text="#{masterdb.import.confirm.status}">Status</th>
+                        <th th:text="#{table.date}">Date</th>
+                        <th th:text="#{table.section}">Section</th>
+                        <th th:text="#{table.line}">Line</th>
+                        <th th:text="#{entry.label.wt}">WT (hrs)</th>
+                        <th th:text="#{entry.label.output}">Total Output</th>
+                        <th th:text="#{entry.label.rft}">RFT (%)</th>
+                        <th th:text="#{splitentry.import.col.error}">Error</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row, stat : ${preview.rows}"
+                        th:classappend="${!row.valid} ? 'row-error' : ''">
+                        <td style="color:#6c757d;" th:text="${row.rowNum}"></td>
+                        <td>
+                            <span th:if="${row.valid}" class="badge-import" th:text="#{splitentry.import.status.import}">Import</span>
+                            <span th:unless="${row.valid}" class="badge-error" th:text="#{splitentry.import.status.error}">Error</span>
+                        </td>
+                        <td th:text="${row.productionDate}"></td>
+                        <td th:text="${row.section}"></td>
+                        <td style="font-weight:600;" th:text="${row.line}"></td>
+                        <td th:text="${row.wt}"></td>
+                        <td th:text="${row.totalOutput}"></td>
+                        <td th:text="${row.rft}"></td>
+                        <td style="color:#dc3545; font-size:0.85em;" th:text="${row.errorMessage}"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</body>
+
+</html>

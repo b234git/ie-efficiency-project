@@ -10,7 +10,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "daily_production")
+@Table(name = "daily_production", indexes = {
+    @Index(name = "idx_dp_production_date", columnList = "productionDate"),
+    @Index(name = "idx_dp_user_id", columnList = "user_id")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -31,10 +34,21 @@ public class DailyProduction {
     private String line;
 
     @Column(nullable = false)
-    private Double mp; // Manpower
+    private Double mp; // Manpower (Direct Labor = DL)
+
+    private Double dli; // Direct Labor Indirect
+
+    private Double idl; // Indirect Labor
 
     @Column(nullable = false)
     private Double wt; // Working Time
+
+    private Double rft; // Right First Time (%)
+
+    // Allowance = % sản lượng cho phép (1.0 = 100%, 0.8 = 80%)
+    @Builder.Default
+    @Column(nullable = false)
+    private Double allowance = 1.0;
 
     @Builder.Default
     @Column(name = "total_output", nullable = false)
@@ -59,10 +73,27 @@ public class DailyProduction {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+        roundFields();
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+        roundFields();
+    }
+
+    private void roundFields() {
+        this.mp = round(this.mp);
+        this.dli = round(this.dli);
+        this.idl = round(this.idl);
+        this.wt = round(this.wt);
+        this.rft = round(this.rft);
+        this.allowance = round(this.allowance);
+    }
+
+    private Double round(Double val) {
+        if (val == null)
+            return null;
+        return Math.round(val * 100.0) / 100.0;
     }
 }

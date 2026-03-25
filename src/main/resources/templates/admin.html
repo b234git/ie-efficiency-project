@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 
 <head>
-    <title>Admin Dashboard</title>
+    <title th:text="#{admin.title}">Admin Dashboard</title>
     <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 
@@ -10,19 +10,18 @@
     <div th:replace="~{fragments/layout :: navbar}"></div>
 
     <div class="container">
-        <h2>User Management</h2>
+        <h2 th:text="#{admin.title}">User Management</h2>
 
-        <div th:if="${param.success}" style="color: green; margin-bottom: 10px;">
-            Role updated successfully!
-        </div>
+        <div th:if="${param.success}" style="color: green; margin-bottom: 10px;" th:text="#{admin.role.updated}">Role
+            updated successfully!</div>
 
         <table>
             <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>Username</th>
-                    <th>Current Role</th>
-                    <th>Action</th>
+                    <th th:text="#{admin.id}">ID</th>
+                    <th th:text="#{admin.username}">Username</th>
+                    <th th:text="#{admin.currentrole}">Current Role</th>
+                    <th th:text="#{admin.action}">Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -39,35 +38,77 @@
                                 </option>
                                 <option value="ROLE_ADMIN" th:selected="${user.role == 'ROLE_ADMIN'}">ADMIN</option>
                             </select>
-                            <button type="submit" class="btn btn-primary">Update</button>
+                            <button type="submit" class="btn btn-primary" th:text="#{admin.update}">Update</button>
                         </form>
                     </td>
                 </tr>
             </tbody>
         </table>
 
-        <h2 style="margin-top: 40px;">System Logs</h2>
+        <h2 style="margin-top: 40px;" th:text="#{admin.syslogs}">System Logs</h2>
         <table>
             <thead>
                 <tr>
-                    <th>Time</th>
-                    <th>User</th>
-                    <th>Action</th>
-                    <th>Details</th>
+                    <th th:text="#{admin.log.time}">Time</th>
+                    <th th:text="#{admin.log.user}">User</th>
+                    <th th:text="#{admin.log.action}">Action</th>
+                    <th th:text="#{admin.log.details}">Details</th>
                 </tr>
             </thead>
             <tbody>
-                <tr th:each="log : ${logs}">
+                <tr th:each="log : ${logsPage.content}">
                     <td th:text="${#temporals.format(log.timestamp, 'dd/MM/yyyy HH:mm:ss')}"></td>
                     <td th:text="${log.username}"></td>
                     <td th:text="${log.action}"></td>
                     <td th:text="${log.details}"></td>
                 </tr>
-                <tr th:if="${logs == null || logs.isEmpty()}">
-                    <td colspan="4" style="text-align: center; color: #888;">No system logs available.</td>
+                <tr th:if="${logsPage.content.isEmpty()}">
+                    <td colspan="4" style="text-align: center; color: #888;" th:text="#{admin.log.empty}">No system logs available.</td>
                 </tr>
             </tbody>
         </table>
+
+        <!-- Logs Pagination -->
+        <div th:if="${logsPage.totalPages > 1}" style="margin-top: 15px;">
+            <ul style="display: flex; list-style: none; padding: 0; gap: 5px; flex-wrap: wrap;">
+                <li>
+                    <a th:if="${!logsPage.first}" th:href="@{/admin/(logPage=0)}" class="btn"
+                        style="padding:5px 10px; border:1px solid #ccc; text-decoration:none; color:black;"
+                        th:text="#{pagination.first}">« First</a>
+                    <span th:if="${logsPage.first}" class="btn"
+                        style="padding:5px 10px; border:1px solid #ccc; background:#eee; color:#aaa;"
+                        th:text="#{pagination.first}">« First</span>
+                </li>
+                <li>
+                    <a th:if="${!logsPage.first}" th:href="@{/admin/(logPage=${logsPage.number - 1})}" class="btn"
+                        style="padding:5px 10px; border:1px solid #ccc; text-decoration:none; color:black;"
+                        th:text="#{pagination.prev}">‹ Prev</a>
+                    <span th:if="${logsPage.first}" class="btn"
+                        style="padding:5px 10px; border:1px solid #ccc; background:#eee; color:#aaa;"
+                        th:text="#{pagination.prev}">‹ Prev</span>
+                </li>
+                <li style="padding:5px 10px;"
+                    th:text="#{entry.pagination.page.of(${logsPage.number + 1}, ${logsPage.totalPages})}">
+                    Page 1 of 1
+                </li>
+                <li>
+                    <a th:if="${!logsPage.last}" th:href="@{/admin/(logPage=${logsPage.number + 1})}" class="btn"
+                        style="padding:5px 10px; border:1px solid #ccc; text-decoration:none; color:black;"
+                        th:text="#{pagination.next}">Next ›</a>
+                    <span th:if="${logsPage.last}" class="btn"
+                        style="padding:5px 10px; border:1px solid #ccc; background:#eee; color:#aaa;"
+                        th:text="#{pagination.next}">Next ›</span>
+                </li>
+                <li>
+                    <a th:if="${!logsPage.last}" th:href="@{/admin/(logPage=${logsPage.totalPages - 1})}" class="btn"
+                        style="padding:5px 10px; border:1px solid #ccc; text-decoration:none; color:black;"
+                        th:text="#{pagination.last}">Last »</a>
+                    <span th:if="${logsPage.last}" class="btn"
+                        style="padding:5px 10px; border:1px solid #ccc; background:#eee; color:#aaa;"
+                        th:text="#{pagination.last}">Last »</span>
+                </li>
+            </ul>
+        </div>
     </div>
 </body>
 

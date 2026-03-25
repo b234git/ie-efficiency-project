@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title th:text="#{notification.title}">Notifications</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <style>
+        .notif-list {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .notif-item {
+            padding: 14px 18px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .notif-item.unread {
+            background: #fff3cd;
+            border-color: #ffecb5;
+        }
+
+        .notif-item.read {
+            background: #f8f9fa;
+            opacity: 0.7;
+        }
+
+        .notif-body {
+            flex: 1;
+        }
+
+        .notif-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .notif-message {
+            font-size: 0.9rem;
+            color: #495057;
+        }
+
+        .notif-meta {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+
+        .notif-type {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .type-WARNING {
+            background: #ffc107;
+            color: #000;
+        }
+
+        .type-DANGER {
+            background: #dc3545;
+            color: #fff;
+        }
+
+        .type-INFO {
+            background: #0d6efd;
+            color: #fff;
+        }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/layout :: navbar}"></div>
+
+    <div class="container" style="max-width:900px; padding: 20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 th:text="#{notification.title}">Notifications</h2>
+            <form th:action="@{/notifications/dismiss-all}" method="post">
+                <button type="submit" class="btn btn-primary" style="padding:6px 16px;"
+                    th:text="#{notification.dismiss.all}">
+                    Mark all as read
+                </button>
+            </form>
+        </div>
+
+        <div th:if="${success}" class="alert alert-success"
+            style="padding:10px 16px; background:#d1e7dd; color:#0f5132; border-radius:5px; margin-bottom:14px;"
+            th:text="${success}"></div>
+
+        <div class="notif-list">
+            <div th:if="${#lists.isEmpty(notifications)}"
+                style="text-align:center; color:#6c757d; padding:40px;"
+                th:text="#{notification.empty}">
+                No notifications.
+            </div>
+
+            <div th:each="n : ${notifications}" class="notif-item"
+                th:classappend="${n.isRead ? 'read' : 'unread'}">
+                <div class="notif-body">
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <span class="notif-type" th:classappend="'type-' + ${n.type}" th:text="${n.type}"></span>
+                        <span class="notif-title" th:text="${n.title}"></span>
+                    </div>
+                    <div class="notif-message" th:text="${n.message}"></div>
+                    <div class="notif-meta"
+                        th:text="${#temporals.format(n.createdAt, 'dd/MM/yyyy HH:mm')}"></div>
+                </div>
+                <form th:if="${!n.isRead}" th:action="@{/notifications/read/{id}(id=${n.id})}" method="post">
+                    <button type="submit" class="btn btn-sm"
+                        style="border:1px solid #ccc; padding:4px 10px; font-size:0.8rem; background:white; cursor:pointer;"
+                        th:text="#{notification.mark.read}">
+                        Mark as read
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

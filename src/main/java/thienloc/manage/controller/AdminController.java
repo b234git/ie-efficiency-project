@@ -1,6 +1,7 @@
 package thienloc.manage.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,9 +21,11 @@ public class AdminController {
     private thienloc.manage.service.SystemLogService systemLogService;
 
     @GetMapping("/")
-    public String adminDashboard(Model model) {
+    public String adminDashboard(Model model,
+            @RequestParam(defaultValue = "0") int logPage) {
         model.addAttribute("users", userService.findAllUsers());
-        model.addAttribute("logs", systemLogService.getAllLogs());
+        model.addAttribute("logsPage", systemLogService.getLogsPage(
+                PageRequest.of(logPage, 20)));
         return "admin";
     }
 
