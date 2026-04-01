@@ -3,6 +3,7 @@
 
 <head>
     <title th:text="#{notification.title}">Notifications</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" th:href="@{/css/main.css}">
     <style>
         .notif-list {
@@ -78,8 +79,8 @@
 <body>
     <div th:replace="~{fragments/layout :: navbar}"></div>
 
-    <div class="container" style="max-width:900px; padding: 20px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+    <div class="container-sm">
+        <div class="page-header-flex">
             <h2 th:text="#{notification.title}">Notifications</h2>
             <form th:action="@{/notifications/dismiss-all}" method="post">
                 <button type="submit" class="btn btn-primary" style="padding:6px 16px;"

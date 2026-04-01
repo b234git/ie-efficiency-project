@@ -3,6 +3,7 @@
 
 <head>
     <title th:text="#{entry.title}">Data Entry</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" th:href="@{/css/main.css}">
     <style>
         .eff-hi { color: #28a745; }
@@ -60,24 +61,27 @@
                 </button>
             </div>
 
-            <!-- ROW 1: Date / Section / Line -->
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;margin-bottom:16px;">
+            <!-- ROW 1: Date / Section / Subsection / Line -->
+            <input type="hidden" th:field="*{section}" id="sectionHidden" />
+            <div class="grid-4col">
                 <div class="form-group">
                     <label><span th:text="#{entry.label.date}">Date</span> <span style="color:red">*</span></label>
                     <input type="date" th:field="*{productionDate}" class="form-control" required />
                 </div>
                 <div class="form-group">
                     <label><span th:text="#{entry.label.section}">Section</span> <span style="color:red">*</span></label>
-                    <select th:field="*{section}" class="form-control" required>
+                    <select id="sectionBase" class="form-control" required>
                         <option value="" disabled selected th:text="#{entry.select}">-- Select --</option>
                         <option value="SEW">SEW</option>
-                        <option value="BUFFING 1ST">BUFFING 1ST</option>
-                        <option value="BUFFING 2ND">BUFFING 2ND</option>
-                        <option value="STOCKFIT UV">STOCKFIT UV</option>
-                        <option value="STOCKFIT 1ST">STOCKFIT 1ST</option>
-                        <option value="STOCKFIT 2ND">STOCKFIT 2ND</option>
-                        <option value="ASSEMBLY BIG">ASSEMBLY BIG</option>
-                        <option value="ASSEMBLY SMALL">ASSEMBLY SMALL</option>
+                        <option value="BUFFING">BUFFING</option>
+                        <option value="STOCKFIT">STOCKFIT</option>
+                        <option value="ASSEMBLY">ASSEMBLY</option>
+                    </select>
+                </div>
+                <div class="form-group" id="subsectionGroup">
+                    <label>Subsection</label>
+                    <select id="subsectionSelect" class="form-control">
+                        <option value="">N/A</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -87,7 +91,7 @@
             </div>
 
             <!-- ROW 2: DL(MP) / DLI / IDL / WT -->
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:15px;margin-bottom:16px;">
+            <div class="grid-4col">
                 <div class="form-group">
                     <label title="Direct Labor - Direct Manpower"><span th:text="#{entry.label.dl}">DL / MP</span> <span style="color:red">*</span></label>
                     <input type="number" step="0.1" id="fMp" th:field="*{mp}" class="form-control" required min="0" />
@@ -107,7 +111,7 @@
             </div>
 
             <!-- ROW 3: Output / RFT / Allowance -->
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;margin-bottom:16px;">
+            <div class="grid-3col">
                 <div class="form-group">
                     <label><span th:text="#{entry.label.output}">Total Output</span> <span style="color:red">*</span></label>
                     <input type="number" id="fOutput" th:field="*{output}" class="form-control" required min="0" />
@@ -134,7 +138,7 @@
             </div>
 
             <h4 style="margin-top:20px;" th:text="#{entry.hourly}">Hourly Breakdown — Article per Time Slot</h4>
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:15px;">
+            <div class="grid-auto-fill">
                 <div th:each="detail, stat : *{details}" style="border:1px solid #ccc;padding:10px;border-radius:5px;">
                     <strong th:text="${detail.timeSlot}"></strong>
                     <input type="hidden" th:field="*{details[__${stat.index}__].timeSlot}" />
@@ -158,8 +162,7 @@
         <h3 style="margin-top: 40px;" th:text="#{entry.recent}">Your Recent Entries</h3>
 
         <!-- Filter bar -->
-        <form th:action="@{/entry/}" method="get"
-              style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:18px;">
+        <form th:action="@{/entry/}" method="get" class="filter-bar">
             <div>
                 <label style="font-weight:600; margin-right:6px;" th:text="#{dashboard.viewby}">View by:</label>
                 <select id="rangeSelect" name="range" class="form-control" style="width:200px; display:inline-block;"
@@ -188,6 +191,26 @@
                 <input type="text" name="article" th:value="${article}" class="form-control"
                        th:placeholder="#{mydata.search.article}" placeholder="Search article..."
                        style="width:180px; display:inline-block;" />
+            </div>
+            <div>
+                <select name="section" class="form-control" style="width:180px; display:inline-block;">
+                    <option value="" th:selected="${selectedSection == ''}" th:text="#{entry.filter.section.all}">All Sections</option>
+                    <option th:each="sec : ${sectionOptions}"
+                            th:value="${sec}" th:text="${sec}"
+                            th:selected="${sec == selectedSection}"></option>
+                </select>
+            </div>
+            <div>
+                <input type="text" name="line" th:value="${selectedLine}" class="form-control"
+                       th:placeholder="#{entry.filter.line}" placeholder="Line..."
+                       style="width:100px; display:inline-block;" />
+            </div>
+            <div>
+                <select name="source" class="form-control" style="width:140px; display:inline-block;">
+                    <option value="ALL"   th:selected="${selectedSource == 'ALL'}"   th:text="#{entry.filter.source.all}">All</option>
+                    <option value="ENTRY" th:selected="${selectedSource == 'ENTRY'}" th:text="#{entry.filter.source.entry}">Entry only</option>
+                    <option value="SPLIT" th:selected="${selectedSource == 'SPLIT'}" th:text="#{entry.filter.source.split}">Split only</option>
+                </select>
             </div>
             <div style="display:flex; align-items:center; gap:6px;">
                 <input type="checkbox" id="errorsOnly" name="errorsOnly" value="true"
@@ -244,7 +267,7 @@
                     <th th:text="#{table.actions}">Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="entriesTableBody">
                 <tr th:if="${entries.isEmpty()}">
                     <td colspan="13" style="text-align:center; color:#888; padding:30px;"
                         th:text="#{mydata.nodata}">No data for this period.</td>
@@ -258,7 +281,11 @@
                     </td>
                     <td style="color:#6c757d;" th:text="${currentPage * pageSize + stat.count}"></td>
                     <td th:text="${record.productionDate}"></td>
-                    <td><strong th:text="${record.section}"></strong></td>
+                    <td>
+                        <strong th:text="${record.section}"></strong>
+                        <span th:if="${record.source == 'SPLIT'}"
+                              style="background:#ffc107;color:#000;padding:1px 6px;border-radius:10px;font-size:0.78em;font-weight:600;margin-left:4px;">Split</span>
+                    </td>
                     <td th:text="${record.line}"></td>
                     <td th:text="${record.article}"></td>
                     <td th:text="${record.output}"></td>
@@ -282,45 +309,53 @@
                     </td>
                     <td sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:text="${record.actualPph != null ? #numbers.formatDecimal(record.actualPph, 1, 2) : '-'}"></td>
                     <td style="white-space:nowrap;">
-                        <!-- MANAGER / ADMIN: Edit + Delete -->
-                        <span sec:authorize="hasAnyRole('MANAGER','ADMIN')">
-                            <button type="button"
-                                th:data-id="${record.id}"
-                                th:data-date="${record.productionDate}"
-                                th:data-section="${record.section}"
-                                th:data-line="${record.line}"
-                                th:data-mp="${record.mp}"
-                                th:data-dli="${record.dli}"
-                                th:data-idl="${record.idl}"
-                                th:data-wt="${record.wt}"
-                                th:data-output="${record.output}"
-                                th:data-rft="${record.rft}"
-                                th:data-allowance="${record.allowance}"
-                                data-page="0"
-                                th:data-articles="${record.articlesJson}"
-                                onclick="openEditModal(this)"
-                                style="background:#ffc107;color:#000;padding:4px 8px;border:none;border-radius:3px;cursor:pointer;margin-right:4px;">
-                                ✏️ <span th:text="#{entry.edit.btn}">Edit</span>
-                            </button>
-                            <form th:action="@{/entry/admin-delete}" method="post" style="display:inline;"
-                                  onsubmit="return confirm(this.dataset.confirm)"
-                                  th:data-confirm="#{entry.delete.confirm}">
-                                <input type="hidden" name="id" th:value="${record.id}" />
-                                <button type="submit"
-                                    style="background:#dc3545;color:white;padding:4px 8px;border:none;border-radius:3px;cursor:pointer;">
-                                    🗑️ <span th:text="#{entry.delete.btn}">Delete</span>
+                        <!-- SPLIT rows: read-only, link to Split Entry page -->
+                        <th:block th:if="${record.source == 'SPLIT'}">
+                            <a th:href="@{/split-entry/(date=${record.productionDate})}"
+                               style="background:#6c757d;color:white;padding:4px 8px;border:none;border-radius:3px;text-decoration:none;font-size:0.9em;">View Split</a>
+                        </th:block>
+                        <!-- Normal entry rows -->
+                        <th:block th:unless="${record.source == 'SPLIT'}">
+                            <!-- MANAGER / ADMIN: Edit + Delete -->
+                            <span sec:authorize="hasAnyRole('MANAGER','ADMIN')">
+                                <button type="button"
+                                    th:data-id="${record.id}"
+                                    th:data-date="${record.productionDate}"
+                                    th:data-section="${record.section}"
+                                    th:data-line="${record.line}"
+                                    th:data-mp="${record.mp}"
+                                    th:data-dli="${record.dli}"
+                                    th:data-idl="${record.idl}"
+                                    th:data-wt="${record.wt}"
+                                    th:data-output="${record.output}"
+                                    th:data-rft="${record.rft}"
+                                    th:data-allowance="${record.allowance}"
+                                    data-page="0"
+                                    th:data-articles="${record.articlesJson}"
+                                    onclick="openEditModal(this)"
+                                    style="background:#ffc107;color:#000;padding:4px 8px;border:none;border-radius:3px;cursor:pointer;margin-right:4px;">
+                                    ✏️ <span th:text="#{entry.edit.btn}">Edit</span>
                                 </button>
-                            </form>
-                        </span>
-                        <!-- USER: Request Edit only -->
-                        <span sec:authorize="!hasAnyRole('MANAGER','ADMIN')">
-                            <button type="button"
-                                th:data-id="${record.id}"
-                                onclick="openRequestModal(this.dataset.id)"
-                                style="background:#17a2b8;color:white;padding:4px 8px;border:none;border-radius:3px;cursor:pointer;">
-                                📝 <span th:text="#{entry.request.btn}">Request Edit</span>
-                            </button>
-                        </span>
+                                <form th:action="@{/entry/admin-delete}" method="post" style="display:inline;"
+                                      onsubmit="return ajaxDelete(event, this)"
+                                      th:data-confirm="#{entry.delete.confirm}">
+                                    <input type="hidden" name="id" th:value="${record.id}" />
+                                    <button type="submit"
+                                        style="background:#dc3545;color:white;padding:4px 8px;border:none;border-radius:3px;cursor:pointer;">
+                                        🗑️ <span th:text="#{entry.delete.btn}">Delete</span>
+                                    </button>
+                                </form>
+                            </span>
+                            <!-- USER: Request Edit only -->
+                            <span sec:authorize="!hasAnyRole('MANAGER','ADMIN')">
+                                <button type="button"
+                                    th:data-id="${record.id}"
+                                    onclick="openRequestModal(this.dataset.id)"
+                                    style="background:#17a2b8;color:white;padding:4px 8px;border:none;border-radius:3px;cursor:pointer;">
+                                    📝 <span th:text="#{entry.request.btn}">Request Edit</span>
+                                </button>
+                            </span>
+                        </th:block>
                     </td>
                 </tr>
             </tbody>
@@ -328,11 +363,11 @@
         </div>
 
         <!-- Pagination -->
-        <div th:if="${totalPages > 1}"
+        <div id="paginationInfo" th:if="${totalPages > 1}"
              style="display:flex; justify-content:center; align-items:center; gap:6px; margin-top:20px; flex-wrap:wrap;">
             <!-- First -->
             <a th:if="${currentPage > 0}"
-               th:href="@{/entry/(range=${selectedRange}, date=${selectedDate}, month=${selectedMonth}, article=${article}, errorsOnly=${errorsOnly}, page=0)}"
+               th:href="@{/entry/(range=${selectedRange}, date=${selectedDate}, month=${selectedMonth}, article=${article}, errorsOnly=${errorsOnly}, section=${selectedSection}, line=${selectedLine}, source=${selectedSource}, page=0)}"
                style="padding:6px 12px; border:1px solid #dee2e6; border-radius:4px; text-decoration:none; color:#007bff; background:white;"
                title="First page">&laquo;&laquo;</a>
             <span th:unless="${currentPage > 0}"
@@ -340,7 +375,7 @@
                >&laquo;&laquo;</span>
             <!-- Prev -->
             <a th:if="${currentPage > 0}"
-               th:href="@{/entry/(range=${selectedRange}, date=${selectedDate}, month=${selectedMonth}, article=${article}, errorsOnly=${errorsOnly}, page=${currentPage - 1})}"
+               th:href="@{/entry/(range=${selectedRange}, date=${selectedDate}, month=${selectedMonth}, article=${article}, errorsOnly=${errorsOnly}, section=${selectedSection}, line=${selectedLine}, source=${selectedSource}, page=${currentPage - 1})}"
                style="padding:6px 12px; border:1px solid #dee2e6; border-radius:4px; text-decoration:none; color:#007bff; background:white;"
                title="Previous page">&laquo;</a>
             <span th:unless="${currentPage > 0}"
@@ -353,7 +388,7 @@
             </span>
             <!-- Next -->
             <a th:if="${currentPage < totalPages - 1}"
-               th:href="@{/entry/(range=${selectedRange}, date=${selectedDate}, month=${selectedMonth}, article=${article}, errorsOnly=${errorsOnly}, page=${currentPage + 1})}"
+               th:href="@{/entry/(range=${selectedRange}, date=${selectedDate}, month=${selectedMonth}, article=${article}, errorsOnly=${errorsOnly}, section=${selectedSection}, line=${selectedLine}, source=${selectedSource}, page=${currentPage + 1})}"
                style="padding:6px 12px; border:1px solid #dee2e6; border-radius:4px; text-decoration:none; color:#007bff; background:white;"
                title="Next page">&raquo;</a>
             <span th:unless="${currentPage < totalPages - 1}"
@@ -361,7 +396,7 @@
                >&raquo;</span>
             <!-- Last -->
             <a th:if="${currentPage < totalPages - 1}"
-               th:href="@{/entry/(range=${selectedRange}, date=${selectedDate}, month=${selectedMonth}, article=${article}, errorsOnly=${errorsOnly}, page=${totalPages - 1})}"
+               th:href="@{/entry/(range=${selectedRange}, date=${selectedDate}, month=${selectedMonth}, article=${article}, errorsOnly=${errorsOnly}, section=${selectedSection}, line=${selectedLine}, source=${selectedSource}, page=${totalPages - 1})}"
                style="padding:6px 12px; border:1px solid #dee2e6; border-radius:4px; text-decoration:none; color:#007bff; background:white;"
                title="Last page">&raquo;&raquo;</a>
             <span th:unless="${currentPage < totalPages - 1}"
@@ -482,6 +517,65 @@
             if (num) num.value = v;
         }
 
+        // ── Section / Subsection split logic ─────────────────────────────────
+        var SUBSECTION_MAP = {
+            'SEW':      [],
+            'BUFFING':  ['1ST', '2ND'],
+            'STOCKFIT': ['UV', '1ST', '2ND'],
+            'ASSEMBLY': ['BIG', 'SMALL']
+        };
+
+        function parseSectionValue(combined) {
+            if (!combined) return { base: '', sub: '' };
+            var parts = combined.split(' ');
+            var base = parts[0];
+            var sub  = parts.slice(1).join(' ');
+            return { base: base, sub: sub };
+        }
+
+        function updateSubsectionDropdown(base, selectedSub) {
+            var subs   = SUBSECTION_MAP[base] || [];
+            var select = document.getElementById('subsectionSelect');
+            var group  = document.getElementById('subsectionGroup');
+
+            select.innerHTML = '';
+            if (subs.length === 0) {
+                select.innerHTML = '<option value="">N/A</option>';
+                select.disabled  = true;
+                if (group) group.style.opacity = '0.5';
+            } else {
+                select.disabled = false;
+                if (group) group.style.opacity = '1';
+                subs.forEach(function(s) {
+                    var opt = document.createElement('option');
+                    opt.value       = s;
+                    opt.textContent = s;
+                    if (s === selectedSub) opt.selected = true;
+                    select.appendChild(opt);
+                });
+            }
+            updateHiddenSection();
+        }
+
+        function updateHiddenSection() {
+            var base = document.getElementById('sectionBase').value;
+            var sub  = document.getElementById('subsectionSelect').value;
+            var combined = (base && sub && sub !== 'N/A' && !document.getElementById('subsectionSelect').disabled)
+                ? base + ' ' + sub
+                : base;
+            document.getElementById('sectionHidden').value = combined || '';
+        }
+
+        function initSectionDropdowns() {
+            var current = document.getElementById('sectionHidden').value || '';
+            var parsed  = parseSectionValue(current);
+            var base    = parsed.base;
+            var sub     = parsed.sub;
+            var baseSelect = document.getElementById('sectionBase');
+            if (base) baseSelect.value = base;
+            updateSubsectionDropdown(base, sub);
+        }
+
         // ── Break time logic ─────────────────────────────────────────────────
         // Re-evaluate lunch break when either lunch candidate slot changes
         function checkBreakTime(changedSlot) {
@@ -495,6 +589,25 @@
             syncAllowance(100);
             updateActiveSlots();
             restoreCheckboxes();
+            initSectionDropdowns();
+
+            document.getElementById('sectionBase').addEventListener('change', function() {
+                var base = this.value;
+                var line = (document.querySelector('#entryForm [name="line"]') || {}).value || '';
+                var defaultSub = (base === 'ASSEMBLY' && line.trim() === '5') ? 'SMALL' : null;
+                updateSubsectionDropdown(base, defaultSub);
+            });
+
+            document.getElementById('subsectionSelect').addEventListener('change', updateHiddenSection);
+
+            document.querySelector('#entryForm [name="line"]').addEventListener('input', function() {
+                var line = this.value.trim();
+                var base = document.getElementById('sectionBase').value;
+                if (base === 'ASSEMBLY' && line === '5') {
+                    var sel = document.getElementById('subsectionSelect');
+                    if (sel && !sel.disabled) { sel.value = 'SMALL'; updateHiddenSection(); }
+                }
+            });
         });
 
         // Helper: set a form field value by its name attribute (works regardless of id)
@@ -515,6 +628,11 @@
             setField('productionDate', btn.dataset.date || '');
             setField('section',        btn.dataset.section || '');
             setField('line',           btn.dataset.line || '');
+            // Sync visual section/subsection dropdowns
+            var parsedSec = parseSectionValue(btn.dataset.section || '');
+            var baseSelectEl = document.getElementById('sectionBase');
+            if (baseSelectEl) baseSelectEl.value = parsedSec.base;
+            updateSubsectionDropdown(parsedSec.base, parsedSec.sub);
             setField('mp',             btn.dataset.mp || '');
             setField('dli',            btn.dataset.dli || '');
             setField('idl',            btn.dataset.idl || '');
@@ -569,6 +687,8 @@
             form.reset();
             document.getElementById('editingId').value = '';
             document.getElementById('editingPage').value = '0';
+            document.getElementById('sectionBase').value = '';
+            updateSubsectionDropdown('', '');
 
             // Restore original save action
             form.action = form.dataset.saveUrl;
@@ -686,6 +806,37 @@
             document.getElementById('bulkActionBar').style.display = 'none';
         }
 
+        function ajaxDelete(event, form) {
+            event.preventDefault();
+            if (!confirm(form.dataset.confirm)) return false;
+            var row = form.closest('tr');
+            var btn = form.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            var params = new URLSearchParams(new FormData(form));
+            fetch(form.action, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: params
+            }).then(function(resp) {
+                if (resp.ok) {
+                    row.style.transition = 'opacity 0.2s';
+                    row.style.opacity = '0';
+                    setTimeout(function() {
+                        row.remove();
+                        refreshTable();
+                        showFlash('Entry deleted.', '#dc3545');
+                    }, 200);
+                } else {
+                    alert('Delete failed.');
+                    btn.disabled = false;
+                }
+            }).catch(function() {
+                alert('Delete failed.');
+                btn.disabled = false;
+            });
+            return false;
+        }
+
         function bulkDelete() {
             var ids = Array.from(loadSelectedIds());
             if (ids.length === 0) return;
@@ -699,8 +850,50 @@
                 inp.value = id;
                 form.appendChild(inp);
             });
-            saveSelectedIds(new Set());
-            form.submit();
+            var params = new URLSearchParams(new FormData(form));
+            fetch(form.action, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: params
+            }).then(function(resp) {
+                if (resp.ok) {
+                    saveSelectedIds(new Set());
+                    clearSelection();
+                    refreshTable();
+                    showFlash(ids.length + ' record(s) deleted.', '#dc3545');
+                } else {
+                    alert('Bulk delete failed.');
+                }
+            }).catch(function() {
+                alert('Bulk delete failed.');
+            });
+        }
+
+        function refreshTable() {
+            fetch(window.location.href)
+                .then(function(resp) { return resp.text(); })
+                .then(function(html) {
+                    var doc = new DOMParser().parseFromString(html, 'text/html');
+                    var newTbody = doc.getElementById('entriesTableBody');
+                    var newPagination = doc.getElementById('paginationInfo');
+                    if (newTbody) document.getElementById('entriesTableBody').innerHTML = newTbody.innerHTML;
+                    if (newPagination) {
+                        document.getElementById('paginationInfo').innerHTML = newPagination.innerHTML;
+                    }
+                });
+        }
+
+        function showFlash(msg, color) {
+            var existing = document.getElementById('ajax-flash');
+            if (existing) existing.remove();
+            var div = document.createElement('div');
+            div.id = 'ajax-flash';
+            div.textContent = msg;
+            div.style.cssText = 'color:' + color + '; margin-bottom:10px; font-weight:600;';
+            var container = document.querySelector('.container');
+            var h2 = container.querySelector('h2');
+            h2.insertAdjacentElement('afterend', div);
+            setTimeout(function() { div.remove(); }, 3000);
         }
     </script>
 

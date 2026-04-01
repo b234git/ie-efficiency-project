@@ -3,6 +3,7 @@
 
 <head>
     <title>My Production Data</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" th:href="@{/css/main.css}">
     <style>
         .filter-bar {
@@ -99,10 +100,9 @@
 <body>
     <div th:replace="~{fragments/layout :: navbar}"></div>
 
-    <div class="container" style="max-width:1400px; padding:20px;">
+    <div class="container-lg">
 
-        <div
-            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+        <div class="page-header-flex">
             <div>
                 <h2 style="margin:0;" th:text="#{mydata.title}">My Production Data</h2>
                 <small style="color:#6c757d;" th:text="#{mydata.subtitle}">View and manage</small>

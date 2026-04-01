@@ -38,6 +38,7 @@ public class SplitEntryDto {
 
     // Status tracking
     private String status;
+    private String source; // "SPLIT" or "DIRECT"
     private boolean manpowerFilled;
     private boolean outputFilled;
     private boolean articlesFilled;

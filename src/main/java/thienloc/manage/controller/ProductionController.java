@@ -1,5 +1,7 @@
 package thienloc.manage.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
@@ -16,6 +18,8 @@ import java.util.List;
 @Controller
 @RequestMapping("/entry")
 public class ProductionController {
+
+    private static final Logger log = LoggerFactory.getLogger(ProductionController.class);
 
     @Autowired
     private ProductionService productionService;
@@ -34,6 +38,9 @@ public class ProductionController {
             @RequestParam(required = false) String article,
             @RequestParam(required = false, defaultValue = "false") boolean errorsOnly,
             @RequestParam(required = false) String month,
+            @RequestParam(required = false, defaultValue = "") String section,
+            @RequestParam(required = false, defaultValue = "") String line,
+            @RequestParam(required = false, defaultValue = "ALL") String source,
             @RequestParam(defaultValue = "0") int page,
             Model model,
             Principal principal) {
@@ -61,26 +68,31 @@ public class ProductionController {
 
         java.time.YearMonth selectedYearMonth = java.time.YearMonth.from(today);
         if ("MONTH".equals(range) && month != null && !month.isBlank()) {
-            try { selectedYearMonth = java.time.YearMonth.parse(month); } catch (Exception ignored) {}
+            try {
+                selectedYearMonth = java.time.YearMonth.parse(month);
+            } catch (Exception e) {
+                log.warn("Invalid month parameter '{}', falling back to current month", month);
+            }
         }
 
         switch (range) {
             case "1M":
-                records = productionService.getMyDataRange(username, today.minusMonths(1), today);
+                records = productionService.getMyDataRangeWithSplitEntries(username, today.minusMonths(1), today);
                 break;
             case "6M":
-                records = productionService.getMyDataRange(username, today.minusMonths(6), today);
+                records = productionService.getMyDataRangeWithSplitEntries(username, today.minusMonths(6), today);
                 break;
             case "ALL":
-                records = productionService.getMyDataRange(username, today.minusMonths(12), today);
+                records = productionService.getMyDataRangeWithSplitEntries(username, today.minusMonths(12), today);
                 break;
             case "MONTH":
-                records = productionService.getMyDataRange(username,
+                records = productionService.getMyDataRangeWithSplitEntries(username,
                         selectedYearMonth.atDay(1), selectedYearMonth.atEndOfMonth());
                 break;
             default:
-                if (date == null) date = today;
-                records = productionService.getMyDataRange(username, date, date);
+                if (date == null)
+                    date = today;
+                records = productionService.getMyDataRangeWithSplitEntries(username, date, date);
                 break;
         }
 
@@ -100,6 +112,29 @@ public class ProductionController {
                     .collect(java.util.stream.Collectors.toList());
         }
 
+        if (!section.trim().isEmpty()) {
+            records = records.stream()
+                    .filter(r -> section.equalsIgnoreCase(r.getSection()))
+                    .collect(java.util.stream.Collectors.toList());
+        }
+
+        if (!line.trim().isEmpty()) {
+            String lowerLine = line.toLowerCase().trim();
+            records = records.stream()
+                    .filter(r -> r.getLine() != null && r.getLine().toLowerCase().contains(lowerLine))
+                    .collect(java.util.stream.Collectors.toList());
+        }
+
+        if ("ENTRY".equals(source)) {
+            records = records.stream()
+                    .filter(r -> !"SPLIT".equals(r.getSource()))
+                    .collect(java.util.stream.Collectors.toList());
+        } else if ("SPLIT".equals(source)) {
+            records = records.stream()
+                    .filter(r -> "SPLIT".equals(r.getSource()))
+                    .collect(java.util.stream.Collectors.toList());
+        }
+
         // ── Pagination ───────────────────────────────────────────────────────
         int pageSize = 25;
         int totalRecords = records.size();
@@ -115,6 +150,13 @@ public class ProductionController {
         model.addAttribute("selectedMonth", selectedYearMonth.toString());
         model.addAttribute("article", article);
         model.addAttribute("errorsOnly", errorsOnly);
+        model.addAttribute("selectedSection", section);
+        model.addAttribute("selectedLine", line);
+        model.addAttribute("selectedSource", source);
+        java.util.List<String> sectionOptions = java.util.Arrays.stream(thienloc.manage.service.SectionMetrics.values())
+                .map(thienloc.manage.service.SectionMetrics::getSectionName)
+                .collect(java.util.stream.Collectors.toList());
+        model.addAttribute("sectionOptions", sectionOptions);
         model.addAttribute("currentPage", page);
         model.addAttribute("totalPages", totalPages);
         model.addAttribute("totalRecords", totalRecords);
@@ -122,7 +164,8 @@ public class ProductionController {
 
         int totalOutput = records.stream().mapToInt(r -> r.getOutput() != null ? r.getOutput() : 0).sum();
         long effCount = records.stream().filter(r -> r.getEff() != null).count();
-        double avgEff = records.stream().filter(r -> r.getEff() != null).mapToDouble(r -> r.getEff()).average().orElse(0);
+        double avgEff = records.stream().filter(r -> r.getEff() != null).mapToDouble(r -> r.getEff()).average()
+                .orElse(0);
         model.addAttribute("totalOutput", totalOutput);
         model.addAttribute("avgEff", effCount > 0 ? avgEff : null);
 
@@ -188,13 +231,23 @@ public class ProductionController {
     public String deleteMyEntry(@RequestParam Long id,
             @RequestParam(required = false, defaultValue = "TODAY") String range,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam(required = false) String article) {
-        productionService.deleteRecord(id);
+            @RequestParam(required = false) String article,
+            @RequestParam(required = false, defaultValue = "") String section,
+            @RequestParam(required = false, defaultValue = "") String line,
+            @RequestParam(required = false, defaultValue = "ALL") String source,
+            Principal principal) {
+        productionService.deleteOwnRecord(id, principal.getName());
         String redirect = "redirect:/entry/?deleted&range=" + range;
         if (date != null)
             redirect += "&date=" + date;
         if (article != null && !article.trim().isEmpty())
             redirect += "&article=" + article;
+        if (!section.trim().isEmpty())
+            redirect += "&section=" + section;
+        if (!line.trim().isEmpty())
+            redirect += "&line=" + line;
+        if (!"ALL".equals(source))
+            redirect += "&source=" + source;
         return redirect;
     }
 }

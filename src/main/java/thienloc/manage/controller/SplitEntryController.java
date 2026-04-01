@@ -24,6 +24,7 @@ import thienloc.manage.service.SystemLogService;
 import java.io.IOException;
 import java.security.Principal;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -64,13 +65,26 @@ public class SplitEntryController {
     @GetMapping({"", "/"})
     public String showLanding(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) String month,
             Model model) {
 
-        if (date == null) date = LocalDate.now();
-        List<SplitEntryDto> entries = splitEntryService.getEntriesForDate(date);
+        if (month != null && !month.isEmpty()) {
+            YearMonth ym = YearMonth.parse(month);
+            List<SplitEntryDto> entries = splitEntryService.getEntriesForMonth(ym);
+            model.addAttribute("entries", entries);
+            model.addAttribute("selectedMonth", month);
+            model.addAttribute("selectedDate", LocalDate.now());
+            model.addAttribute("viewMode", "month");
+        } else {
+            if (date == null) date = LocalDate.now();
+            List<SplitEntryDto> entries = splitEntryService.getEntriesForDate(date);
+            model.addAttribute("entries", entries);
+            model.addAttribute("selectedDate", date);
+            model.addAttribute("selectedMonth", LocalDate.now().toString().substring(0, 7));
+            model.addAttribute("viewMode", "day");
+        }
 
-        model.addAttribute("entries", entries);
-        model.addAttribute("selectedDate", date);
+        model.addAttribute("sections", SECTIONS);
         return "split-entry";
     }
 

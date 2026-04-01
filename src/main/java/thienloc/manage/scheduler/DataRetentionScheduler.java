@@ -23,6 +23,7 @@ public class DataRetentionScheduler {
         log.info("Data retention check started");
         dataRetentionService.checkAndNotify();
         dataRetentionService.deleteExpiredData();
+        dataRetentionService.deleteIncompleteSplitEntries();
         log.info("Data retention check completed");
     }
 }

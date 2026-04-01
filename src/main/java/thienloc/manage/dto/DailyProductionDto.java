@@ -54,4 +54,7 @@ public class DailyProductionDto {
     // JSON map of timeSlot -> articleNo for client-side edit population
     private String articlesJson;
 
+    // "ENTRY" for direct DailyProduction, "SPLIT" for rows from SplitEntry
+    private String source;
+
 }

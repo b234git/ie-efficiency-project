@@ -27,7 +27,7 @@ public class HomeController {
                     return "redirect:/dashboard/";
                 }
                 if (auth.getAuthority().equals("ROLE_USER")) {
-                    return "redirect:/entry/";
+                    return "redirect:/split-entry/";
                 }
             }
         }

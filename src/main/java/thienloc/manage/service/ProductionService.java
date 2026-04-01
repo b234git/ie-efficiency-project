@@ -9,8 +9,10 @@ import thienloc.manage.entity.DailyProduction;
 import thienloc.manage.entity.DailyProductionDetail;
 import thienloc.manage.entity.MasterDb;
 import thienloc.manage.entity.User;
+import thienloc.manage.entity.SplitEntry;
 import thienloc.manage.repository.DailyProductionRepository;
 import thienloc.manage.repository.MasterDbRepository;
+import thienloc.manage.repository.SplitEntryRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -37,6 +39,9 @@ public class ProductionService {
     private MasterDbRepository masterDbRepository;
 
     @Autowired
+    private SplitEntryRepository splitEntryRepository;
+
+    @Autowired
     private UserService userService;
 
     @Autowired
@@ -50,14 +55,18 @@ public class ProductionService {
             throw new ResourceNotFoundException("User not found: " + username);
         }
 
-        // Auto-map ASSEMBLY line 5 → ASSEMBLY SMALL, others → ASSEMBLY BIG
+        // Normalize section abbreviations; for ambiguous assembly inputs route by line
         String section = dto.getSection();
-        if ("ASSEMBLY".equalsIgnoreCase(section)) {
+        if ("ASSEMBLY".equalsIgnoreCase(section) || "ASSY".equalsIgnoreCase(section)) {
             section = "5".equals(dto.getLine())
                     ? SectionMetrics.ASSEMBLY_SMALL.getSectionName()
                     : SectionMetrics.ASSEMBLY_BIG.getSectionName();
-            dto.setSection(section);
+        } else if ("ASSEMBLY BIG".equalsIgnoreCase(section) && "5".equals(dto.getLine())) {
+            section = SectionMetrics.ASSEMBLY_SMALL.getSectionName();
+        } else {
+            section = SectionMetrics.normalize(section);
         }
+        dto.setSection(section);
 
         double allowanceVal = 1.0;
         if (dto.getAllowance() != null && dto.getAllowance() > 0) {
@@ -133,7 +142,41 @@ public class ProductionService {
 
     public List<DailyProductionDto> getMyDataRange(String username, LocalDate from, LocalDate to) {
         return convertAllToDtoAndCalculateEff(
-                productionRepository.findByCreatedBy_UsernameAndProductionDateBetweenOrderByProductionDateDescSectionAsc(username, from, to));
+                productionRepository
+                        .findByCreatedBy_UsernameAndProductionDateBetweenOrderByProductionDateDescSectionAsc(username,
+                                from, to));
+    }
+
+    public List<DailyProductionDto> getMyDataRangeWithSplitEntries(String username, LocalDate from, LocalDate to) {
+        List<DailyProductionDto> entries = getMyDataRange(username, from, to);
+        entries.forEach(e -> e.setSource("ENTRY"));
+
+        List<DailyProductionDto> splitRows = splitEntryRepository.findPartialByDateRange(from, to)
+                .stream()
+                .map(se -> {
+                    DailyProductionDto dto = new DailyProductionDto();
+                    dto.setId(se.getId());
+                    dto.setProductionDate(se.getProductionDate());
+                    dto.setSection(se.getSection());
+                    dto.setLine(se.getLine());
+                    dto.setMp(se.getMp());
+                    dto.setDli(se.getDli());
+                    dto.setIdl(se.getIdl());
+                    dto.setWt(se.getWt());
+                    dto.setOutput(se.getTotalOutput());
+                    dto.setRft(se.getRft());
+                    dto.setAllowance(se.getAllowance() != null ? se.getAllowance() * 100.0 : 100.0);
+                    dto.setSource("SPLIT");
+                    dto.setCreatedBy(se.getManpowerFilledBy() != null
+                            ? se.getManpowerFilledBy().getUsername() : "-");
+                    dto.setArticle("N/A");
+                    return dto;
+                })
+                .collect(Collectors.toList());
+
+        List<DailyProductionDto> merged = new ArrayList<>(entries);
+        merged.addAll(splitRows);
+        return merged;
     }
 
     public Page<DailyProductionDto> getUserEntries(String username, Pageable pageable) {
@@ -164,6 +207,22 @@ public class ProductionService {
         if (ids != null && !ids.isEmpty()) {
             productionRepository.deleteAllById(ids);
         }
+    }
+
+    /**
+     * Delete a record only if it belongs to the given user.
+     * Used by /entry/delete (USER role) to prevent IDOR attacks.
+     * 
+     * @throws ResourceNotFoundException if record doesn't exist or doesn't belong
+     *                                   to user
+     */
+    public void deleteOwnRecord(Long id, String username) {
+        DailyProduction record = productionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Record not found"));
+        if (record.getCreatedBy() == null || !record.getCreatedBy().getUsername().equals(username)) {
+            throw new ResourceNotFoundException("Record not found");
+        }
+        productionRepository.deleteById(id);
     }
 
     // ─── DTO conversion ──────────────────────────────────────────────────────────
@@ -220,9 +279,10 @@ public class ProductionService {
             boolean first = true;
             for (DailyProductionDetailDto d : detailDtos) {
                 if (d.getTimeSlot() != null && d.getArticleNo() != null && !d.getArticleNo().isEmpty()) {
-                    if (!first) json.append(",");
+                    if (!first)
+                        json.append(",");
                     json.append("\"").append(d.getTimeSlot()).append("\":\"")
-                        .append(d.getArticleNo().replace("\\", "\\\\").replace("\"", "\\\"")).append("\"");
+                            .append(d.getArticleNo().replace("\\", "\\\\").replace("\"", "\\\"")).append("\"");
                     first = false;
                 }
             }
@@ -265,7 +325,11 @@ public class ProductionService {
 
         Map<String, List<DailyProduction>> grouped = new LinkedHashMap<>();
         for (DailyProduction rec : allRecords) {
-            String key = rec.getSection() + "|" + rec.getLine();
+            String recSection = rec.getSection();
+            if ("ASSEMBLY BIG".equalsIgnoreCase(recSection) && "5".equals(rec.getLine())) {
+                recSection = SectionMetrics.ASSEMBLY_SMALL.getSectionName();
+            }
+            String key = recSection + "|" + rec.getLine();
             grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(rec);
         }
 
@@ -296,8 +360,8 @@ public class ProductionService {
             block.setLine(line);
 
             List<WeeklyReportDto.DailyRow> dailyRows = new ArrayList<>();
-            double sumEff = 0, sumActPph = 0, sumStdPph = 0, sumMp = 0, sumWt = 0;
-            int sumOutput = 0, effCount = 0, stdCount = 0;
+            double sumEff = 0, sumActPph = 0, sumStdPph = 0, sumMp = 0, sumWt = 0, sumDli = 0;
+            int sumOutput = 0, effCount = 0, stdCount = 0, sumTargetOutput = 0, targetCount = 0;
 
             Optional<SectionMetrics> smOpt = SectionMetrics.fromSection(section);
 
@@ -307,6 +371,7 @@ public class ProductionService {
                 row.setOutput(rec.getTotalOutput());
                 row.setMp(rec.getMp());
                 row.setWt(rec.getWt());
+                row.setDli(rec.getDli());
 
                 String articleNo = "N/A";
                 if (rec.getDetails() != null && !rec.getDetails().isEmpty()) {
@@ -345,9 +410,20 @@ public class ProductionService {
                     }
                 }
 
+                if (row.getStdPph() != null && row.getStdPph() > 0
+                        && rec.getDli() != null && rec.getDli() > 0
+                        && rec.getWt() != null && rec.getWt() > 0) {
+                    row.setTargetOutput((int) Math.round(row.getStdPph() * rec.getDli() * rec.getWt()));
+                }
+
                 sumOutput += (rec.getTotalOutput() != null ? rec.getTotalOutput() : 0);
                 sumMp += (rec.getMp() != null ? rec.getMp() : 0);
                 sumWt += (rec.getWt() != null ? rec.getWt() : 0);
+                sumDli += (rec.getDli() != null ? rec.getDli() : 0);
+                if (row.getTargetOutput() != null) {
+                    sumTargetOutput += row.getTargetOutput();
+                    targetCount++;
+                }
 
                 dailyRows.add(row);
             }
@@ -363,6 +439,8 @@ public class ProductionService {
             summary.setAvgEff(effCount > 0 ? sumEff / effCount : null);
             summary.setAvgActualPph(n > 0 ? sumActPph / n : null);
             summary.setAvgStdPph(stdCount > 0 ? sumStdPph / stdCount : null);
+            summary.setAvgDli(n > 0 ? sumDli / n : 0);
+            summary.setTotalTargetOutput(targetCount > 0 ? sumTargetOutput : null);
 
             block.setTotal(summary);
             blocks.add(block);

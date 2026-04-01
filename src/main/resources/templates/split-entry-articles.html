@@ -3,6 +3,7 @@
 
 <head>
     <title th:text="#{splitentry.articles.title}">Step 3: Allowance &amp; Articles</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 
@@ -66,27 +67,27 @@
         <form id="articlesForm" th:action="@{/split-entry/articles}" th:object="${splitEntry}" method="post">
 
             <!-- ROW 1: Date / Section / Line -->
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;margin-bottom:16px;">
+            <div class="grid-3col">
                 <div class="form-group">
                     <label><span th:text="#{entry.label.date}">Date</span> <span style="color:red">*</span></label>
                     <input type="date" th:field="*{productionDate}" class="form-control" required />
                 </div>
                 <div class="form-group">
                     <label><span th:text="#{entry.label.section}">Section</span> <span style="color:red">*</span></label>
-                    <select th:field="*{section}" class="form-control" required>
-                        <option value="" disabled th:text="#{entry.select}">-- Select --</option>
+                    <select id="sectionMain" class="form-control" required>
+                        <option value="" th:text="#{entry.select}">-- Select --</option>
                         <option value="SEW">SEW</option>
-                        <option value="BUFFING" style="font-weight:bold; background:#f0f0f0;">BUFFING</option>
-                        <option value="BUFFING 1ST">&nbsp;&nbsp;&nbsp; BUFFING 1ST</option>
-                        <option value="BUFFING 2ND">&nbsp;&nbsp;&nbsp; BUFFING 2ND</option>
-                        <option value="STOCKFIT" style="font-weight:bold; background:#f0f0f0;">STOCKFIT</option>
-                        <option value="STOCKFIT UV">&nbsp;&nbsp;&nbsp; STOCKFIT UV</option>
-                        <option value="STOCKFIT 1ST">&nbsp;&nbsp;&nbsp; STOCKFIT 1ST</option>
-                        <option value="STOCKFIT 2ND">&nbsp;&nbsp;&nbsp; STOCKFIT 2ND</option>
-                        <option value="ASSEMBLY" style="font-weight:bold; background:#f0f0f0;">ASSEMBLY</option>
-                        <option value="ASSEMBLY BIG">&nbsp;&nbsp;&nbsp; ASSEMBLY BIG</option>
-                        <option value="ASSEMBLY SMALL">&nbsp;&nbsp;&nbsp; ASSEMBLY SMALL</option>
+                        <option value="BUFFING">BUFFING</option>
+                        <option value="STOCKFIT">STOCKFIT</option>
+                        <option value="ASSEMBLY">ASSEMBLY</option>
                     </select>
+                    <div id="subSectionGroup" style="margin-top:6px; display:none;">
+                        <label style="font-size:0.85em; color:#6c757d;">Sub-section</label>
+                        <select id="sectionSub" class="form-control">
+                            <option value="">-- (none) --</option>
+                        </select>
+                    </div>
+                    <input type="hidden" th:field="*{section}" id="sectionHidden" />
                 </div>
                 <div class="form-group">
                     <label><span th:text="#{entry.label.line}">Line</span> <span style="color:red">*</span></label>
@@ -95,7 +96,7 @@
             </div>
 
             <!-- Allowance -->
-            <div style="display:grid;grid-template-columns:1fr;gap:15px;margin-bottom:16px; max-width:400px;">
+            <div class="grid-3col" style="max-width:400px;">
                 <div class="form-group">
                     <label title="Allowance % impacts EFF calculation">
                         <span th:text="#{entry.label.allowance}">Allowance (%)</span> <span style="color:red">*</span>
@@ -123,7 +124,7 @@
 
             <!-- Time Slots -->
             <h4 style="margin-top:20px;" th:text="#{entry.hourly}">Hourly Breakdown — Article per Time Slot</h4>
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:15px;">
+            <div class="grid-auto-fill">
                 <div th:each="detail, stat : *{details}" style="border:1px solid #ccc;padding:10px;border-radius:5px;">
                     <strong th:text="${detail.timeSlot}"></strong>
                     <input type="hidden" th:field="*{details[__${stat.index}__].timeSlot}" />
@@ -226,6 +227,64 @@
             if (num) num.value = v;
         }
 
+        // ── Section / Sub-section dropdowns ─────────────────────────────────
+        var SUB_SECTIONS = {
+            'SEW':      [],
+            'BUFFING':  ['BUFFING 1ST', 'BUFFING 2ND'],
+            'STOCKFIT': ['STOCKFIT UV', 'STOCKFIT 1ST', 'STOCKFIT 2ND'],
+            'ASSEMBLY': ['ASSEMBLY BIG', 'ASSEMBLY SMALL']
+        };
+
+        var PARENT_MAP = {};
+        Object.keys(SUB_SECTIONS).forEach(function(parent) {
+            PARENT_MAP[parent] = parent;
+            SUB_SECTIONS[parent].forEach(function(sub) { PARENT_MAP[sub] = parent; });
+        });
+
+        function updateSectionHidden() {
+            var main = document.getElementById('sectionMain').value;
+            var sub  = document.getElementById('sectionSub').value;
+            var val  = (sub && sub !== '') ? sub : main;
+            var hidden = document.getElementById('sectionHidden');
+            hidden.value = val;
+            hidden.dispatchEvent(new Event('change'));
+        }
+
+        function onSectionMainChange() {
+            var main = document.getElementById('sectionMain').value;
+            var subGroup  = document.getElementById('subSectionGroup');
+            var subSelect = document.getElementById('sectionSub');
+            var subs = SUB_SECTIONS[main] || [];
+
+            subSelect.innerHTML = '<option value="">-- (none) --</option>';
+            subs.forEach(function(s) {
+                var opt = document.createElement('option');
+                opt.value = s; opt.textContent = s;
+                subSelect.appendChild(opt);
+            });
+
+            subGroup.style.display = subs.length > 0 ? '' : 'none';
+            updateSectionHidden();
+        }
+
+        document.getElementById('sectionMain').addEventListener('change', onSectionMainChange);
+        document.getElementById('sectionSub').addEventListener('change', updateSectionHidden);
+
+        // Auto-select SMALL sub-section when line = "5"
+        document.querySelector('[name="line"]').addEventListener('input', function() {
+            var line = this.value.trim();
+            var subSelect = document.getElementById('sectionSub');
+            if (line === '5') {
+                var smallOpt = Array.from(subSelect.options).find(function(o) {
+                    return o.value.indexOf('SMALL') !== -1;
+                });
+                if (smallOpt) {
+                    subSelect.value = smallOpt.value;
+                    updateSectionHidden();
+                }
+            }
+        });
+
         window.addEventListener('DOMContentLoaded', function () {
             var num = document.getElementById('fAllowanceNum');
             if (num && num.value) {
@@ -234,18 +293,31 @@
                 syncAllowance(100);
             }
             updateActiveSlots();
+
+            // Init section dropdowns from existing value (e.g. "BUFFING 1ST")
+            var existing = document.getElementById('sectionHidden').value;
+            if (existing) {
+                var parent = PARENT_MAP[existing];
+                if (parent) {
+                    document.getElementById('sectionMain').value = parent;
+                    onSectionMainChange();
+                    if (existing !== parent) {
+                        document.getElementById('sectionSub').value = existing;
+                    }
+                }
+            }
         });
 
         // ── Auto-lookup existing record when Date/Section/Line are filled ──
         (function() {
-            var dateInput = document.querySelector('[name="productionDate"]');
-            var sectionInput = document.querySelector('[name="section"]');
-            var lineInput = document.querySelector('[name="line"]');
+            var dateInput    = document.querySelector('[name="productionDate"]');
+            var sectionHidden = document.getElementById('sectionHidden');
+            var lineInput    = document.querySelector('[name="line"]');
 
             function tryLookup() {
-                var date = dateInput.value;
-                var section = sectionInput.value;
-                var line = lineInput.value.trim();
+                var date    = dateInput.value;
+                var section = sectionHidden.value;
+                var line    = lineInput.value.trim();
                 if (!date || !section || !line) return;
 
                 var params = new URLSearchParams(window.location.search);
@@ -258,7 +330,7 @@
             }
 
             dateInput.addEventListener('change', tryLookup);
-            sectionInput.addEventListener('change', tryLookup);
+            sectionHidden.addEventListener('change', tryLookup);
             lineInput.addEventListener('change', tryLookup);
         })();
     </script>

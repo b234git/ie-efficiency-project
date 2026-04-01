@@ -3,48 +3,19 @@
 
 <head>
     <title>Production Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" th:href="@{/css/main.css}">
-    <style>
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0, 0, 0, 0.4);
-        }
-
-        .modal-content {
-            background-color: #fefefe;
-            margin: 10% auto;
-            padding: 20px;
-            border: 1px solid #888;
-            width: 50%;
-            border-radius: 8px;
-        }
-
-        .close {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-    </style>
 </head>
 
 <body>
     <div th:replace="~{fragments/layout :: navbar}"></div>
 
-    <div class="container" style="max-width: 1400px;">
+    <div class="container-lg">
         <h2 th:text="#{dashboard.title}">Production Dashboard</h2>
 
         <!-- Range / Date filter -->
-        <form th:action="@{/dashboard/}" method="get"
-            style="margin-bottom: 20px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <form th:action="@{/dashboard/}" method="get" class="filter-bar"
+            style="margin-bottom: 20px;">
 
             <!-- Combo box chọn phạm vi -->
             <div>

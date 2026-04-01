@@ -1,13 +1,23 @@
 package thienloc.manage.service;
 
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.*;
-import org.springframework.stereotype.Service;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.VerticalAlignment;
+import org.apache.poi.xssf.usermodel.XSSFCellStyle;
+import org.apache.poi.xssf.usermodel.XSSFColor;
+import org.apache.poi.xssf.usermodel.XSSFFont;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.stereotype.Service;
 
 @Service
 public class SplitEntryTemplateService {
@@ -19,7 +29,7 @@ public class SplitEntryTemplateService {
             "19:00-20:00", "20:00-21:00", "21:00-22:00");
 
     /**
-     * Output template: Date | Section | Line | WT (hrs) | Total Output | RFT (%)
+     * Output template: Date | Section | Subsection | Line | WT (hrs) | Total Output | RFT (%)
      */
     public byte[] generateOutputTemplate() throws IOException {
         try (XSSFWorkbook wb = new XSSFWorkbook()) {
@@ -29,7 +39,7 @@ public class SplitEntryTemplateService {
             XSSFCellStyle sampleStyle = createSampleStyle(wb);
 
             // Row 0: Headers
-            String[] headers = {"Date", "Section", "Line", "WT (hrs)", "Total Output", "RFT (%)"};
+            String[] headers = {"Date", "Section", "Subsection", "Line", "WT (hrs)", "Total Output", "RFT (%)"};
             Row headerRow = sheet.createRow(0);
             headerRow.setHeightInPoints(22);
             for (int i = 0; i < headers.length; i++) {
@@ -38,7 +48,7 @@ public class SplitEntryTemplateService {
                 c.setCellStyle(headerStyle);
             }
 
-            // Row 1: Sample data
+            // Row 1: Sample data (SEW - no subsection)
             Row sample = sheet.createRow(1);
             Cell dateCell = sample.createCell(0);
             dateCell.setCellValue("2026-03-25");
@@ -48,21 +58,48 @@ public class SplitEntryTemplateService {
             secCell.setCellValue("SEW");
             secCell.setCellStyle(sampleStyle);
 
-            Cell lineCell = sample.createCell(2);
+            Cell subSecCell = sample.createCell(2);
+            subSecCell.setCellValue("");
+            subSecCell.setCellStyle(sampleStyle);
+
+            Cell lineCell = sample.createCell(3);
             lineCell.setCellValue("1A");
             lineCell.setCellStyle(sampleStyle);
 
-            setNumCell(sample, 3, 10.0, sampleStyle);
-            setNumCell(sample, 4, 1200, sampleStyle);
-            setNumCell(sample, 5, 95, sampleStyle);
+            setNumCell(sample, 4, 10.0, sampleStyle);
+            setNumCell(sample, 5, 1200, sampleStyle);
+            setNumCell(sample, 6, 95, sampleStyle);
+
+            // Row 2: Sample data (BUFFING with subsection)
+            Row sample2 = sheet.createRow(2);
+            Cell dateCell2 = sample2.createCell(0);
+            dateCell2.setCellValue("2026-03-25");
+            dateCell2.setCellStyle(sampleStyle);
+
+            Cell secCell2 = sample2.createCell(1);
+            secCell2.setCellValue("BUFFING");
+            secCell2.setCellStyle(sampleStyle);
+
+            Cell subSecCell2 = sample2.createCell(2);
+            subSecCell2.setCellValue("1ST");
+            subSecCell2.setCellStyle(sampleStyle);
+
+            Cell lineCell2 = sample2.createCell(3);
+            lineCell2.setCellValue("1A");
+            lineCell2.setCellStyle(sampleStyle);
+
+            setNumCell(sample2, 4, 10.0, sampleStyle);
+            setNumCell(sample2, 5, 800, sampleStyle);
+            setNumCell(sample2, 6, 98, sampleStyle);
 
             // Column widths
             sheet.setColumnWidth(0, 4000); // Date
             sheet.setColumnWidth(1, 5000); // Section
-            sheet.setColumnWidth(2, 3000); // Line
-            sheet.setColumnWidth(3, 3500); // WT
-            sheet.setColumnWidth(4, 4500); // Total Output
-            sheet.setColumnWidth(5, 3500); // RFT
+            sheet.setColumnWidth(2, 4000); // Subsection
+            sheet.setColumnWidth(3, 3000); // Line
+            sheet.setColumnWidth(4, 3500); // WT
+            sheet.setColumnWidth(5, 4500); // Total Output
+            sheet.setColumnWidth(6, 3500); // RFT
 
             // Freeze header
             sheet.createFreezePane(0, 1);
@@ -74,7 +111,7 @@ public class SplitEntryTemplateService {
     }
 
     /**
-     * Articles template: Date | Section | Line | Allowance (%) | 07:00-08:00 | ... | 21:00-22:00
+     * Articles template: Date | Section | Subsection | Line | Allowance (%) | 07:00-08:00 | ... | 21:00-22:00
      */
     public byte[] generateArticlesTemplate() throws IOException {
         try (XSSFWorkbook wb = new XSSFWorkbook()) {
@@ -88,14 +125,14 @@ public class SplitEntryTemplateService {
             Row headerRow = sheet.createRow(0);
             headerRow.setHeightInPoints(22);
 
-            String[] baseHeaders = {"Date", "Section", "Line", "Allowance (%)"};
+            String[] baseHeaders = {"Date", "Section", "Subsection", "Line", "Allowance (%)"};
             for (int i = 0; i < baseHeaders.length; i++) {
                 Cell c = headerRow.createCell(i);
                 c.setCellValue(baseHeaders[i]);
                 c.setCellStyle(headerStyle);
             }
             for (int i = 0; i < TIME_SLOTS.size(); i++) {
-                Cell c = headerRow.createCell(4 + i);
+                Cell c = headerRow.createCell(5 + i);
                 c.setCellValue(TIME_SLOTS.get(i));
                 c.setCellStyle(slotHeaderStyle);
             }
@@ -110,17 +147,21 @@ public class SplitEntryTemplateService {
             secCell.setCellValue("SEW");
             secCell.setCellStyle(sampleStyle);
 
-            Cell lineCell = sample.createCell(2);
+            Cell subSecCell = sample.createCell(2);
+            subSecCell.setCellValue("");
+            subSecCell.setCellStyle(sampleStyle);
+
+            Cell lineCell = sample.createCell(3);
             lineCell.setCellValue("1A");
             lineCell.setCellStyle(sampleStyle);
 
-            setNumCell(sample, 3, 100, sampleStyle);
+            setNumCell(sample, 4, 100, sampleStyle);
 
             // Sample articles for first few slots
             String[] sampleArticles = {"Y01748", "Y01748", "Y01748", "Y01748", "Y01748",
                     "", "Y01748", "Y01748", "Y01748", "Y01748"};
             for (int i = 0; i < sampleArticles.length && i < TIME_SLOTS.size(); i++) {
-                Cell c = sample.createCell(4 + i);
+                Cell c = sample.createCell(5 + i);
                 c.setCellValue(sampleArticles[i]);
                 c.setCellStyle(sampleStyle);
             }
@@ -128,10 +169,11 @@ public class SplitEntryTemplateService {
             // Column widths
             sheet.setColumnWidth(0, 4000);
             sheet.setColumnWidth(1, 5000);
-            sheet.setColumnWidth(2, 3000);
-            sheet.setColumnWidth(3, 4500);
+            sheet.setColumnWidth(2, 4000);
+            sheet.setColumnWidth(3, 3000);
+            sheet.setColumnWidth(4, 4500);
             for (int i = 0; i < TIME_SLOTS.size(); i++) {
-                sheet.setColumnWidth(4 + i, 3800);
+                sheet.setColumnWidth(5 + i, 3800);
             }
 
             // Freeze header

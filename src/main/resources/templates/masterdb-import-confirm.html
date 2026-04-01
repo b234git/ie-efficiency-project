@@ -3,6 +3,7 @@
 
 <head>
     <title th:text="#{masterdb.import.confirm.header}">Confirm Import</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" th:href="@{/css/main.css}">
     <style>
         .confirm-header {
@@ -97,7 +98,7 @@
 <body>
     <div th:replace="~{fragments/layout :: navbar}"></div>
 
-    <div class="container" style="max-width:1400px; padding: 20px;">
+    <div class="container-lg">
 
         <div class="confirm-header">
             <h2 th:text="#{masterdb.import.confirm.header}">Confirm Import Master DB</h2>
