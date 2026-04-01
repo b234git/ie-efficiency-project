@@ -19,7 +19,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
 @Controller
 @RequestMapping("/excel")
@@ -62,8 +66,10 @@ public class ExcelController {
 
         try {
             EntryImportPreviewDto preview = excelService.parseForPreview(file);
-            // Store file bytes in session so we can import on confirm
-            session.setAttribute(SESSION_FILE, file.getBytes());
+            // Store file as temp file on disk to avoid holding large byte[] in session RAM
+            Path tempFile = Files.createTempFile("ie-eff-import-", ".xlsx");
+            Files.copy(file.getInputStream(), tempFile, StandardCopyOption.REPLACE_EXISTING);
+            session.setAttribute(SESSION_FILE, tempFile.toString());
             session.setAttribute(SESSION_PREVIEW, preview);
             model.addAttribute("preview", preview);
             return "entry-import-confirm";
@@ -81,14 +87,15 @@ public class ExcelController {
     public String confirmImport(HttpSession session,
                                 Authentication authentication,
                                 RedirectAttributes redirectAttributes) {
-        byte[] fileBytes = (byte[]) session.getAttribute(SESSION_FILE);
-        if (fileBytes == null) {
+        String filePath = (String) session.getAttribute(SESSION_FILE);
+        if (filePath == null) {
             redirectAttributes.addFlashAttribute("error", "Session expired. Please upload the file again.");
             return "redirect:/entry";
         }
 
-        try {
-            excelService.importExcel(fileBytes, authentication.getName());
+        Path tempFile = Path.of(filePath);
+        try (FileInputStream fis = new FileInputStream(tempFile.toFile())) {
+            excelService.importExcel(fis, authentication.getName());
             redirectAttributes.addFlashAttribute("success", "File imported successfully!");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", "Failed to import file: " + e.getMessage());
@@ -96,6 +103,7 @@ public class ExcelController {
         } finally {
             session.removeAttribute(SESSION_FILE);
             session.removeAttribute(SESSION_PREVIEW);
+            try { Files.deleteIfExists(tempFile); } catch (IOException ignored) {}
         }
 
         return "redirect:/entry";
@@ -106,6 +114,10 @@ public class ExcelController {
      */
     @PostMapping("/import/cancel")
     public String cancelImport(HttpSession session) {
+        String filePath = (String) session.getAttribute(SESSION_FILE);
+        if (filePath != null) {
+            try { Files.deleteIfExists(Path.of(filePath)); } catch (IOException ignored) {}
+        }
         session.removeAttribute(SESSION_FILE);
         session.removeAttribute(SESSION_PREVIEW);
         return "redirect:/entry";

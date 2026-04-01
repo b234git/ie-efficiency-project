@@ -3,6 +3,7 @@
 
 <head>
     <title>Weekly EFF Report</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" th:href="@{/css/main.css}">
     <style>
         .report-header {
@@ -156,7 +157,7 @@
 <body>
     <div th:replace="~{fragments/layout :: navbar}"></div>
 
-    <div class="container" style="max-width:1400px; padding:20px;">
+    <div class="container-lg">
 
         <!-- Header -->
         <div class="report-header">
@@ -171,6 +172,9 @@
                         style="width:170px;" />
                     <button type="submit" class="btn btn-primary" th:text="#{report.view}">Xem</button>
                 </form>
+                <a th:href="@{/report/weekly/export(weekStart=${weekStart})}" class="btn btn-success btn-sm" style="white-space:nowrap;">
+                    📥 Export Excel
+                </a>
             </div>
         </div>
 
@@ -187,7 +191,7 @@
 
         <!-- Section category filter bar -->
         <div id="sectionFilterBar"
-            style="margin-bottom:20px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; background:#f8f9fa; padding:10px 14px; border-radius:6px; border:1px solid #dee2e6;">
+            style="margin-bottom:20px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; background:#f8f9fa; padding:10px 14px; border-radius:6px; border:1px solid #dee2e6; position:sticky; top:0; z-index:100;">
             <span style="font-weight:600; color:#495057; margin-right:4px;">🔍 Filter:</span>
             <button class="btn btn-primary btn-sm" id="filterBtn_ALL" onclick="filterSection('ALL')">All</button>
 
@@ -234,8 +238,10 @@
                             <th th:text="#{table.pattern}">Pattern#</th>
                             <th th:text="#{table.style}">Style</th>
                             <th th:text="#{table.article}">Article#</th>
-                            <th th:text="#{table.output}">Output</th>
-                            <th th:text="#{table.mp}">DL (MP)</th>
+                            <th>ACTUAL OUTPUT</th>
+                            <th>TARGET OUTPUT</th>
+                            <th th:text="#{table.mp}">MP</th>
+                            <th>ACTUAL MP</th>
                             <th th:text="#{table.wt}">WT (h)</th>
                             <th th:text="#{table.eff}">EFF%</th>
                             <th th:text="#{table.actualpph}">ACTUAL PPH</th>
@@ -251,7 +257,9 @@
                                 style="max-width:200px; overflow:hidden; text-overflow:ellipsis;"></td>
                             <td th:text="${row.articleNo ?: '-'}"></td>
                             <td class="num"><strong th:text="${row.output ?: '-'}"></strong></td>
+                            <td class="num" th:text="${row.targetOutput != null ? row.targetOutput : '-'}"></td>
                             <td class="num" th:text="${row.mp ?: '-'}"></td>
+                            <td class="num" th:text="${row.dli != null ? #numbers.formatDecimal(row.dli, 1, 1) : '-'}"></td>
                             <td class="num" th:text="${row.wt ?: '-'}"></td>
                             <td class="num eff-cell"
                                 th:classappend="${row.eff != null and row.eff >= 0.795 ? 'eff-hi' : 'eff-low'}"
@@ -275,8 +283,12 @@
                             <td th:text="#{report.total}">Total</td>
                             <td colspan="3"></td>
                             <td class="num" th:text="${block.total.totalOutput}"></td>
+                            <td class="num" th:text="${block.total.totalTargetOutput != null ? block.total.totalTargetOutput : '-'}"></td>
                             <td class="num"
                                 th:text="${block.total.avgMp != null ? #numbers.formatDecimal(block.total.avgMp, 1, 1) : '-'}">
+                            </td>
+                            <td class="num"
+                                th:text="${block.total.avgDli != null ? #numbers.formatDecimal(block.total.avgDli, 1, 1) : '-'}">
                             </td>
                             <td class="num"
                                 th:text="${block.total.avgWt != null ? #numbers.formatDecimal(block.total.avgWt, 1, 1) : '-'}">
@@ -306,7 +318,7 @@
             if (s.includes('BUFF')) return 'BUFFING';
             if (s.includes('SEW')) return 'SEW';
             if (s.includes('STOCKFIT') || s.includes(' SF') || s === 'SF') return 'SF';
-            if (s.includes('ASSY')) return 'ASSY';
+            if (s.includes('ASSY') || s.includes('ASSEMBLY')) return 'ASSY';
             return section; // fallback: dùng tên gốc
         }
 

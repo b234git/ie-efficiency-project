@@ -42,6 +42,8 @@ public class WeeklyReportDto {
         private Double eff; // EFF%
         private Double actualPph; // Output / MP / WT
         private Double stdPph; // From MasterDb
+        private Double dli;           // Actual MP (Direct Labor Indirect)
+        private Integer targetOutput; // round(stdPph × dli × wt)
     }
 
     @Data
@@ -56,5 +58,7 @@ public class WeeklyReportDto {
         private Double avgMp;
         private Double avgWt;
         private int dayCount;
+        private Double avgDli;
+        private Integer totalTargetOutput;
     }
 }

@@ -3,8 +3,11 @@ package thienloc.manage.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+
+import jakarta.validation.Valid;
 import thienloc.manage.entity.User;
 import thienloc.manage.service.UserService;
 
@@ -29,7 +32,10 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public String registerUser(User user, Model model) {
+    public String registerUser(@Valid User user, BindingResult result, Model model) {
+        if (result.hasErrors()) {
+            return "register";
+        }
         if (userService.findByUsername(user.getUsername()) != null) {
             model.addAttribute("error", "Username already exists.");
             return "register";

@@ -3,6 +3,7 @@
 
 <head>
     <title th:text="#{masterdb.title}">Master DB Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" th:href="@{/css/main.css}">
     <style>
         /* ── Page Layout ─────────────────────────────────────── */
@@ -64,26 +65,7 @@
             font-weight: bold;
         }
 
-        /* ── Modal ───────────────────────────────────────────── */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.45);
-            z-index: 1000;
-            overflow-y: auto;
-        }
-
-        .modal-box {
-            background: #fff;
-            border-radius: 10px;
-            padding: 28px 32px;
-            width: 700px;
-            max-width: 95%;
-            margin: 40px auto;
-            position: relative;
-        }
-
+        /* ── Modal (styles in main.css, page-specific below) ── */
         .modal-close {
             position: absolute;
             top: 14px;
@@ -100,23 +82,6 @@
             margin: 0 0 20px 0;
             font-size: 1.2rem;
             font-weight: 700;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-
-        .form-grid .span2 {
-            grid-column: span 2;
-        }
-
-        .pph-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            margin-top: 8px;
         }
 
         .section-header {
@@ -220,7 +185,7 @@
 <body>
     <div th:replace="~{fragments/layout :: navbar}"></div>
 
-    <div class="container" style="max-width:1600px; padding: 20px;">
+    <div class="container-xl">
 
         <!-- ── Page header ─────────────────────────────────────── -->
         <div class="page-header">

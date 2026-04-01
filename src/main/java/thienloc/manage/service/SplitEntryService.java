@@ -6,14 +6,21 @@ import org.springframework.transaction.annotation.Transactional;
 import thienloc.manage.dto.DailyProductionDetailDto;
 import thienloc.manage.dto.DailyProductionDto;
 import thienloc.manage.dto.SplitEntryDto;
+import thienloc.manage.entity.DailyProduction;
 import thienloc.manage.entity.SplitEntry;
 import thienloc.manage.entity.SplitEntryDetail;
 import thienloc.manage.entity.User;
+import thienloc.manage.repository.DailyProductionRepository;
 import thienloc.manage.repository.SplitEntryRepository;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,6 +28,9 @@ public class SplitEntryService {
 
     @Autowired
     private SplitEntryRepository splitEntryRepository;
+
+    @Autowired
+    private DailyProductionRepository dailyProductionRepository;
 
     @Autowired
     private UserService userService;
@@ -127,6 +137,8 @@ public class SplitEntryService {
             return "5".equals(line)
                     ? SectionMetrics.ASSEMBLY_SMALL.getSectionName()
                     : SectionMetrics.ASSEMBLY_BIG.getSectionName();
+        } else if ("ASSEMBLY BIG".equalsIgnoreCase(section) && "5".equals(line)) {
+            return SectionMetrics.ASSEMBLY_SMALL.getSectionName();
         }
         return section;
     }
@@ -215,10 +227,86 @@ public class SplitEntryService {
     }
 
     public List<SplitEntryDto> getEntriesForDate(LocalDate date) {
-        return splitEntryRepository.findByProductionDateOrderBySectionAscLineAsc(date)
+        List<SplitEntryDto> splitDtos = splitEntryRepository
+                .findByProductionDateOrderBySectionAscLineAsc(date)
                 .stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
+        splitDtos.forEach(d -> d.setSource("SPLIT"));
+
+        // Also show direct DailyProduction entries not linked to any SplitEntry
+        Set<Long> linkedIds = new HashSet<>(splitEntryRepository.findLinkedProductionIdsByDate(date));
+        List<SplitEntryDto> directDtos = dailyProductionRepository
+                .findByProductionDateOrderBySectionAscLineAsc(date)
+                .stream()
+                .filter(dp -> !linkedIds.contains(dp.getId()))
+                .map(this::convertDpToSplitDto)
+                .collect(Collectors.toList());
+
+        List<SplitEntryDto> merged = new ArrayList<>(splitDtos);
+        merged.addAll(directDtos);
+        merged.sort(Comparator.comparing(SplitEntryDto::getSection)
+                              .thenComparing(SplitEntryDto::getLine));
+        return merged;
+    }
+
+    public List<SplitEntryDto> getEntriesForMonth(YearMonth month) {
+        LocalDate from = month.atDay(1);
+        LocalDate to = month.atEndOfMonth();
+
+        List<SplitEntryDto> splitDtos = splitEntryRepository
+                .findByProductionDateBetweenOrderByDateAscSectionAscLineAsc(from, to)
+                .stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+        splitDtos.forEach(d -> d.setSource("SPLIT"));
+
+        Set<Long> linkedIds = new HashSet<>(splitEntryRepository.findLinkedProductionIdsByDateRange(from, to));
+        List<SplitEntryDto> directDtos = dailyProductionRepository
+                .findByProductionDateBetweenOrderByProductionDateAscSectionAscLineAsc(from, to)
+                .stream()
+                .filter(dp -> !linkedIds.contains(dp.getId()))
+                .map(this::convertDpToSplitDto)
+                .collect(Collectors.toList());
+
+        List<SplitEntryDto> merged = new ArrayList<>(splitDtos);
+        merged.addAll(directDtos);
+        merged.sort(Comparator.comparing(SplitEntryDto::getProductionDate)
+                              .thenComparing(SplitEntryDto::getSection)
+                              .thenComparing(SplitEntryDto::getLine));
+        return merged;
+    }
+
+    private SplitEntryDto convertDpToSplitDto(DailyProduction dp) {
+        SplitEntryDto dto = new SplitEntryDto();
+        dto.setId(dp.getId());
+        dto.setProductionDate(dp.getProductionDate());
+        dto.setSection(dp.getSection());
+        dto.setLine(dp.getLine());
+        dto.setMp(dp.getMp());
+        dto.setDli(dp.getDli());
+        dto.setIdl(dp.getIdl());
+        dto.setWt(dp.getWt());
+        dto.setTotalOutput(dp.getTotalOutput());
+        dto.setRft(dp.getRft());
+        dto.setAllowance(dp.getAllowance() != null ? dp.getAllowance() * 100.0 : 100.0);
+        dto.setStatus("SYNCED");
+        dto.setManpowerFilled(true);
+        dto.setOutputFilled(true);
+        dto.setArticlesFilled(dp.getDetails() != null && !dp.getDetails().isEmpty());
+        dto.setSource("DIRECT");
+        if (dp.getCreatedBy() != null)
+            dto.setManpowerFilledByUsername(dp.getCreatedBy().getUsername());
+        if (dp.getDetails() != null) {
+            dto.setDetails(dp.getDetails().stream()
+                    .map(d -> DailyProductionDetailDto.builder()
+                            .timeSlot(d.getTimeSlot())
+                            .articleNo(d.getArticleNo())
+                            .output(d.getOutput())
+                            .build())
+                    .collect(Collectors.toList()));
+        }
+        return dto;
     }
 
     private SplitEntryDto convertToDto(SplitEntry entity) {

@@ -66,6 +66,23 @@ public enum SectionMetrics {
         // Aliases for ASSEMBLY BIG
         LOOKUP.put("ASSY", ASSEMBLY_BIG);
         LOOKUP.put("ASSEMBLY", ASSEMBLY_BIG);
+        LOOKUP.put("ASSY BIG", ASSEMBLY_BIG);
+        LOOKUP.put("ASSY SMALL", ASSEMBLY_SMALL);
+
+        // Buffing aliases
+        LOOKUP.put("BUFF 1", BUFF_1ST);
+        LOOKUP.put("BUFF 1ST", BUFF_1ST);
+        LOOKUP.put("BUFF 2", BUFF_2ND);
+        LOOKUP.put("BUFF 2ND", BUFF_2ND);
+
+        // Stockfit aliases
+        LOOKUP.put("SF UV", STOCKFIT_UV);
+        LOOKUP.put("SF 1", STOCKFIT_1ST);
+        LOOKUP.put("SF 1ST", STOCKFIT_1ST);
+        LOOKUP.put("SF1", STOCKFIT_1ST);
+        LOOKUP.put("SF 2", STOCKFIT_2ND);
+        LOOKUP.put("SF 2ND", STOCKFIT_2ND);
+        LOOKUP.put("SF2", STOCKFIT_2ND);
     }
 
     SectionMetrics(String sectionName,
@@ -86,6 +103,18 @@ public enum SectionMetrics {
     public static Optional<SectionMetrics> fromSection(String section) {
         if (section == null) return Optional.empty();
         return Optional.ofNullable(LOOKUP.get(section.toUpperCase().trim()));
+    }
+
+    /**
+     * Normalize an abbreviation or alias to its canonical section name.
+     * E.g. "BUFF 1" → "BUFFING 1ST", "SF UV" → "STOCKFIT UV".
+     * Returns the input uppercased if no mapping is found.
+     */
+    public static String normalize(String section) {
+        if (section == null) return null;
+        return fromSection(section)
+                .map(SectionMetrics::getSectionName)
+                .orElse(section.trim().toUpperCase());
     }
 
     public String getSectionName() {

@@ -3,6 +3,7 @@
 
 <head>
     <title th:text="#{splitentry.title}">Split Entry</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 
@@ -14,7 +15,7 @@
         <p style="color:#6c757d;" th:text="#{splitentry.subtitle}">Select a step to enter data</p>
 
         <!-- 3 Card Links -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:30px;">
+        <div class="step-cards">
             <a th:href="@{/split-entry/manpower}" style="text-decoration:none; color:inherit;">
                 <div style="border:2px solid #007bff; border-radius:8px; padding:24px; text-align:center; background:#f0f7ff; transition:box-shadow 0.2s;"
                      onmouseover="this.style.boxShadow='0 4px 12px rgba(0,123,255,0.3)'" onmouseout="this.style.boxShadow=''">
@@ -55,13 +56,81 @@
             </div>
         </div>
 
-        <!-- Date picker for overview -->
-        <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px;">
-            <h3 style="margin:0;" th:text="#{splitentry.overview}">Daily overview</h3>
-            <form th:action="@{/split-entry/}" method="get" style="display:flex; gap:10px; align-items:center;">
+        <!-- Date/Month picker for overview -->
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+            <h3 style="margin:0;" id="overviewTitle"
+                th:text="${viewMode == 'month'} ? #{splitentry.overview.month} : #{splitentry.overview}">Overview</h3>
+
+            <!-- View mode tabs -->
+            <div style="display:flex; border:1px solid #dee2e6; border-radius:4px; overflow:hidden; font-size:0.9em;">
+                <button type="button" id="tabDay" onclick="switchViewMode('day')"
+                        th:style="${viewMode == 'month'} ? 'padding:4px 14px;background:white;color:#495057;border:none;cursor:pointer;' : 'padding:4px 14px;background:#007bff;color:white;border:none;cursor:pointer;'"
+                        th:text="#{splitentry.view.day}">Day</button>
+                <button type="button" id="tabMonth" onclick="switchViewMode('month')"
+                        th:style="${viewMode == 'month'} ? 'padding:4px 14px;background:#007bff;color:white;border:none;cursor:pointer;' : 'padding:4px 14px;background:white;color:#495057;border:none;cursor:pointer;'"
+                        th:text="#{splitentry.view.month}">Month</button>
+            </div>
+
+            <!-- Day form -->
+            <form id="formDay" th:action="@{/split-entry/}" method="get"
+                  th:style="${viewMode == 'month'} ? 'display:none; gap:10px; align-items:center;' : 'display:flex; gap:10px; align-items:center;'">
                 <input type="date" name="date" th:value="${selectedDate}" class="form-control" style="width:180px;" />
                 <button type="submit" class="btn btn-primary" th:text="#{mydata.view}">View</button>
             </form>
+
+            <!-- Month form -->
+            <form id="formMonth" th:action="@{/split-entry/}" method="get"
+                  th:style="${viewMode == 'month'} ? 'display:flex; gap:10px; align-items:center;' : 'display:none; gap:10px; align-items:center;'">
+                <input type="month" name="month" th:value="${selectedMonth}" class="form-control" style="width:180px;" />
+                <button type="submit" class="btn btn-primary" th:text="#{mydata.view}">View</button>
+            </form>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="filter-bar" style="margin-bottom:12px;">
+            <div>
+                <select id="filterSection" class="form-control" style="width:160px;" onchange="applyFilters()">
+                    <option value="" th:text="#{splitentry.filter.section}">All Sections</option>
+                    <option th:each="s : ${sections}" th:value="${s}" th:text="${s}"></option>
+                </select>
+            </div>
+            <div>
+                <select id="filterLine" class="form-control" style="width:120px;" onchange="applyFilters()">
+                    <option value="" th:text="#{splitentry.filter.line}">All Lines</option>
+                </select>
+            </div>
+            <div>
+                <select id="filterStatus" class="form-control" style="width:150px;" onchange="applyFilters()">
+                    <option value="" th:text="#{splitentry.filter.status}">All Statuses</option>
+                    <option value="SYNCED" th:text="#{splitentry.status.synced}">Synced</option>
+                    <option value="PARTIAL" th:text="#{splitentry.status.partial}">Partial</option>
+                </select>
+            </div>
+            <div>
+                <select id="filterMp" class="form-control" style="width:110px;" onchange="applyFilters()">
+                    <option value="" th:text="'👥 ' + #{splitentry.filter.step}">👥 All</option>
+                    <option value="filled" th:text="'👥 ' + #{splitentry.filled}">👥 Filled</option>
+                    <option value="pending" th:text="'👥 ' + #{splitentry.pending}">👥 Pending</option>
+                </select>
+            </div>
+            <div>
+                <select id="filterOutput" class="form-control" style="width:120px;" onchange="applyFilters()">
+                    <option value="" th:text="'📦 ' + #{splitentry.filter.step}">📦 All</option>
+                    <option value="filled" th:text="'📦 ' + #{splitentry.filled}">📦 Filled</option>
+                    <option value="pending" th:text="'📦 ' + #{splitentry.pending}">📦 Pending</option>
+                </select>
+            </div>
+            <div>
+                <select id="filterArticles" class="form-control" style="width:130px;" onchange="applyFilters()">
+                    <option value="" th:text="'📋 ' + #{splitentry.filter.step}">📋 All</option>
+                    <option value="filled" th:text="'📋 ' + #{splitentry.filled}">📋 Filled</option>
+                    <option value="pending" th:text="'📋 ' + #{splitentry.pending}">📋 Pending</option>
+                </select>
+            </div>
+            <div>
+                <button type="button" class="btn" style="background:#6c757d;color:white;" onclick="resetFilters()">&#x21BA;</button>
+            </div>
+            <div id="filterCount" style="color:#6c757d; font-size:0.9em; align-self:center;"></div>
         </div>
 
         <!-- Bulk delete bar (MANAGER/ADMIN only) -->
@@ -99,13 +168,23 @@
                     <td sec:authorize="hasAnyRole('MANAGER','ADMIN')"></td>
                     <td colspan="9" style="text-align:center; color:#888; padding:30px;" th:text="#{table.nodata}">No data.</td>
                 </tr>
-                <tr th:each="entry, stat : ${entries}">
+                <tr th:each="entry, stat : ${entries}"
+                    th:attr="data-section=${entry.section},
+                             data-line=${entry.line},
+                             data-status=${entry.status},
+                             data-mp=${entry.manpowerFilled ? 'filled' : 'pending'},
+                             data-output=${entry.outputFilled ? 'filled' : 'pending'},
+                             data-articles=${entry.articlesFilled ? 'filled' : 'pending'}">
                     <td sec:authorize="hasAnyRole('MANAGER','ADMIN')">
-                        <input type="checkbox" class="row-check" th:value="${entry.id}" onclick="updateBulkBar()" />
+                        <input th:unless="${entry.source == 'DIRECT'}" type="checkbox" class="row-check" th:value="${entry.id}" onclick="updateBulkBar()" />
                     </td>
                     <td th:text="${stat.count}"></td>
                     <td th:text="${entry.productionDate}"></td>
-                    <td><strong th:text="${entry.section}"></strong></td>
+                    <td>
+                        <strong th:text="${entry.section}"></strong>
+                        <span th:if="${entry.source == 'DIRECT'}"
+                              style="background:#6c757d;color:white;padding:1px 6px;border-radius:10px;font-size:0.78em;font-weight:600;margin-left:4px;">Direct</span>
+                    </td>
                     <td th:text="${entry.line}"></td>
                     <td style="text-align:center;">
                         <span th:if="${entry.manpowerFilled}" style="color:#28a745; font-weight:bold;" th:text="#{splitentry.filled}">Filled</span>
@@ -124,22 +203,30 @@
                         <span th:unless="${entry.status == 'SYNCED'}" style="background:#ffc107; color:#000; padding:2px 8px; border-radius:10px; font-size:0.85em;" th:text="#{splitentry.status.partial}">Partial</span>
                     </td>
                     <td style="white-space:nowrap;">
-                        <a th:href="@{/split-entry/manpower(date=${entry.productionDate}, section=${entry.section}, line=${entry.line})}"
-                           style="background:#007bff;color:white;padding:4px 8px;border:none;border-radius:3px;text-decoration:none;font-size:0.85em;margin-right:2px;">👥</a>
-                        <a sec:authorize="hasAnyRole('ADMIN','MANAGER')"
-                           th:href="@{/split-entry/output(date=${entry.productionDate}, section=${entry.section}, line=${entry.line})}"
-                           style="background:#28a745;color:white;padding:4px 8px;border:none;border-radius:3px;text-decoration:none;font-size:0.85em;margin-right:2px;">📦</a>
-                        <a sec:authorize="hasAnyRole('ADMIN','MANAGER')"
-                           th:href="@{/split-entry/articles(date=${entry.productionDate}, section=${entry.section}, line=${entry.line})}"
-                           style="background:#fd7e14;color:white;padding:4px 8px;border:none;border-radius:3px;text-decoration:none;font-size:0.85em;margin-right:2px;">📋</a>
-                        <form sec:authorize="hasAnyRole('MANAGER','ADMIN')"
-                              th:action="@{/split-entry/delete/{id}(id=${entry.id})}"
-                              method="post" style="display:inline;"
-                              onsubmit="return confirm('Delete this entry?');">
-                            <input type="hidden" name="date" th:value="${selectedDate}" />
-                            <button type="submit"
-                                    style="background:#dc3545;color:white;padding:4px 8px;border:none;border-radius:3px;font-size:0.85em;cursor:pointer;">🗑</button>
-                        </form>
+                        <!-- SPLIT rows: normal step buttons -->
+                        <th:block th:unless="${entry.source == 'DIRECT'}">
+                            <a th:href="@{/split-entry/manpower(date=${entry.productionDate}, section=${entry.section}, line=${entry.line})}"
+                               style="background:#007bff;color:white;padding:4px 8px;border:none;border-radius:3px;text-decoration:none;font-size:0.85em;margin-right:2px;">👥</a>
+                            <a sec:authorize="hasAnyRole('ADMIN','MANAGER')"
+                               th:href="@{/split-entry/output(date=${entry.productionDate}, section=${entry.section}, line=${entry.line})}"
+                               style="background:#28a745;color:white;padding:4px 8px;border:none;border-radius:3px;text-decoration:none;font-size:0.85em;margin-right:2px;">📦</a>
+                            <a sec:authorize="hasAnyRole('ADMIN','MANAGER')"
+                               th:href="@{/split-entry/articles(date=${entry.productionDate}, section=${entry.section}, line=${entry.line})}"
+                               style="background:#fd7e14;color:white;padding:4px 8px;border:none;border-radius:3px;text-decoration:none;font-size:0.85em;margin-right:2px;">📋</a>
+                            <form sec:authorize="hasAnyRole('MANAGER','ADMIN')"
+                                  th:action="@{/split-entry/delete/{id}(id=${entry.id})}"
+                                  method="post" style="display:inline;"
+                                  onsubmit="return confirm('Delete this entry?');">
+                                <input type="hidden" name="date" th:value="${selectedDate}" />
+                                <button type="submit"
+                                        style="background:#dc3545;color:white;padding:4px 8px;border:none;border-radius:3px;font-size:0.85em;cursor:pointer;">🗑</button>
+                            </form>
+                        </th:block>
+                        <!-- DIRECT rows: link to Entry page -->
+                        <th:block th:if="${entry.source == 'DIRECT'}">
+                            <a th:href="@{/entry/(range='TODAY', date=${entry.productionDate})}"
+                               style="background:#6c757d;color:white;padding:4px 8px;border:none;border-radius:3px;text-decoration:none;font-size:0.85em;">View Entry</a>
+                        </th:block>
                     </td>
                 </tr>
             </tbody>
@@ -147,6 +234,76 @@
         </div>
 
         <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            populateLineDropdown();
+            applyFilters();
+        });
+
+        function switchViewMode(mode) {
+            var isMonth = mode === 'month';
+            document.getElementById('formDay').style.display   = isMonth ? 'none' : 'flex';
+            document.getElementById('formMonth').style.display = isMonth ? 'flex' : 'none';
+            document.getElementById('tabDay').style.background   = isMonth ? 'white'    : '#007bff';
+            document.getElementById('tabDay').style.color        = isMonth ? '#495057'  : 'white';
+            document.getElementById('tabMonth').style.background = isMonth ? '#007bff'  : 'white';
+            document.getElementById('tabMonth').style.color      = isMonth ? 'white'    : '#495057';
+        }
+
+        function populateLineDropdown() {
+            var rows = document.querySelectorAll('tbody tr[data-line]');
+            var lines = [];
+            rows.forEach(function(row) {
+                var line = row.getAttribute('data-line');
+                if (line && lines.indexOf(line) === -1) lines.push(line);
+            });
+            lines.sort(function(a, b) { return a.localeCompare(b, undefined, {numeric: true}); });
+            var sel = document.getElementById('filterLine');
+            lines.forEach(function(line) {
+                var opt = document.createElement('option');
+                opt.value = line;
+                opt.textContent = line;
+                sel.appendChild(opt);
+            });
+        }
+
+        function applyFilters() {
+            var section  = document.getElementById('filterSection').value;
+            var line     = document.getElementById('filterLine').value;
+            var status   = document.getElementById('filterStatus').value;
+            var mp       = document.getElementById('filterMp').value;
+            var output   = document.getElementById('filterOutput').value;
+            var articles = document.getElementById('filterArticles').value;
+
+            var rows = document.querySelectorAll('tbody tr[data-section]');
+            var total = rows.length;
+            var visible = 0;
+
+            rows.forEach(function(row) {
+                var match =
+                    (!section  || row.getAttribute('data-section') === section) &&
+                    (!line     || row.getAttribute('data-line')    === line) &&
+                    (!status   || row.getAttribute('data-status')  === status) &&
+                    (!mp       || row.getAttribute('data-mp')      === mp) &&
+                    (!output   || row.getAttribute('data-output')  === output) &&
+                    (!articles || row.getAttribute('data-articles') === articles);
+                row.style.display = match ? '' : 'none';
+                if (match) visible++;
+            });
+
+            var countEl = document.getElementById('filterCount');
+            if (total > 0) {
+                countEl.textContent = visible + ' / ' + total;
+            } else {
+                countEl.textContent = '';
+            }
+        }
+
+        function resetFilters() {
+            ['filterSection','filterLine','filterStatus','filterMp','filterOutput','filterArticles']
+                .forEach(function(id) { document.getElementById(id).value = ''; });
+            applyFilters();
+        }
+
         function toggleAll(master) {
             document.querySelectorAll('.row-check').forEach(cb => cb.checked = master.checked);
             updateBulkBar();

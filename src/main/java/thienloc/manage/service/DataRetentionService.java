@@ -4,8 +4,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import thienloc.manage.entity.SplitEntry;
 import thienloc.manage.repository.DailyProductionRepository;
 import thienloc.manage.repository.MasterDbRepository;
+import thienloc.manage.repository.SplitEntryRepository;
+
+import java.util.List;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -21,9 +25,13 @@ public class DataRetentionService {
     private static final Logger log = LoggerFactory.getLogger(DataRetentionService.class);
     private static final int RETENTION_YEARS = 2;
     private static final int GRACE_PERIOD_DAYS = 30;
+    private static final int INCOMPLETE_DAYS = 3;
 
     @Autowired
     private MasterDbRepository masterDbRepository;
+
+    @Autowired
+    private SplitEntryRepository splitEntryRepository;
 
     @Autowired
     private DailyProductionRepository dailyProductionRepository;
@@ -86,6 +94,33 @@ public class DataRetentionService {
             log.info("Data retention: deleted {} DailyProduction records before {}", prodDeleted, cutoffDate);
             systemLogService.logAction("DATA_RETENTION",
                     "Auto-deleted " + prodDeleted + " DailyProduction records before " + cutoffDate);
+        }
+    }
+
+    /**
+     * Delete incomplete SplitEntry records (status=PARTIAL) older than INCOMPLETE_DAYS days.
+     * Also delete completed SplitEntry records (READY/SYNCED) older than RETENTION_YEARS years.
+     */
+    public void deleteIncompleteSplitEntries() {
+        LocalDate cutoff = LocalDate.now().minusDays(INCOMPLETE_DAYS);
+        List<SplitEntry> stale = splitEntryRepository.findByStatusAndProductionDateBefore("PARTIAL", cutoff);
+        if (!stale.isEmpty()) {
+            splitEntryRepository.deleteAll(stale);
+            log.info("Auto-deleted {} incomplete SplitEntry records before {}", stale.size(), cutoff);
+            systemLogService.logAction("SPLIT_ENTRY_CLEANUP",
+                    "Auto-deleted " + stale.size() + " incomplete SplitEntry records before " + cutoff);
+        }
+
+        // Also enforce 2-year retention on completed entries (READY + SYNCED)
+        LocalDate retentionCutoff = LocalDate.now().minusYears(RETENTION_YEARS);
+        for (String status : List.of("READY", "SYNCED")) {
+            List<SplitEntry> expired = splitEntryRepository.findByStatusAndProductionDateBefore(status, retentionCutoff);
+            if (!expired.isEmpty()) {
+                splitEntryRepository.deleteAll(expired);
+                log.info("Data retention: deleted {} SplitEntry[{}] records before {}", expired.size(), status, retentionCutoff);
+                systemLogService.logAction("DATA_RETENTION",
+                        "Auto-deleted " + expired.size() + " SplitEntry[" + status + "] records before " + retentionCutoff);
+            }
         }
     }
 }

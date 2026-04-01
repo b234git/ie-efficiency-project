@@ -3,6 +3,7 @@
 
 <head>
     <title th:text="#{entry.import.confirm.header}">Confirm Import</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" th:href="@{/css/main.css}">
     <style>
         .summary-cards {
@@ -85,7 +86,7 @@
 <body>
     <div th:replace="~{fragments/layout :: navbar}"></div>
 
-    <div class="container" style="max-width:1400px; padding: 20px;">
+    <div class="container-lg">
 
         <div style="margin-bottom:16px;">
             <a th:href="@{/entry}" style="color:#007bff; text-decoration:none;">&larr; <span th:text="#{entry.title}">Entry</span></a>
@@ -145,12 +146,13 @@
                         <th th:text="#{table.date}">Date</th>
                         <th th:text="#{table.section}">Section</th>
                         <th th:text="#{table.line}">Line</th>
-                        <th th:text="#{table.mp}">MP</th>
+                        <th>DL</th>
                         <th>DLI</th>
                         <th>IDL</th>
-                        <th th:text="#{table.wt}">WT</th>
                         <th th:text="#{table.output}">Output</th>
+                        <th th:text="#{table.wt}">WT</th>
                         <th>RFT (%)</th>
+                        <th>Article</th>
                         <th th:text="#{entry.label.allowance}">Allowance</th>
                         <th th:text="#{entry.import.articles}">Articles</th>
                         <th th:text="#{entry.import.note}">Note</th>
@@ -169,9 +171,10 @@
                         <td th:text="${row.mp != null ? row.mp : '-'}"></td>
                         <td th:text="${row.dli != null ? row.dli : '-'}"></td>
                         <td th:text="${row.idl != null ? row.idl : '-'}"></td>
-                        <td th:text="${row.wt != null ? row.wt : '-'}"></td>
                         <td th:text="${row.totalOutput != null ? row.totalOutput : '-'}"></td>
+                        <td th:text="${row.wt != null ? row.wt : '-'}"></td>
                         <td th:text="${row.rft != null ? #numbers.formatDecimal(row.rft, 1, 2) + '%' : '-'}"></td>
+                        <td th:text="${row.mainArticle ?: '-'}"></td>
                         <td th:text="${row.allowance != null ? #numbers.formatDecimal(row.allowance, 1, 0) + '%' : '-'}"></td>
                         <td th:text="${row.articleCount}"></td>
                         <td style="color:#dc3545; font-size:0.85em;" th:text="${row.errorMessage ?: ''}"></td>

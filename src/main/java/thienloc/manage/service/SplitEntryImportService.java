@@ -57,35 +57,40 @@ public class SplitEntryImportService {
                     if (date == null) missing.add("Date");
                     rp.setProductionDate(date);
 
-                    // Section (col 1)
+                    // Section (col 1) + Subsection (col 2, optional)
                     String section = getCellString(row.getCell(1));
+                    String subsection = getCellString(row.getCell(2));
                     if (section == null || section.isBlank()) {
                         missing.add("Section");
                     } else {
                         section = section.trim().toUpperCase();
+                        if (subsection != null && !subsection.isBlank()) {
+                            section = section + " " + subsection.trim().toUpperCase();
+                        }
+                        section = SectionMetrics.normalize(section);
                         if (!VALID_SECTIONS.contains(section)) {
                             missing.add("Section invalid: " + section);
                         }
                     }
                     rp.setSection(section);
 
-                    // Line (col 2)
-                    String line = getCellString(row.getCell(2));
+                    // Line (col 3)
+                    String line = getCellString(row.getCell(3));
                     if (line == null || line.isBlank()) missing.add("Line");
                     rp.setLine(line != null ? line.trim() : null);
 
-                    // WT (col 3)
-                    Double wt = getCellDouble(row.getCell(3));
+                    // WT (col 4)
+                    Double wt = getCellDouble(row.getCell(4));
                     if (wt == null || wt <= 0) missing.add("WT");
                     rp.setWt(wt);
 
-                    // Total Output (col 4)
-                    Integer output = getCellInteger(row.getCell(4));
+                    // Total Output (col 5)
+                    Integer output = getCellInteger(row.getCell(5));
                     if (output == null || output < 0) missing.add("Total Output");
                     rp.setTotalOutput(output);
 
-                    // RFT (col 5) - optional
-                    Double rft = getCellDouble(row.getCell(5));
+                    // RFT (col 6) - optional
+                    Double rft = getCellDouble(row.getCell(6));
                     if (rft != null && rft <= 1.0 && rft > 0) rft = rft * 100;
                     rp.setRft(rft);
 
@@ -140,25 +145,30 @@ public class SplitEntryImportService {
                     if (date == null) missing.add("Date");
                     rp.setProductionDate(date);
 
-                    // Section (col 1)
+                    // Section (col 1) + Subsection (col 2, optional)
                     String section = getCellString(row.getCell(1));
+                    String subsection = getCellString(row.getCell(2));
                     if (section == null || section.isBlank()) {
                         missing.add("Section");
                     } else {
                         section = section.trim().toUpperCase();
+                        if (subsection != null && !subsection.isBlank()) {
+                            section = section + " " + subsection.trim().toUpperCase();
+                        }
+                        section = SectionMetrics.normalize(section);
                         if (!VALID_SECTIONS.contains(section)) {
                             missing.add("Section invalid: " + section);
                         }
                     }
                     rp.setSection(section);
 
-                    // Line (col 2)
-                    String line = getCellString(row.getCell(2));
+                    // Line (col 3)
+                    String line = getCellString(row.getCell(3));
                     if (line == null || line.isBlank()) missing.add("Line");
                     rp.setLine(line != null ? line.trim() : null);
 
-                    // Allowance (col 3) - optional, defaults to 100
-                    Double allowance = getCellDouble(row.getCell(3));
+                    // Allowance (col 4) - optional, defaults to 100
+                    Double allowance = getCellDouble(row.getCell(4));
                     if (allowance == null) {
                         allowance = 100.0;
                     } else if (allowance <= 1.0 && allowance > 0) {
@@ -166,11 +176,11 @@ public class SplitEntryImportService {
                     }
                     rp.setAllowance(allowance);
 
-                    // Time slot articles (col 4 through 18)
+                    // Time slot articles (col 5 through 19)
                     Map<String, String> articles = new LinkedHashMap<>();
                     int articleCount = 0;
                     for (int j = 0; j < TIME_SLOTS.size(); j++) {
-                        String articleNo = getCellString(row.getCell(4 + j));
+                        String articleNo = getCellString(row.getCell(5 + j));
                         if (articleNo != null && !articleNo.isBlank()) {
                             articles.put(TIME_SLOTS.get(j), articleNo.trim());
                             articleCount++;

@@ -40,6 +40,7 @@ public class EntryImportPreviewDto {
         private Integer totalOutput;
         private Double rft;
         private Double allowance;
+        private String mainArticle; // from ARTICLE column
         private int articleCount;
         private Map<String, String> articles; // timeSlot -> articleNo
 

@@ -3,6 +3,7 @@
 
 <head>
     <title th:text="#{splitentry.import.confirm.articles}">Confirm Import Articles</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" th:href="@{/css/main.css}">
     <style>
         .summary-cards { display:flex; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
@@ -21,7 +22,7 @@
 <body>
     <div th:replace="~{fragments/layout :: navbar}"></div>
 
-    <div class="container" style="max-width:1100px; padding:20px;">
+    <div class="container">
 
         <h2 style="color:#fd7e14;" th:text="#{splitentry.import.confirm.articles}">Confirm Import Articles</h2>
         <p style="color:#6c757d;">

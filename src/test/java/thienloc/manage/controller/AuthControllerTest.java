@@ -55,9 +55,9 @@ class AuthControllerTest {
         when(userService.findByUsername("newuser")).thenReturn(null);
 
         mockMvc.perform(post("/register")
-                        .param("username", "newuser")
-                        .param("password", "pass123")
-                        .with(csrf()))
+                .param("username", "newuser")
+                .param("password", "pass123")
+                .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login?success"));
 
@@ -71,9 +71,9 @@ class AuthControllerTest {
                 User.builder().username("existing").build());
 
         mockMvc.perform(post("/register")
-                        .param("username", "existing")
-                        .param("password", "pass123")
-                        .with(csrf()))
+                .param("username", "existing")
+                .param("password", "pass123")
+                .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(view().name("register"))
                 .andExpect(model().attributeExists("error"));

@@ -51,7 +51,28 @@
       "Bash(xargs cat:*)",
       "Bash(grep -E \"\\(String.*password|String.*secret|String.*key\\)\" src/main/java/thienloc/manage/*.java src/main/java/thienloc/manage/*/*.java)",
       "Bash(find . -type f \\\\\\(-name *.jar -o -name *.exe -o -name .env -o -name *.key -o -name *.pem \\\\\\))",
-      "Bash(wc -l src/main/java/thienloc/manage/service/*.java src/main/java/thienloc/manage/controller/*.java)"
+      "Bash(wc -l src/main/java/thienloc/manage/service/*.java src/main/java/thienloc/manage/controller/*.java)",
+      "Bash(grep -E \"\\\\.\\(properties|yml|yaml|xml|md\\)$\")",
+      "Bash(find /c/Users/mphat/Desktop/work/IE-Eff/src -type f \\\\\\(-name *.java -o -name *.properties -o -name *.yml -o -name *.xml \\\\\\) -empty)",
+      "Bash(ls -la /c/Users/mphat/Desktop/work/IE-Eff/.env*)",
+      "Bash(find /c/Users/mphat/Desktop/work/IE-Eff/src -name \"*.java\" -type f -exec wc -l {} +)",
+      "Bash(find c:UsersmphatDesktopworkIE-Eff -type f \\\\\\(-name *.yml -o -name *.yaml -o -name .github* -o -name .gitlab* -o -name Dockerfile* -o -name docker-compose* \\\\\\))",
+      "Bash(xargs basename:*)",
+      "Read(//c/Users/mphat/.claude/plugins/marketplaces/anthropic-agent-skills/skills/xlsx/scripts/**)",
+      "Bash(python -c \"import openpyxl; print\\(''ok''\\)\")",
+      "Bash(find /c/Users/mphat/Desktop/work/IE-Eff -type f -name *.html)",
+      "Bash(grep -r \"viewport\\\\|meta\\\\|CDN\\\\|https://\" /c/Users/mphat/Desktop/work/IE-Eff/src/main/resources/templates --include=*.html)",
+      "Bash(find /c/Users/mphat/Desktop/work/IE-Eff/src/main/resources/static -name *.css -o -name *.js)",
+      "Bash(grep -l \"https://\\\\|http://\\\\|cdn\\\\|CDN\" /c/Users/mphat/Desktop/work/IE-Eff/src/main/resources/templates/*.html)",
+      "Bash(grep -rE \"<link|<script|<style\" /c/Users/mphat/Desktop/work/IE-Eff/src/main/resources/templates --include=*.html)",
+      "Bash(grep -E \"\\\\.\\(sql|java\\)$\")",
+      "Read(//c/Users/mphat/.claude/plans 2>/dev/**)",
+      "Bash(grep -r \"class.*Dto\" src/main/java/thienloc/manage/dto/*.java)",
+      "Bash(grep -n \"findAll\\\\|without.*limit\\\\|no.*pageable\" /c/Users/mphat/Desktop/work/IE-Eff/src/main/java/thienloc/manage/repository/*.java)",
+      "Bash(ipconfig)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\mphat\\Desktop\\work\\IE-Eff\\src\\main\\resources\\static"
     ]
   }
 }

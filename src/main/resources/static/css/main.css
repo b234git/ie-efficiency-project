@@ -1,4 +1,10 @@
 /* main.css */
+
+/* ── Reset ────────────────────────────────────────────── */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #f4f6f9;
@@ -6,6 +12,7 @@ body {
     padding: 0;
 }
 
+/* ── Navbar ───────────────────────────────────────────── */
 .navbar {
     background-color: #343a40;
     padding: 15px 20px;
@@ -13,6 +20,8 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .navbar a {
@@ -21,6 +30,36 @@ body {
     margin-right: 15px;
 }
 
+.navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.navbar-brand img {
+    height: 40px;
+    width: auto;
+}
+
+.navbar-links {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0;
+}
+
+.navbar-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.6rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    line-height: 1;
+}
+
+/* ── Containers ───────────────────────────────────────── */
 .container {
     max-width: 1200px;
     margin: 20px auto;
@@ -30,6 +69,34 @@ body {
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
+.container-sm {
+    max-width: 900px;
+    margin: 20px auto;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.container-lg {
+    max-width: 1400px;
+    margin: 20px auto;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.container-xl {
+    max-width: 1600px;
+    margin: 20px auto;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+/* ── Forms ─────────────────────────────────────────────── */
 .form-group {
     margin-bottom: 15px;
 }
@@ -45,9 +112,10 @@ body {
     padding: 8px;
     border: 1px solid #ccc;
     border-radius: 4px;
-    box-sizing: border-box; /* Important for 100% width */
+    box-sizing: border-box;
 }
 
+/* ── Buttons ──────────────────────────────────────────── */
 .btn {
     padding: 10px 15px;
     border: none;
@@ -65,6 +133,7 @@ body {
     background-color: #dc3545;
 }
 
+/* ── Tables ───────────────────────────────────────────── */
 table {
     width: 100%;
     border-collapse: collapse;
@@ -82,4 +151,316 @@ th, td {
 
 th {
     background-color: #f2f2f2;
+}
+
+.table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ── Grid Layouts ─────────────────────────────────────── */
+.grid-3col {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 16px;
+}
+
+.grid-4col {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 16px;
+}
+
+.grid-auto-fill {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+/* ── Step Cards (split-entry) ─────────────────────────── */
+.step-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+/* ── Page Header ──────────────────────────────────────── */
+.page-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* ── Filter Bar ───────────────────────────────────────── */
+.filter-bar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+/* ── Modal (dashboard) ────────────────────────────────── */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 10% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 50%;
+    border-radius: 8px;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+/* ── Modal Overlay (masterdb) ─────────────────────────── */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 1000;
+    overflow-y: auto;
+}
+
+.modal-box {
+    background: #fff;
+    border-radius: 10px;
+    padding: 28px 32px;
+    width: 700px;
+    max-width: 95%;
+    margin: 40px auto;
+    position: relative;
+}
+
+/* ── Form Grid (masterdb modal) ───────────────────────── */
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.form-grid .span2 {
+    grid-column: span 2;
+}
+
+.pph-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 8px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   TABLET — max-width: 992px
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 992px) {
+
+    /* Navbar: show hamburger, stack links vertically */
+    .navbar-toggle {
+        display: block;
+    }
+    .navbar-links {
+        display: none;
+        flex-direction: column;
+        width: 100%;
+        padding-top: 12px;
+        gap: 4px;
+        align-items: flex-start;
+    }
+    .navbar-links.open {
+        display: flex;
+    }
+    .navbar-links a {
+        padding: 10px 0;
+        margin-right: 0;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        width: 100%;
+    }
+    .navbar-links form {
+        padding: 10px 0;
+    }
+
+    /* Containers: full-width */
+    .container,
+    .container-sm,
+    .container-lg,
+    .container-xl {
+        max-width: 100%;
+        margin: 10px;
+        padding: 16px;
+    }
+
+    /* Grids: 3-col → 2-col, 4-col → 2-col */
+    .grid-3col {
+        grid-template-columns: 1fr 1fr;
+    }
+    .grid-4col {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    /* Step cards: 3 → 2 col */
+    .step-cards {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    /* Modal wider */
+    .modal-content {
+        width: 80%;
+    }
+
+    /* Table font reduction */
+    table th, table td {
+        font-size: 0.82rem;
+        padding: 5px 7px;
+    }
+
+    /* PPH grid: 4-col → 2-col */
+    .pph-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ══════════════════════════════════════════════════════════
+   MOBILE — max-width: 576px
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 576px) {
+
+    /* Container: full-bleed with minimal margin */
+    .container,
+    .container-sm,
+    .container-lg,
+    .container-xl {
+        margin: 6px;
+        padding: 12px;
+        border-radius: 4px;
+    }
+
+    /* Grid: everything stacks to 1 column */
+    .grid-3col,
+    .grid-4col {
+        grid-template-columns: 1fr;
+    }
+
+    /* Step cards: single column */
+    .step-cards {
+        grid-template-columns: 1fr;
+    }
+
+    /* Form grid in modal: single column */
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    .form-grid .span2 {
+        grid-column: span 1;
+    }
+
+    /* PPH grid: 2-col on mobile */
+    .pph-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    /* Modal: full width */
+    .modal-content {
+        width: 95%;
+        margin: 5% auto;
+    }
+    .modal-box {
+        width: 100%;
+        max-width: 100%;
+        margin: 10px auto;
+        padding: 16px;
+        border-radius: 6px;
+    }
+
+    /* Touch-friendly inputs and buttons */
+    .btn, .btn-primary, .btn-danger,
+    button[type="submit"] {
+        min-height: 44px;
+        padding: 10px 16px;
+        font-size: 0.95rem;
+    }
+    .form-control,
+    select.form-control,
+    input[type="date"],
+    input[type="text"],
+    input[type="number"],
+    input[type="month"],
+    input[type="password"] {
+        min-height: 44px;
+        font-size: 1rem;
+        padding: 10px;
+    }
+
+    /* Filter bar: column layout, inputs full width */
+    .filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .filter-bar > div,
+    .filter-bar input,
+    .filter-bar select {
+        width: 100% !important;
+    }
+    .filter-bar .form-control {
+        display: block !important;
+    }
+
+    /* Table: further reduce font */
+    table th, table td {
+        font-size: 0.75rem;
+        padding: 4px 5px;
+    }
+
+    /* Page header: stack */
+    .page-header-flex {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    /* Headings reduce size */
+    h2 { font-size: 1.3rem; }
+    h3 { font-size: 1.1rem; }
+    h4 { font-size: 1rem; }
+
+    /* Notification items: stack */
+    .notif-item {
+        flex-direction: column;
+    }
+
+    /* Week navigation wraps */
+    .week-nav {
+        flex-wrap: wrap;
+    }
+
+    /* Navbar padding reduce */
+    .navbar {
+        padding: 10px 14px;
+    }
+    .navbar-brand img {
+        height: 32px;
+    }
 }
