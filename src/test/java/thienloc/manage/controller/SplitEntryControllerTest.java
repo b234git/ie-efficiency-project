@@ -4,14 +4,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import thienloc.manage.dto.SplitEntryDto;
 import thienloc.manage.security.SecurityConfig;
 import thienloc.manage.service.LineSummaryImportService;
 import thienloc.manage.service.NotificationService;
+import thienloc.manage.service.SplitEntryImportService;
 import thienloc.manage.service.SplitEntryService;
+import thienloc.manage.service.SplitEntryTemplateService;
 import thienloc.manage.service.SystemLogService;
 
 import java.util.List;
@@ -20,6 +21,7 @@ import java.util.Optional;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -40,30 +42,33 @@ class SplitEntryControllerTest {
     private LineSummaryImportService lineSummaryImportService;
 
     @MockitoBean
+    private SplitEntryImportService splitEntryImportService;
+
+    @MockitoBean
+    private SplitEntryTemplateService splitEntryTemplateService;
+
+    @MockitoBean
     private NotificationService notificationService;
 
     @Test
-    @WithMockUser(roles = "USER")
     void testShowLanding_UserRole() throws Exception {
         when(splitEntryService.getEntriesForDate(any())).thenReturn(List.of());
 
-        mockMvc.perform(get("/split-entry/"))
+        mockMvc.perform(get("/split-entry/").with(user("user").roles("USER")))
                 .andExpect(status().isOk())
                 .andExpect(view().name("split-entry"))
                 .andExpect(model().attributeExists("entries", "selectedDate"));
     }
 
     @Test
-    @WithMockUser(roles = "USER")
     void testShowManpowerForm() throws Exception {
-        mockMvc.perform(get("/split-entry/manpower"))
+        mockMvc.perform(get("/split-entry/manpower").with(user("user").roles("USER")))
                 .andExpect(status().isOk())
                 .andExpect(view().name("split-entry-manpower"))
                 .andExpect(model().attributeExists("splitEntry", "sections"));
     }
 
     @Test
-    @WithMockUser(roles = "USER")
     void testShowManpowerForm_PreFill() throws Exception {
         SplitEntryDto existing = new SplitEntryDto();
         existing.setSection("SEW");
@@ -75,19 +80,20 @@ class SplitEntryControllerTest {
         mockMvc.perform(get("/split-entry/manpower")
                         .param("date", "2026-03-15")
                         .param("section", "SEW")
-                        .param("line", "1A"))
+                        .param("line", "1A")
+                        .with(user("user").roles("USER")))
                 .andExpect(status().isOk())
                 .andExpect(model().attributeExists("splitEntry"));
     }
 
     @Test
-    @WithMockUser(username = "user", roles = "USER")
     void testSaveManpower() throws Exception {
         mockMvc.perform(post("/split-entry/manpower")
                         .param("productionDate", "2026-03-15")
                         .param("section", "SEW")
                         .param("line", "1A")
                         .param("mp", "30.0")
+                        .with(user("user").roles("USER"))
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection());
 
@@ -95,22 +101,19 @@ class SplitEntryControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "MANAGER")
     void testShowOutputForm_ManagerRole() throws Exception {
-        mockMvc.perform(get("/split-entry/output"))
+        mockMvc.perform(get("/split-entry/output").with(user("user").roles("MANAGER")))
                 .andExpect(status().isOk())
                 .andExpect(view().name("split-entry-output"));
     }
 
     @Test
-    @WithMockUser(roles = "USER")
     void testShowOutputForm_UserRole_Forbidden() throws Exception {
-        mockMvc.perform(get("/split-entry/output"))
+        mockMvc.perform(get("/split-entry/output").with(user("user").roles("USER")))
                 .andExpect(status().isForbidden());
     }
 
     @Test
-    @WithMockUser(username = "manager", roles = "MANAGER")
     void testSaveOutput() throws Exception {
         mockMvc.perform(post("/split-entry/output")
                         .param("productionDate", "2026-03-15")
@@ -118,6 +121,7 @@ class SplitEntryControllerTest {
                         .param("line", "1A")
                         .param("wt", "8.0")
                         .param("totalOutput", "1000")
+                        .with(user("manager").roles("MANAGER"))
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection());
 
@@ -125,24 +129,22 @@ class SplitEntryControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "MANAGER")
     void testShowArticlesForm_ManagerRole() throws Exception {
-        mockMvc.perform(get("/split-entry/articles"))
+        mockMvc.perform(get("/split-entry/articles").with(user("user").roles("MANAGER")))
                 .andExpect(status().isOk())
                 .andExpect(view().name("split-entry-articles"));
     }
 
     @Test
-    @WithMockUser(roles = "USER")
     void testShowArticlesForm_UserRole_Forbidden() throws Exception {
-        mockMvc.perform(get("/split-entry/articles"))
+        mockMvc.perform(get("/split-entry/articles").with(user("user").roles("USER")))
                 .andExpect(status().isForbidden());
     }
 
     @Test
-    @WithMockUser(roles = "MANAGER")
     void testDeleteEntry_ManagerRole() throws Exception {
         mockMvc.perform(post("/split-entry/delete/1")
+                        .with(user("user").roles("MANAGER"))
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection());
 
@@ -150,17 +152,17 @@ class SplitEntryControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "USER")
     void testDeleteEntry_UserRole_Forbidden() throws Exception {
         mockMvc.perform(post("/split-entry/delete/1")
+                        .with(user("user").roles("USER"))
                         .with(csrf()))
                 .andExpect(status().isForbidden());
     }
 
     @Test
-    @WithMockUser(roles = "USER")
     void testImportCancel() throws Exception {
         mockMvc.perform(post("/split-entry/import/cancel")
+                        .with(user("user").roles("USER"))
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/split-entry/manpower"));

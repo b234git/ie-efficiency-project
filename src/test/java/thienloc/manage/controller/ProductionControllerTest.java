@@ -51,12 +51,12 @@ class ProductionControllerTest {
 
     @Test
     void testShowEntryForm_RangeFilter() throws Exception {
-        when(productionService.getMyDataRange(eq("user"), any(), any())).thenReturn(List.of());
+        when(productionService.getMyDataRangeWithSplitEntries(eq("user"), any(), any())).thenReturn(List.of());
 
         mockMvc.perform(get("/entry/").param("range", "1M").with(user("user").roles("USER")))
                 .andExpect(status().isOk());
 
-        verify(productionService).getMyDataRange(eq("user"), any(), any());
+        verify(productionService).getMyDataRangeWithSplitEntries(eq("user"), any(), any());
     }
 
     @Test

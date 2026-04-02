@@ -72,9 +72,10 @@ public class ReportController {
                 break;
         }
 
-        // Extract distinct sections and lines for dropdowns (before filtering)
+        // Extract distinct parent sections for dropdowns (before filtering)
         List<String> sections = records.stream()
                 .map(DailyProductionDto::getSection).filter(Objects::nonNull)
+                .map(s -> s.contains(" ") ? s.split(" ")[0] : s)
                 .distinct().sorted().collect(Collectors.toList());
         List<String> lines = records.stream()
                 .map(DailyProductionDto::getLine).filter(Objects::nonNull)
@@ -94,7 +95,7 @@ public class ReportController {
         // Filter by section if provided
         if (section != null && !section.trim().isEmpty()) {
             String sec = section.trim();
-            records = records.stream().filter(r -> sec.equals(r.getSection())).collect(Collectors.toList());
+            records = records.stream().filter(r -> r.getSection() != null && r.getSection().startsWith(sec)).collect(Collectors.toList());
         }
 
         // Filter by line if provided
@@ -258,7 +259,8 @@ public class ReportController {
                     .collect(Collectors.toList());
         }
         if (section != null && !section.trim().isEmpty()) {
-            records = records.stream().filter(r -> section.trim().equals(r.getSection())).collect(Collectors.toList());
+            String sec = section.trim();
+            records = records.stream().filter(r -> r.getSection() != null && r.getSection().startsWith(sec)).collect(Collectors.toList());
         }
         if (line != null && !line.trim().isEmpty()) {
             records = records.stream().filter(r -> line.trim().equals(r.getLine())).collect(Collectors.toList());

@@ -46,6 +46,11 @@ public class DailyProductionDto {
     // Reasons when EFF values cannot be calculated
     private String effKpiReason;
     private String effSalaryReason;
+    // Reason when Pattern # / Style cannot be resolved from Master DB
+    private String masterDbReason;
+
+    // Tooltip text listing all distinct articles (when multiple)
+    private String articleTooltip;
 
     // Time slots breakdown
     @Builder.Default

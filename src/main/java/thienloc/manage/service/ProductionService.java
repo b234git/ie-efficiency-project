@@ -261,6 +261,7 @@ public class ProductionService {
                 displayArticle = distinctArticles.get(0);
                 if (distinctArticles.size() > 1) {
                     displayArticle += " (+)";
+                    dto.setArticleTooltip(String.join(", ", distinctArticles));
                 }
             }
 

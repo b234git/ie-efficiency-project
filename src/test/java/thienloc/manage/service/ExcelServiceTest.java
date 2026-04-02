@@ -55,10 +55,12 @@ class ExcelServiceTest {
             assertEquals("Date", header.getCell(0).getStringCellValue());
             assertEquals("Section", header.getCell(1).getStringCellValue());
             assertEquals("Line", header.getCell(2).getStringCellValue());
-            assertEquals("MP (DL)", header.getCell(3).getStringCellValue());
-            // 10 base cols + 15 time slot cols = 25 total
-            assertEquals("07:00-08:00 (Article)", header.getCell(10).getStringCellValue());
-            assertEquals("21:00-22:00 (Article)", header.getCell(24).getStringCellValue());
+            assertEquals("sub-line", header.getCell(3).getStringCellValue());
+            // Cols 11-25: merged "Article" header; sub-headers in row 1
+            assertEquals("Article", header.getCell(11).getStringCellValue());
+            Row slotRow = sheet.getRow(1);
+            assertEquals("07:00\n08:00", slotRow.getCell(11).getStringCellValue());
+            assertEquals("21:00\n22:00", slotRow.getCell(25).getStringCellValue());
         }
     }
 

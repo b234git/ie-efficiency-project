@@ -28,7 +28,7 @@ public class SystemLog {
     @Column(nullable = false)
     private String action; // e.g., "LOGIN", "CHAM_CONG", "UPDATE_ROLE"
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String details;
 
     @Column(nullable = false)
