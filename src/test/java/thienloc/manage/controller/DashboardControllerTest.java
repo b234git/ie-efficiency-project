@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import thienloc.manage.security.SecurityConfig;
@@ -17,6 +16,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -35,29 +35,26 @@ class DashboardControllerTest {
     private NotificationService notificationService;
 
     @Test
-    @WithMockUser(roles = "MANAGER")
     void testShowDashboard_ManagerRole() throws Exception {
         when(productionService.getDashboardData(any())).thenReturn(List.of());
 
-        mockMvc.perform(get("/dashboard/"))
+        mockMvc.perform(get("/dashboard/").with(user("user").roles("MANAGER")))
                 .andExpect(status().isOk())
                 .andExpect(view().name("dashboard"))
                 .andExpect(model().attributeExists("records", "selectedDate", "selectedRange"));
     }
 
     @Test
-    @WithMockUser(roles = "USER")
     void testShowDashboard_UserRole_Forbidden() throws Exception {
-        mockMvc.perform(get("/dashboard/"))
+        mockMvc.perform(get("/dashboard/").with(user("user").roles("USER")))
                 .andExpect(status().isForbidden());
     }
 
     @Test
-    @WithMockUser(roles = "MANAGER")
     void testShowDashboard_1MRange() throws Exception {
         when(productionService.getDashboardDataRange(any(), any())).thenReturn(List.of());
 
-        mockMvc.perform(get("/dashboard/").param("range", "1M"))
+        mockMvc.perform(get("/dashboard/").param("range", "1M").with(user("user").roles("MANAGER")))
                 .andExpect(status().isOk())
                 .andExpect(model().attributeExists("rangeLabel"));
 
@@ -65,7 +62,6 @@ class DashboardControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "manager", roles = "MANAGER")
     void testEditRecord() throws Exception {
         when(productionService.saveDailyProduction(any(), eq("manager"))).thenReturn(1L);
 
@@ -75,6 +71,7 @@ class DashboardControllerTest {
                         .param("line", "1A")
                         .param("mp", "30.0")
                         .param("wt", "8.0")
+                        .with(user("manager").roles("MANAGER"))
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection());
 
@@ -82,11 +79,11 @@ class DashboardControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "MANAGER")
     void testDeleteRecord() throws Exception {
         mockMvc.perform(post("/dashboard/delete")
                         .param("id", "1")
                         .param("date", "2026-03-15")
+                        .with(user("user").roles("MANAGER"))
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection());
 
@@ -94,10 +91,10 @@ class DashboardControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
     void testDeleteMultiple() throws Exception {
         mockMvc.perform(post("/dashboard/delete-multiple")
                         .param("ids", "1", "2", "3")
+                        .with(user("user").roles("ADMIN"))
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection());
 

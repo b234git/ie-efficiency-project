@@ -155,27 +155,35 @@ public final class TestDataFactory {
 
     /**
      * Build production Excel (.xlsx) bytes matching ExcelService template format.
-     * Each row: Date, Section, Line, MP, DLI, IDL, WT, Output, RFT, Allowance, [15 timeslots]
+     * Compact input format per row: [Date, Section, Line, DL(MP), DLI, IDL, WT, Output, RFT, Allowance, articles...]
+     * Mapped to physical columns: [0, 1, 2, 5, 6, 7, 9, 8, 10, 27, 11, 12, ...]
+     * Data starts at row 2 (rows 0-1 are headers) matching ExcelService.DATA_START_ROW=2.
      */
     public static byte[] buildProductionExcelBytes(List<Object[]> dataRows) throws IOException {
+        // Compact index → physical column mapping (indices 0-9, then articles at 10+ → cols 11+)
+        int[] colMap = {0, 1, 2, 5, 6, 7, 9, 8, 10, 27};
         try (Workbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = wb.createSheet("DB");
-            // Header row
+            // Row 0: main headers (simplified)
             Row header = sheet.createRow(0);
-            String[] headers = {"Date", "Section", "Line", "MP", "DLI", "IDL", "WT", "Output", "RFT", "Allowance"};
-            for (int i = 0; i < headers.length; i++) {
-                header.createCell(i).setCellValue(headers[i]);
-            }
-            // Data rows
+            header.createCell(0).setCellValue("Date");
+            header.createCell(1).setCellValue("Section");
+            header.createCell(2).setCellValue("Line");
+            header.createCell(5).setCellValue("DL");
+            header.createCell(11).setCellValue("Article");
+            // Row 1: blank sub-header row (ExcelService skips rows 0-1)
+            sheet.createRow(1);
+            // Data rows start at row 2
             for (int r = 0; r < dataRows.size(); r++) {
-                Row row = sheet.createRow(r + 1);
+                Row row = sheet.createRow(r + 2);
                 Object[] vals = dataRows.get(r);
                 for (int c = 0; c < vals.length; c++) {
                     if (vals[c] == null) continue;
+                    int physCol = (c < colMap.length) ? colMap[c] : (11 + c - colMap.length);
                     if (vals[c] instanceof Number) {
-                        row.createCell(c).setCellValue(((Number) vals[c]).doubleValue());
+                        row.createCell(physCol).setCellValue(((Number) vals[c]).doubleValue());
                     } else {
-                        row.createCell(c).setCellValue(vals[c].toString());
+                        row.createCell(physCol).setCellValue(vals[c].toString());
                     }
                 }
             }

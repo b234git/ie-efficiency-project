@@ -8,14 +8,17 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import thienloc.manage.dto.DailyProductionDto;
 import thienloc.manage.entity.DailyProduction;
+import thienloc.manage.entity.DailyProductionDetail;
 import thienloc.manage.entity.MasterDb;
 import thienloc.manage.repository.MasterDbRepository;
 
 import java.time.LocalDate;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -120,8 +123,6 @@ class EfficiencyCalculatorServiceTest {
 
         when(masterDbRepository.findFirstByArticleNoAndDataMonthOrderByRefAsc(anyString(), anyString()))
                 .thenReturn(Optional.empty());
-        when(masterDbRepository.findFirstByArticleNoOrderByRefAsc(anyString()))
-                .thenReturn(Optional.empty());
 
         calculator.populateEfficiencyMetrics(dto, entity);
 
@@ -147,17 +148,23 @@ class EfficiencyCalculatorServiceTest {
         dto.setArticle("Y12345");
         DailyProduction entity = buildEntity("SEW", "Y12345", 500, 20.0, 8.0, 25.0, 0.85);
         entity.setDli(20.0);
+        // Add a detail so the article appears in the batch load
+        DailyProductionDetail detail = new DailyProductionDetail();
+        detail.setArticleNo("Y12345");
+        entity.setDetails(List.of(detail));
 
-        // Month-specific lookup returns empty
+        // Month-specific lookup returns empty (both single and batch)
         when(masterDbRepository.findFirstByArticleNoAndDataMonthOrderByRefAsc("Y12345", "2026-03"))
                 .thenReturn(Optional.empty());
-        // Fallback returns result
-        when(masterDbRepository.findFirstByArticleNoOrderByRefAsc("Y12345"))
-                .thenReturn(Optional.of(sampleMasterDb));
+        when(masterDbRepository.findByArticleNoInAndDataMonthOrderByRefAsc(anyList(), eq("2026-03")))
+                .thenReturn(Collections.emptyList());
+        // Fallback batch load returns sampleMasterDb
+        when(masterDbRepository.findByArticleNoInOrderByRefAsc(anyList()))
+                .thenReturn(List.of(sampleMasterDb));
 
         calculator.populateEfficiencyMetrics(dto, entity);
 
-        // Should have found MasterDb via fallback
+        // Should have found MasterDb via fallback batch map
         assertEquals("P001", dto.getPatternNo());
         assertEquals("TestShoe", dto.getShoeName());
     }

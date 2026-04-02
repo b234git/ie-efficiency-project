@@ -13,6 +13,7 @@ import thienloc.manage.dto.SplitEntryDto;
 import thienloc.manage.entity.SplitEntry;
 import thienloc.manage.entity.SplitEntryDetail;
 import thienloc.manage.entity.User;
+import thienloc.manage.repository.DailyProductionRepository;
 import thienloc.manage.repository.SplitEntryRepository;
 import thienloc.manage.testutil.TestDataFactory;
 
@@ -36,6 +37,9 @@ class SplitEntryServiceTest {
 
     @Mock
     private ProductionService productionService;
+
+    @Mock
+    private DailyProductionRepository dailyProductionRepository;
 
     @InjectMocks
     private SplitEntryService splitEntryService;
@@ -323,6 +327,10 @@ class SplitEntryServiceTest {
         SplitEntry entry = TestDataFactory.createSplitEntry(testDate, "SEW", "1A");
         when(splitEntryRepository.findByProductionDateOrderBySectionAscLineAsc(testDate))
                 .thenReturn(List.of(entry));
+        when(splitEntryRepository.findLinkedProductionIdsByDate(testDate))
+                .thenReturn(List.of());
+        when(dailyProductionRepository.findByProductionDateOrderBySectionAscLineAsc(testDate))
+                .thenReturn(List.of());
 
         List<SplitEntryDto> result = splitEntryService.getEntriesForDate(testDate);
 

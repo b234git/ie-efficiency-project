@@ -82,6 +82,13 @@ public class EfficiencyCalculatorService {
                     dto.setStdPph(sectionOpt.get().getPph(masterData));
                 }
             }
+
+            // Set masterDbReason for Pattern/Style warning in report
+            if (masterData == null) {
+                dto.setMasterDbReason("Article '" + lookupArticle + "' not found in Master DB");
+            } else if (masterData.getPatternNo() == null || masterData.getShoeName() == null) {
+                dto.setMasterDbReason("Pattern/Style not set in Master DB for article '" + lookupArticle + "'");
+            }
         }
 
         // Actual PPH = Output / DLI / WT
@@ -220,6 +227,13 @@ public class EfficiencyCalculatorService {
                 if (sectionOpt.isPresent()) {
                     dto.setStdPph(sectionOpt.get().getPph(masterData));
                 }
+            }
+
+            // Set masterDbReason for Pattern/Style warning in report
+            if (masterData == null) {
+                dto.setMasterDbReason("Article '" + lookupArticle + "' not found in Master DB");
+            } else if (masterData.getPatternNo() == null || masterData.getShoeName() == null) {
+                dto.setMasterDbReason("Pattern/Style not set in Master DB for article '" + lookupArticle + "'");
             }
         }
 

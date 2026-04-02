@@ -26,7 +26,7 @@ public class Notification {
     @Column(nullable = false)
     private String title;
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String message;
 
     @Column(nullable = false)

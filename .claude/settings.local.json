@@ -69,7 +69,9 @@
       "Read(//c/Users/mphat/.claude/plans 2>/dev/**)",
       "Bash(grep -r \"class.*Dto\" src/main/java/thienloc/manage/dto/*.java)",
       "Bash(grep -n \"findAll\\\\|without.*limit\\\\|no.*pageable\" /c/Users/mphat/Desktop/work/IE-Eff/src/main/java/thienloc/manage/repository/*.java)",
-      "Bash(ipconfig)"
+      "Bash(ipconfig)",
+      "Bash(xargs ls:*)",
+      "Bash(grep -E \"^\\\\\\\\[INFO\\\\\\\\] Tests run:|^\\\\\\\\[ERROR\\\\\\\\].*Tests run:|BUILD\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\mphat\\Desktop\\work\\IE-Eff\\src\\main\\resources\\static"

@@ -150,11 +150,8 @@
             </div>
 
             <div>
-                <select name="line" class="form-control" style="width:100px; display:inline-block;">
-                    <option value="" th:text="#{report.alllines}">All Lines</option>
-                    <option th:each="ln : ${lines}" th:value="${ln}" th:text="${ln}"
-                        th:selected="${ln == selectedLine}"></option>
-                </select>
+                <input type="text" name="line" th:value="${selectedLine}" class="form-control"
+                    placeholder="Line..." style="width:80px; display:inline-block;" />
             </div>
 
             <button type="submit" class="btn btn-primary" th:text="#{report.view}">View</button>
@@ -200,23 +197,63 @@
                         <td th:text="${rec.productionDate}"></td>
                         <td><strong th:text="${#strings.substringBefore(rec.section + ' ', ' ')}"></strong></td>
                         <td th:text="${rec.line}"></td>
-                        <td th:text="${rec.patternNo != null ? rec.patternNo : '-'}"></td>
-                        <td th:text="${rec.shoeName != null ? rec.shoeName : '-'}"
-                            style="max-width:200px; overflow:hidden; text-overflow:ellipsis;"></td>
-                        <td th:text="${rec.article != null ? rec.article : '-'}"></td>
+                        <td>
+                            <span th:if="${rec.patternNo != null}" th:text="${rec.patternNo}"></span>
+                            <span th:if="${rec.patternNo == null and rec.masterDbReason != null}" style="cursor:help;"
+                                  th:title="${rec.masterDbReason}">-
+                                <span style="display:inline-block; width:16px; height:16px; line-height:16px; text-align:center; border-radius:50%; background:#ffc107; color:#000; font-size:11px; font-weight:bold; vertical-align:middle;">!</span>
+                            </span>
+                            <span th:if="${rec.patternNo == null and rec.masterDbReason == null}">-</span>
+                        </td>
+                        <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis;">
+                            <span th:if="${rec.shoeName != null}" th:text="${rec.shoeName}"></span>
+                            <span th:if="${rec.shoeName == null and rec.masterDbReason != null}" style="cursor:help;"
+                                  th:title="${rec.masterDbReason}">-
+                                <span style="display:inline-block; width:16px; height:16px; line-height:16px; text-align:center; border-radius:50%; background:#ffc107; color:#000; font-size:11px; font-weight:bold; vertical-align:middle;">!</span>
+                            </span>
+                            <span th:if="${rec.shoeName == null and rec.masterDbReason == null}">-</span>
+                        </td>
+                        <td>
+                            <span th:if="${rec.article != null and !#strings.contains(rec.article, '(+)')}"
+                                  th:text="${rec.article}"></span>
+                            <span th:if="${rec.article != null and #strings.contains(rec.article, '(+')}">
+                                <span th:text="${#strings.replace(rec.article, ' (+)', '')}"></span>
+                                <span style="cursor:help; color:#0d6efd; font-weight:600;"
+                                      th:title="${rec.articleTooltip}">(+)</span>
+                            </span>
+                            <span th:if="${rec.article == null}">-</span>
+                        </td>
                         <td class="num"><strong th:text="${rec.output != null ? rec.output : '-'}"></strong></td>
-                        <td class="num"
-                            th:text="${rec.target != null ? #numbers.formatDecimal(rec.target, 1, 0) : '-'}"></td>
+                        <td class="num">
+                            <span th:if="${rec.target != null}" th:text="${#numbers.formatDecimal(rec.target, 1, 0)}"></span>
+                            <span th:if="${rec.target == null}" style="cursor:help;"
+                                  th:title="${rec.effKpiReason != null ? rec.effKpiReason : 'Target cannot be calculated'}">-
+                                <span style="display:inline-block; width:16px; height:16px; line-height:16px; text-align:center; border-radius:50%; background:#ffc107; color:#000; font-size:11px; font-weight:bold; vertical-align:middle;">!</span>
+                            </span>
+                        </td>
                         <td class="num" th:text="${rec.wt != null ? rec.wt : '-'}"></td>
                         <td class="num" th:text="${rec.mp != null ? rec.mp : '-'}"></td>
                         <td class="num" th:text="${rec.dli != null ? rec.dli : '-'}"></td>
-                        <td class="num"
-                            th:text="${rec.actualPph != null ? #numbers.formatDecimal(rec.actualPph, 1, 2) : '-'}"></td>
-                        <td class="num"
-                            th:text="${rec.stdPph != null ? #numbers.formatDecimal(rec.stdPph, 1, 2) : '-'}"></td>
+                        <td class="num">
+                            <span th:if="${rec.actualPph != null}" th:text="${#numbers.formatDecimal(rec.actualPph, 1, 2)}"></span>
+                            <span th:if="${rec.actualPph == null}" style="cursor:help;" title="DLI (Actual MP) or WT is missing or zero">-
+                                <span style="display:inline-block; width:16px; height:16px; line-height:16px; text-align:center; border-radius:50%; background:#ffc107; color:#000; font-size:11px; font-weight:bold; vertical-align:middle;">!</span>
+                            </span>
+                        </td>
+                        <td class="num">
+                            <span th:if="${rec.stdPph != null}" th:text="${#numbers.formatDecimal(rec.stdPph, 1, 2)}"></span>
+                            <span th:if="${rec.stdPph == null}" style="cursor:help;"
+                                  th:title="${rec.effKpiReason != null ? rec.effKpiReason : 'No Std PPH data in Master DB'}">-
+                                <span style="display:inline-block; width:16px; height:16px; line-height:16px; text-align:center; border-radius:50%; background:#ffc107; color:#000; font-size:11px; font-weight:bold; vertical-align:middle;">!</span>
+                            </span>
+                        </td>
                         <td class="num eff-cell"
-                            th:classappend="${rec.effKpi != null and rec.effKpi >= 1.0 ? 'eff-hi' : (rec.effKpi != null and rec.effKpi >= 0.8 ? 'eff-mid' : 'eff-low')}"
-                            th:text="${rec.effKpi != null ? #numbers.formatDecimal(rec.effKpi * 100, 1, 2) + '%' : '-'}">
+                            th:classappend="${rec.effKpi != null and rec.effKpi >= 1.0 ? 'eff-hi' : (rec.effKpi != null and rec.effKpi >= 0.8 ? 'eff-mid' : 'eff-low')}">
+                            <span th:if="${rec.effKpi != null}" th:text="${#numbers.formatDecimal(rec.effKpi * 100, 1, 2) + '%'}"></span>
+                            <span th:if="${rec.effKpi == null}" style="cursor:help;"
+                                  th:title="${rec.effKpiReason != null ? rec.effKpiReason : 'No data'}">-
+                                <span style="display:inline-block; width:16px; height:16px; line-height:16px; text-align:center; border-radius:50%; background:#ffc107; color:#000; font-size:11px; font-weight:bold; vertical-align:middle;">!</span>
+                            </span>
                         </td>
                         <td class="num"
                             th:text="${rec.rft != null ? #numbers.formatDecimal(rec.rft, 1, 2) + '%' : '-'}"></td>

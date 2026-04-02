@@ -5,12 +5,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import thienloc.manage.entity.MasterDb;
 import thienloc.manage.repository.DailyProductionRepository;
 import thienloc.manage.repository.MasterDbRepository;
-
-import java.util.Collections;
-import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -35,12 +31,8 @@ class DataRetentionServiceTest {
 
     @Test
     void testCheckAndNotifyCreatesNotificationWhenDataExpiring() {
-        // Simulate MasterDb records approaching expiration
-        MasterDb old = MasterDb.builder().ref("OLD1").dataMonth("2024-01").build();
-        when(masterDbRepository.findByDataMonthBefore(anyString()))
-                .thenReturn(List.of(old));
-        when(dailyProductionRepository.findByProductionDateBefore(any()))
-                .thenReturn(Collections.emptyList());
+        when(masterDbRepository.countByDataMonthBefore(anyString())).thenReturn(1L);
+        when(dailyProductionRepository.countByProductionDateBefore(any())).thenReturn(0L);
 
         dataRetentionService.checkAndNotify();
 
@@ -52,11 +44,7 @@ class DataRetentionServiceTest {
 
     @Test
     void testCheckAndNotifyNoNotificationWhenNoExpiringData() {
-        when(masterDbRepository.findByDataMonthBefore(anyString()))
-                .thenReturn(Collections.emptyList());
-        when(dailyProductionRepository.findByProductionDateBefore(any()))
-                .thenReturn(Collections.emptyList());
-
+        // countBy methods default to 0L → no notification fired
         dataRetentionService.checkAndNotify();
 
         verify(notificationService, never()).notifyAdminAndManager(anyString(), anyString(), anyString());
