@@ -5,6 +5,47 @@ Dùng cho mạng nội bộ (LAN), không yêu cầu kết nối internet.
 
 ---
 
+## Cài đặt nhanh (All-in-one package)
+
+Thư mục `deploy/` chứa script tự động hóa toàn bộ quá trình cài đặt.
+
+### Chuẩn bị trước
+
+| # | Việc cần làm | Link tải |
+|---|-------------|----------|
+| 1 | Cài **Java 17** (Eclipse Temurin), tick "Set JAVA_HOME" | https://adoptium.net/ |
+| 2 | Cài **PostgreSQL 15+**, ghi nhớ mật khẩu `postgres` | https://www.postgresql.org/download/windows/ |
+| 3 | Tải **NSSM**, giải nén `win64\` vào `deploy\nssm\` | https://nssm.cc/download |
+| 4 | Build JAR: `mvn package -DskipTests` rồi copy `target\management-0.0.1-SNAPSHOT.jar` vào `deploy\` và đổi tên thành `app.jar` | — |
+
+### Cấu trúc thư mục deploy/
+
+```
+deploy/
+├── app.jar          ← bạn copy vào (sau khi build)
+├── config.bat       ← SỬA FILE NÀY TRƯỚC
+├── install.bat      ← chạy để cài
+├── uninstall.bat    ← chạy để gỡ cài đặt
+└── nssm\win64\
+    └── nssm.exe     ← bạn copy vào (từ nssm.cc)
+```
+
+### Các bước chạy
+
+```
+1. Mở config.bat → điền mật khẩu postgres và DB_PASSWORD
+2. Chuột phải install.bat → "Run as administrator"
+3. Đợi ~60 giây → script tự kiểm tra, cài service, mở firewall, và verify
+4. Truy cập: http://localhost:8080
+5. Đăng nhập admin/admin → ĐỔI MẬT KHẨU NGAY
+```
+
+> Script `install.bat` tự động: tạo database, cài Windows Service (tự khởi động cùng máy), mở firewall port 8080, đặt lịch backup 3:00 AM.
+
+---
+
+---
+
 ## Yêu cầu phần cứng
 
 | Thành phần | Tối thiểu | Khuyến nghị |
