@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import thienloc.manage.util.NormalizationUtil;
 
 @Entity
 @Table(name = "master_db",
@@ -12,7 +13,7 @@ import lombok.NoArgsConstructor;
         @UniqueConstraint(columnNames = {"ref", "data_month"})
     },
     indexes = {
-        @Index(name = "idx_mdb_article_no", columnList = "articleNo"),
+        @Index(name = "idx_mdb_article_no", columnList = "article_no"),
         @Index(name = "idx_mdb_data_month", columnList = "data_month")
     }
 )
@@ -95,52 +96,46 @@ public class MasterDb {
     @PrePersist
     @PreUpdate
     protected void onSaveOrUpdate() {
-        this.tct = (this.tct != null) ? round(this.tct) : 0.0;
+        this.tct = (this.tct != null) ? NormalizationUtil.round(this.tct) : 0.0;
 
-        this.sewCt = round(this.sewCt);
-        this.sewMp = round(this.sewMp);
-        this.sewQuotaDb = round(this.sewQuotaDb);
-        this.sewPph = round(this.sewPph);
+        this.sewCt           = NormalizationUtil.round(this.sewCt);
+        this.sewMp           = NormalizationUtil.round(this.sewMp);
+        this.sewQuotaDb      = NormalizationUtil.round(this.sewQuotaDb);
+        this.sewPph          = NormalizationUtil.round(this.sewPph);
 
-        this.buff1stCt = round(this.buff1stCt);
-        this.buff1stMp = round(this.buff1stMp);
-        this.buff1stQuotaDb = round(this.buff1stQuotaDb);
-        this.buff1stPph = round(this.buff1stPph);
+        this.buff1stCt       = NormalizationUtil.round(this.buff1stCt);
+        this.buff1stMp       = NormalizationUtil.round(this.buff1stMp);
+        this.buff1stQuotaDb  = NormalizationUtil.round(this.buff1stQuotaDb);
+        this.buff1stPph      = NormalizationUtil.round(this.buff1stPph);
 
-        this.buff2ndCt = round(this.buff2ndCt);
-        this.buff2ndMp = round(this.buff2ndMp);
-        this.buff2ndQuotaDb = round(this.buff2ndQuotaDb);
-        this.buff2ndPph = round(this.buff2ndPph);
+        this.buff2ndCt       = NormalizationUtil.round(this.buff2ndCt);
+        this.buff2ndMp       = NormalizationUtil.round(this.buff2ndMp);
+        this.buff2ndQuotaDb  = NormalizationUtil.round(this.buff2ndQuotaDb);
+        this.buff2ndPph      = NormalizationUtil.round(this.buff2ndPph);
 
-        this.stockfitUvCt = round(this.stockfitUvCt);
-        this.stockfitUvMp = round(this.stockfitUvMp);
-        this.stockfitUvQuotaDb = round(this.stockfitUvQuotaDb);
-        this.stockfitUvPph = round(this.stockfitUvPph);
+        this.stockfitUvCt       = NormalizationUtil.round(this.stockfitUvCt);
+        this.stockfitUvMp       = NormalizationUtil.round(this.stockfitUvMp);
+        this.stockfitUvQuotaDb  = NormalizationUtil.round(this.stockfitUvQuotaDb);
+        this.stockfitUvPph      = NormalizationUtil.round(this.stockfitUvPph);
 
-        this.stockfit1stCt = round(this.stockfit1stCt);
-        this.stockfit1stMp = round(this.stockfit1stMp);
-        this.stockfit1stQuotaDb = round(this.stockfit1stQuotaDb);
-        this.stockfit1stPph = round(this.stockfit1stPph);
+        this.stockfit1stCt      = NormalizationUtil.round(this.stockfit1stCt);
+        this.stockfit1stMp      = NormalizationUtil.round(this.stockfit1stMp);
+        this.stockfit1stQuotaDb = NormalizationUtil.round(this.stockfit1stQuotaDb);
+        this.stockfit1stPph     = NormalizationUtil.round(this.stockfit1stPph);
 
-        this.stockfit2ndCt = round(this.stockfit2ndCt);
-        this.stockfit2ndMp = round(this.stockfit2ndMp);
-        this.stockfit2ndQuotaDb = round(this.stockfit2ndQuotaDb);
-        this.stockfit2ndPph = round(this.stockfit2ndPph);
+        this.stockfit2ndCt      = NormalizationUtil.round(this.stockfit2ndCt);
+        this.stockfit2ndMp      = NormalizationUtil.round(this.stockfit2ndMp);
+        this.stockfit2ndQuotaDb = NormalizationUtil.round(this.stockfit2ndQuotaDb);
+        this.stockfit2ndPph     = NormalizationUtil.round(this.stockfit2ndPph);
 
-        this.assemBigCt = round(this.assemBigCt);
-        this.assemBigMp = round(this.assemBigMp);
-        this.assemBigQuotaDb = round(this.assemBigQuotaDb);
-        this.assemBigPph = round(this.assemBigPph);
+        this.assemBigCt       = NormalizationUtil.round(this.assemBigCt);
+        this.assemBigMp       = NormalizationUtil.round(this.assemBigMp);
+        this.assemBigQuotaDb  = NormalizationUtil.round(this.assemBigQuotaDb);
+        this.assemBigPph      = NormalizationUtil.round(this.assemBigPph);
 
-        this.assemSmallCt = round(this.assemSmallCt);
-        this.assemSmallMp = round(this.assemSmallMp);
-        this.assemSmallQuotaDb = round(this.assemSmallQuotaDb);
-        this.assemSmallPph = round(this.assemSmallPph);
-    }
-
-    private Double round(Double val) {
-        if (val == null)
-            return null;
-        return Math.round(val * 100.0) / 100.0;
+        this.assemSmallCt       = NormalizationUtil.round(this.assemSmallCt);
+        this.assemSmallMp       = NormalizationUtil.round(this.assemSmallMp);
+        this.assemSmallQuotaDb  = NormalizationUtil.round(this.assemSmallQuotaDb);
+        this.assemSmallPph      = NormalizationUtil.round(this.assemSmallPph);
     }
 }

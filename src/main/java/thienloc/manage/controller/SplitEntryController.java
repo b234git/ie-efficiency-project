@@ -1,6 +1,8 @@
 package thienloc.manage.controller;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -9,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -17,9 +20,10 @@ import thienloc.manage.dto.SplitEntryDto;
 import thienloc.manage.dto.SplitEntryImportPreviewDto;
 import thienloc.manage.service.LineSummaryImportService;
 import thienloc.manage.service.SplitEntryImportService;
-import thienloc.manage.service.SplitEntryService;
+import thienloc.manage.service.ISplitEntryService;
 import thienloc.manage.service.SplitEntryTemplateService;
 import thienloc.manage.service.SystemLogService;
+import thienloc.manage.util.ExcelFileValidator;
 
 import java.io.IOException;
 import java.security.Principal;
@@ -34,10 +38,13 @@ import java.util.Optional;
 public class SplitEntryController {
 
     @Autowired
-    private SplitEntryService splitEntryService;
+    private ISplitEntryService splitEntryService;
 
     @Autowired
     private SystemLogService systemLogService;
+
+    @Autowired
+    private MeterRegistry meterRegistry;
 
     @Autowired
     private LineSummaryImportService lineSummaryImportService;
@@ -117,9 +124,17 @@ public class SplitEntryController {
     }
 
     @PostMapping("/manpower")
-    public String saveManpower(@ModelAttribute SplitEntryDto dto,
+    public String saveManpower(@Valid @ModelAttribute SplitEntryDto dto,
+                               BindingResult result,
                                Principal principal,
                                RedirectAttributes redirectAttributes) {
+        if (result.hasErrors()) {
+            meterRegistry.counter("validation.errors", "form", "split-entry").increment();
+            redirectAttributes.addFlashAttribute("validationError",
+                    result.getFieldErrors().stream().map(e -> e.getDefaultMessage()).findFirst()
+                          .orElse("Dữ liệu nhập không hợp lệ."));
+            return "redirect:/split-entry/manpower";
+        }
         splitEntryService.saveManpower(dto, principal.getName());
         systemLogService.logAction("SPLIT_MANPOWER",
                 "Saved manpower: Section=" + dto.getSection() + ", Line=" + dto.getLine());
@@ -156,9 +171,17 @@ public class SplitEntryController {
     }
 
     @PostMapping("/output")
-    public String saveOutput(@ModelAttribute SplitEntryDto dto,
+    public String saveOutput(@Valid @ModelAttribute SplitEntryDto dto,
+                             BindingResult result,
                              Principal principal,
                              RedirectAttributes redirectAttributes) {
+        if (result.hasErrors()) {
+            meterRegistry.counter("validation.errors", "form", "split-entry").increment();
+            redirectAttributes.addFlashAttribute("validationError",
+                    result.getFieldErrors().stream().map(e -> e.getDefaultMessage()).findFirst()
+                          .orElse("Dữ liệu nhập không hợp lệ."));
+            return "redirect:/split-entry/output";
+        }
         splitEntryService.saveOutput(dto, principal.getName());
         systemLogService.logAction("SPLIT_OUTPUT",
                 "Saved output: Section=" + dto.getSection() + ", Line=" + dto.getLine());
@@ -205,9 +228,17 @@ public class SplitEntryController {
     }
 
     @PostMapping("/articles")
-    public String saveArticles(@ModelAttribute SplitEntryDto dto,
+    public String saveArticles(@Valid @ModelAttribute SplitEntryDto dto,
+                               BindingResult result,
                                Principal principal,
                                RedirectAttributes redirectAttributes) {
+        if (result.hasErrors()) {
+            meterRegistry.counter("validation.errors", "form", "split-entry").increment();
+            redirectAttributes.addFlashAttribute("validationError",
+                    result.getFieldErrors().stream().map(e -> e.getDefaultMessage()).findFirst()
+                          .orElse("Dữ liệu nhập không hợp lệ."));
+            return "redirect:/split-entry/articles";
+        }
         splitEntryService.saveArticles(dto, principal.getName());
         systemLogService.logAction("SPLIT_ARTICLES",
                 "Saved articles: Section=" + dto.getSection() + ", Line=" + dto.getLine());
@@ -252,6 +283,7 @@ public class SplitEntryController {
                                 Model model,
                                 RedirectAttributes redirectAttributes) {
         try {
+            ExcelFileValidator.validate(file);
             LineSummaryImportService.LineSummaryPreview preview =
                     lineSummaryImportService.parseFile(file);
             session.setAttribute("lsrPreview", preview);
@@ -324,6 +356,7 @@ public class SplitEntryController {
                                       Model model,
                                       RedirectAttributes redirectAttributes) {
         try {
+            ExcelFileValidator.validate(file);
             SplitEntryImportPreviewDto preview = splitEntryImportService.parseOutputFile(file);
             session.setAttribute("outputImportPreview", preview);
             model.addAttribute("preview", preview);
@@ -383,6 +416,7 @@ public class SplitEntryController {
                                         Model model,
                                         RedirectAttributes redirectAttributes) {
         try {
+            ExcelFileValidator.validate(file);
             SplitEntryImportPreviewDto preview = splitEntryImportService.parseArticlesFile(file);
             session.setAttribute("articlesImportPreview", preview);
             model.addAttribute("preview", preview);

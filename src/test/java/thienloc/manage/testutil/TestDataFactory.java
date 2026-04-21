@@ -1,19 +1,28 @@
 package thienloc.manage.testutil;
 
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import thienloc.manage.entity.*;
-import thienloc.manage.dto.*;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import thienloc.manage.dto.DailyProductionDto;
+import thienloc.manage.dto.SplitEntryDto;
+import thienloc.manage.entity.DailyProduction;
+import thienloc.manage.entity.DailyProductionDetail;
+import thienloc.manage.entity.MasterDb;
+import thienloc.manage.entity.Notification;
+import thienloc.manage.entity.SplitEntry;
+import thienloc.manage.entity.SplitEntryStatus;
+import thienloc.manage.entity.SystemLog;
+import thienloc.manage.entity.User;
 
 /**
  * Shared test data builders used across all test classes.
@@ -108,7 +117,7 @@ public final class TestDataFactory {
                 .productionDate(date)
                 .section(section)
                 .line(line)
-                .status("PARTIAL")
+                .status(SplitEntryStatus.PARTIAL)
                 .build();
         entry.setDetails(new ArrayList<>());
         return entry;

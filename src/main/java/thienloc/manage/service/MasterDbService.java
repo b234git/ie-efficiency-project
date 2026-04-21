@@ -4,11 +4,14 @@ import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import thienloc.manage.config.CacheConfig;
 import thienloc.manage.entity.MasterDb;
 import thienloc.manage.repository.MasterDbRepository;
 
@@ -67,18 +70,26 @@ public class MasterDbService {
         return masterDbRepository.findById(id);
     }
 
+    @Cacheable(CacheConfig.MASTERDB_MONTHS)
     public List<String> getDistinctMonths() {
         return masterDbRepository.findDistinctDataMonths();
     }
 
     // ─── Create / Update ───────────────────────────────────────────────────────
 
+    @CacheEvict(cacheNames = CacheConfig.MASTERDB_MONTHS, allEntries = true)
     public MasterDb save(MasterDb entity) {
         return masterDbRepository.save(entity);
     }
 
+    @CacheEvict(cacheNames = CacheConfig.MASTERDB_MONTHS, allEntries = true)
+    public List<MasterDb> saveAll(List<MasterDb> entities) {
+        return masterDbRepository.saveAll(entities);
+    }
+
     // ─── Delete ────────────────────────────────────────────────────────────────
 
+    @CacheEvict(cacheNames = CacheConfig.MASTERDB_MONTHS, allEntries = true)
     public void deleteById(Long id) {
         masterDbRepository.deleteById(id);
     }

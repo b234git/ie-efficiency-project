@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="#{newstyle.title}">New Style Management</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}"/>
+    <style>
+        .ns-layout {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+        }
+        .ns-main { flex: 1 1 0; min-width: 0; }
+        .ns-sidebar {
+            flex: 0 0 240px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 18px 20px;
+        }
+        @media (max-width: 900px) {
+            .ns-layout { flex-direction: column; }
+            .ns-sidebar { flex: none; width: 100%; box-sizing: border-box; }
+        }
+        .num { text-align: right; font-variant-numeric: tabular-nums; }
+        .ref-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.88rem; }
+        .ref-table th, .ref-table td { padding: 5px 8px; border: 1px solid #dee2e6; }
+        .ref-table thead th { background: #e9ecef; font-weight: 700; }
+        .ref-table tbody tr:nth-child(even) { background: #f1f3f5; }
+        .vnd-cell { color: #198754; font-weight: 600; }
+
+        /* ── Sort headers ─────────────────────────────── */
+        .ns-th-sort { cursor: pointer; user-select: none; white-space: nowrap; }
+        .ns-th-sort:hover { background: #e9ecef; }
+        .sort-ind { font-size: 0.7rem; color: #ced4da; margin-left: 3px; vertical-align: middle; }
+        .sort-ind.asc  { color: #0d6efd; }
+        .sort-ind.desc { color: #0d6efd; }
+
+        /* ── Pagination ───────────────────────────────── */
+        .pagination-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+        .page-btn { min-width: 32px; height: 30px; border: 1px solid #dee2e6; background: #fff;
+                    cursor: pointer; border-radius: 4px; font-size: 0.85rem; padding: 0 6px; }
+        .page-btn.active { background: #0d6efd; color: #fff; border-color: #0d6efd; }
+        .page-btn:disabled { opacity: 0.45; cursor: default; }
+        .page-info { font-size: 0.85rem; color: #495057; }
+    </style>
+</head>
+
+<body>
+<div th:replace="~{fragments/layout :: navbar}"></div>
+
+<div class="container-xl" style="padding: 20px;">
+
+    <div class="page-header" style="margin-bottom: 18px;">
+        <h2 th:text="#{newstyle.title}">New Style Management</h2>
+        <p style="color: #6c757d; margin: 4px 0 0;" th:text="#{newstyle.subtitle}">
+            Track new style quantities by section/line.
+        </p>
+    </div>
+
+    <!-- Month filter -->
+    <form method="get" th:action="@{/new-style/}" style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+        <label style="font-weight:600; margin:0;">Month:</label>
+        <input type="month" name="month" class="form-control" style="width:160px;"
+               th:value="${selectedMonth}"/>
+        <button type="submit" class="btn btn-primary btn-sm">View</button>
+    </form>
+
+    <!-- Flash messages -->
+    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+    <div th:if="${error}"   class="alert alert-danger"  th:text="${error}"></div>
+
+    <div class="ns-layout">
+
+        <!-- ── LEFT: main table ─────────────────────────────────────────────── -->
+        <div class="ns-main">
+            <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                <h3 style="margin:0;" th:text="#{newstyle.title}">New Style Entries</h3>
+                <div sec:authorize="hasAnyRole('ADMIN','MANAGER')" style="display:flex; gap:8px;">
+                    <button class="btn btn-success" onclick="openNsImportModal()"
+                            th:text="#{newstyle.btn.import}">📥 Import Excel</button>
+                    <button class="btn btn-primary" onclick="openAddNsModal()"
+                            th:text="#{newstyle.addNew}">+ Add New</button>
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table id="ns-table">
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th class="ns-th-sort" onclick="doNsSort('month')">
+                            Month <span class="sort-ind" id="ns-si-month">⇅</span>
+                        </th>
+                        <th class="ns-th-sort" onclick="doNsSort('section')">
+                            <span th:text="#{table.section}">SECTION</span>
+                            <span class="sort-ind" id="ns-si-section">⇅</span>
+                        </th>
+                        <th class="ns-th-sort" onclick="doNsSort('line')">
+                            <span th:text="#{table.line}">LINE</span>
+                            <span class="sort-ind" id="ns-si-line">⇅</span>
+                        </th>
+                        <th class="ns-th-sort" onclick="doNsSort('style')">
+                            <span th:text="#{table.style}">STYLE</span>
+                            <span class="sort-ind" id="ns-si-style">⇅</span>
+                        </th>
+                        <th class="num ns-th-sort" onclick="doNsSort('qty')">
+                            <span th:text="#{newstyle.quantity}">QUANTITY</span>
+                            <span class="sort-ind" id="ns-si-qty">⇅</span>
+                        </th>
+                        <th class="num" th:text="#{newstyle.note.subtitle}">VND (×30k)</th>
+                        <th sec:authorize="hasAnyRole('ADMIN','MANAGER')"
+                            th:text="#{newstyle.actions}">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="e, stat : ${entries}"
+                        th:attr="data-month=${e.dataMonth},data-section=${e.section},data-line=${e.line},data-style=${e.style},data-qty=${e.quantity}">
+                        <td data-row-num th:text="${stat.index + 1}"></td>
+                        <td th:text="${e.dataMonth}"></td>
+                        <td style="font-weight:600;" th:text="${e.section}"></td>
+                        <td th:text="${e.line}"></td>
+                        <td th:text="${e.style}"></td>
+                        <td class="num" th:text="${e.quantity}"></td>
+                        <td class="num vnd-cell"
+                            th:text="${#numbers.formatInteger(e.quantity * 30000, 1, 'COMMA') + ' ₫'}"></td>
+                        <td sec:authorize="hasAnyRole('ADMIN','MANAGER')">
+                            <button class="btn btn-warning btn-sm"
+                                    onclick="openEditNsModal(this)"
+                                    th:attr="data-id=${e.id},
+                                             data-datamonth=${e.dataMonth},
+                                             data-section=${e.section},
+                                             data-line=${e.line},
+                                             data-style=${e.style},
+                                             data-quantity=${e.quantity}"
+                                    th:text="#{newstyle.btn.edit}">✏ Edit</button>
+                            <form th:action="@{/new-style/delete}" method="post"
+                                  style="display:inline;"
+                                  th:onsubmit="'return confirm(' + '\'' + I18N.confirmDelete + '\'' + ')'">
+                                <input type="hidden" name="id" th:value="${e.id}"/>
+                                <input type="hidden" name="month" th:value="${selectedMonth}"/>
+                                <button type="submit" class="btn btn-danger btn-sm"
+                                        th:text="#{newstyle.btn.delete}">🗑 Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <tr th:if="${entries.isEmpty()}">
+                        <td colspan="8" style="text-align:center; color:#6c757d; padding:20px;"
+                            th:text="#{newstyle.nodata}">
+                            No data yet.
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <!-- Pagination -->
+            <div class="pagination-bar" id="ns-pagination-bar">
+                <span style="font-size:0.85rem;color:#495057;">Rows/page:</span>
+                <select id="ns-page-size" class="form-control" style="width:auto;"
+                        onchange="onNsSizeChange()">
+                    <option value="10">10</option>
+                    <option value="20" selected>20</option>
+                    <option value="50">50</option>
+                    <option value="0">All</option>
+                </select>
+                <span id="ns-page-info" class="page-info"></span>
+                <div id="ns-page-btns" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
+            </div>
+        </div>
+
+        <!-- ── RIGHT: VND reference note ──────────────────────────────────────── -->
+        <div class="ns-sidebar">
+            <h5 style="margin:0 0 4px; font-size:0.95rem;" th:text="#{newstyle.note.title}">VND Reference</h5>
+            <p style="font-size:0.82rem; color:#6c757d; margin:0 0 2px;" th:text="#{newstyle.note.subtitle}">Qty × 30,000 VNĐ</p>
+            <table class="ref-table">
+                <thead>
+                <tr>
+                    <th th:text="#{newstyle.quantity}">Qty</th>
+                    <th class="num">VNĐ</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr><td>1</td><td class="num">30,000 ₫</td></tr>
+                <tr><td>2</td><td class="num">60,000 ₫</td></tr>
+                <tr><td>3</td><td class="num">90,000 ₫</td></tr>
+                <tr><td>4</td><td class="num">120,000 ₫</td></tr>
+                <tr><td>5</td><td class="num">150,000 ₫</td></tr>
+                <tr><td>6</td><td class="num">180,000 ₫</td></tr>
+                <tr><td>7</td><td class="num">210,000 ₫</td></tr>
+                <tr><td>8</td><td class="num">240,000 ₫</td></tr>
+                <tr><td>9</td><td class="num">270,000 ₫</td></tr>
+                <tr><td>10</td><td class="num">300,000 ₫</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div><!-- /.ns-layout -->
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- MODAL: Import Excel                                                     -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div id="nsImportModal" class="modal-overlay" onclick="closeModalOnOverlay(event,'nsImportModal')">
+    <div class="modal-box" style="width: min(480px, 95vw);">
+        <button class="modal-close" onclick="closeNsImportModal()">×</button>
+        <h3 class="modal-title" th:text="#{newstyle.import.title}">Import from Excel</h3>
+
+        <p style="font-size:0.88rem; color:#6c757d; margin:0 0 12px;" th:text="#{newstyle.import.hint}">
+            Excel file must have 4 columns: Section, Line, Style, Quantity (first row is header, skipped).
+        </p>
+        <div style="background:#f8f9fa; border:1px solid #dee2e6; border-radius:6px; padding:10px 14px; font-size:0.83rem; margin-bottom:14px;">
+            <strong th:text="#{newstyle.import.format}">Format:</strong>
+            <table style="width:100%; margin-top:6px; border-collapse:collapse;">
+                <tr style="background:#e9ecef;">
+                    <th style="padding:4px 8px; border:1px solid #dee2e6;">A</th>
+                    <th style="padding:4px 8px; border:1px solid #dee2e6;">B</th>
+                    <th style="padding:4px 8px; border:1px solid #dee2e6;">C</th>
+                    <th style="padding:4px 8px; border:1px solid #dee2e6;">D</th>
+                </tr>
+                <tr>
+                    <td style="padding:4px 8px; border:1px solid #dee2e6;">Section</td>
+                    <td style="padding:4px 8px; border:1px solid #dee2e6;">Line</td>
+                    <td style="padding:4px 8px; border:1px solid #dee2e6;">Style</td>
+                    <td style="padding:4px 8px; border:1px solid #dee2e6;">Quantity</td>
+                </tr>
+                <tr style="color:#6c757d;">
+                    <td style="padding:4px 8px; border:1px solid #dee2e6;">SEW</td>
+                    <td style="padding:4px 8px; border:1px solid #dee2e6;">1A</td>
+                    <td style="padding:4px 8px; border:1px solid #dee2e6;">NV-SEW-A</td>
+                    <td style="padding:4px 8px; border:1px solid #dee2e6;">2</td>
+                </tr>
+            </table>
+        </div>
+
+        <div style="margin-bottom:12px;">
+            <a th:href="@{/new-style/template}" class="btn btn-outline-secondary btn-sm"
+               style="font-size:0.83rem;">
+                ⬇ Download Template
+            </a>
+        </div>
+
+        <form th:action="@{/new-style/import}" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="month" th:value="${selectedMonth}"/>
+            <div class="form-group">
+                <label th:text="#{newstyle.import.file}">Choose file (.xlsx / .xls)</label>
+                <input type="file" name="file" class="form-control" accept=".xlsx,.xls" required/>
+            </div>
+            <div style="margin-top:16px; display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" class="btn" onclick="closeNsImportModal()"
+                        style="border:1px solid #ccc; background:#fff; color:#000;"
+                        th:text="#{newstyle.btn.cancel}">Cancel</button>
+                <button type="submit" class="btn btn-success"
+                        th:text="#{newstyle.import.submit}">📥 Import</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- MODAL: Add / Edit New Style                                             -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div id="nsModal" class="modal-overlay" onclick="closeModalOnOverlay(event,'nsModal')">
+    <div class="modal-box" style="width: min(480px, 95vw);">
+        <button class="modal-close" onclick="closeNsModal()">×</button>
+        <h3 id="nsModalTitle" class="modal-title" th:text="#{newstyle.addTitle}">Add New Style</h3>
+
+        <form th:action="@{/new-style/save}" method="post" id="nsForm">
+            <input type="hidden" id="ns-id" name="id"/>
+            <input type="hidden" id="ns-redirect-month" name="redirectMonth"/>
+
+            <div class="form-group" style="margin-bottom:10px;">
+                <label>Month <span style="color:red">*</span></label>
+                <input type="month" id="ns-datamonth" name="dataMonth" class="form-control" required/>
+            </div>
+
+            <div class="form-grid" style="grid-template-columns: repeat(2, 1fr);">
+                <div class="form-group">
+                    <label th:text="#{table.section}">Section <span style="color:red">*</span></label>
+                    <input type="text" id="ns-section" name="section" class="form-control" required
+                           placeholder="SEW, ASSY, SF, BUFF..."/>
+                </div>
+                <div class="form-group">
+                    <label th:text="#{table.line}">Line <span style="color:red">*</span></label>
+                    <input type="text" id="ns-line" name="line" class="form-control" required
+                           placeholder="1A, 2B, 3..."/>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top:10px;">
+                <label th:text="#{table.style}">Style <span style="color:red">*</span></label>
+                <input type="text" id="ns-style" name="style" class="form-control" required
+                       placeholder="e.g. 2285, 2166/2286..."/>
+            </div>
+
+            <div class="form-group" style="margin-top:10px;">
+                <label th:text="#{newstyle.quantity}">Quantity <span style="color:red">*</span></label>
+                <input type="number" id="ns-quantity" name="quantity" class="form-control"
+                       required min="1" placeholder="1"/>
+            </div>
+
+            <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" class="btn" onclick="closeNsModal()"
+                        style="border:1px solid #ccc; background:#fff; color:#000;"
+                        th:text="#{newstyle.btn.cancel}">Cancel</button>
+                <button type="submit" class="btn btn-primary"
+                        th:text="#{newstyle.btn.save}">💾 Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- JavaScript                                                              -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    const I18N = {
+        addTitle:      /*[[#{newstyle.addTitle}]]*/ 'Add New Style',
+        editTitle:     /*[[#{newstyle.editTitle}]]*/ 'Edit New Style',
+        confirmDelete: /*[[#{newstyle.confirmDelete}]]*/ 'Are you sure you want to delete this style?'
+    };
+    const SELECTED_MONTH = /*[[${selectedMonth}]]*/ '';
+    /*]]>*/
+</script>
+<script>
+    function openAddNsModal() {
+        document.getElementById('nsModalTitle').textContent = I18N.addTitle;
+        document.getElementById('nsForm').reset();
+        document.getElementById('ns-id').value = '';
+        document.getElementById('ns-datamonth').value = SELECTED_MONTH;
+        document.getElementById('ns-redirect-month').value = SELECTED_MONTH;
+        document.getElementById('nsModal').style.display = 'flex';
+    }
+
+    function openEditNsModal(btn) {
+        const d = btn.dataset;
+        document.getElementById('nsModalTitle').textContent = I18N.editTitle;
+        document.getElementById('ns-id').value          = d.id;
+        document.getElementById('ns-datamonth').value   = d.datamonth || SELECTED_MONTH;
+        document.getElementById('ns-section').value     = d.section;
+        document.getElementById('ns-line').value        = d.line;
+        document.getElementById('ns-style').value       = d.style;
+        document.getElementById('ns-quantity').value    = d.quantity;
+        document.getElementById('ns-redirect-month').value = SELECTED_MONTH;
+        document.getElementById('nsModal').style.display = 'flex';
+    }
+
+    function openNsImportModal() {
+        document.getElementById('nsImportModal').style.display = 'flex';
+    }
+
+    function closeNsImportModal() {
+        document.getElementById('nsImportModal').style.display = 'none';
+    }
+
+    function closeNsModal() {
+        document.getElementById('nsModal').style.display = 'none';
+    }
+
+    function closeModalOnOverlay(event, modalId) {
+        if (event.target === document.getElementById(modalId)) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+    }
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { closeNsModal(); closeNsImportModal(); }
+    });
+
+    // ── Sort + Pagination ────────────────────────────────────────────────────
+    const nsPg        = { page: 1, size: 20 };
+    const nsSortState = { col: null, dir: 'asc' };
+    const NS_SORT_COLS = ['month', 'section', 'line', 'style', 'qty'];
+
+    function getNsDataRows() {
+        return [...document.querySelectorAll('#ns-table tbody tr[data-month]')];
+    }
+
+    function doNsSort(col) {
+        if (nsSortState.col === col) {
+            nsSortState.dir = nsSortState.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+            nsSortState.col = col;
+            nsSortState.dir = 'asc';
+        }
+        NS_SORT_COLS.forEach(c => {
+            const el = document.getElementById('ns-si-' + c);
+            if (!el) return;
+            el.textContent = nsSortState.col === c ? (nsSortState.dir === 'asc' ? '▲' : '▼') : '⇅';
+            el.className   = 'sort-ind' + (nsSortState.col === c ? ' ' + nsSortState.dir : '');
+        });
+        nsPg.page = 1;
+        renderNsTable();
+    }
+
+    function renderNsTable() {
+        const tbody  = document.querySelector('#ns-table tbody');
+        const allRows = getNsDataRows();
+        const noData  = tbody.querySelector('tr td[colspan]')?.closest('tr');
+
+        if (nsSortState.col) {
+            const isNum = nsSortState.col === 'qty';
+            allRows.sort((a, b) => {
+                const av = a.dataset[nsSortState.col] || '';
+                const bv = b.dataset[nsSortState.col] || '';
+                let cmp  = isNum ? (parseFloat(av) || 0) - (parseFloat(bv) || 0)
+                                 : av.localeCompare(bv);
+                return nsSortState.dir === 'asc' ? cmp : -cmp;
+            });
+            allRows.forEach(r => tbody.appendChild(r));
+        }
+
+        const total = allRows.length;
+        const rawSz = parseInt(document.getElementById('ns-page-size')?.value || '20');
+
+        if (rawSz === 0) {
+            allRows.forEach((r, i) => {
+                r.style.display = '';
+                const c = r.querySelector('[data-row-num]');
+                if (c) c.textContent = i + 1;
+            });
+            if (noData) noData.style.display = total === 0 ? '' : 'none';
+            renderNsPaginationBar(1, 1, total, 0, total);
+            return;
+        }
+
+        const totalPages = Math.max(1, Math.ceil(total / rawSz));
+        if (nsPg.page > totalPages) nsPg.page = totalPages;
+        if (nsPg.page < 1)         nsPg.page = 1;
+
+        const start   = (nsPg.page - 1) * rawSz;
+        const pageSet = new Set(allRows.slice(start, start + rawSz));
+
+        allRows.forEach(r => { r.style.display = pageSet.has(r) ? '' : 'none'; });
+        allRows.slice(start, start + rawSz).forEach((r, i) => {
+            const c = r.querySelector('[data-row-num]');
+            if (c) c.textContent = start + i + 1;
+        });
+
+        if (noData) noData.style.display = total === 0 ? '' : 'none';
+        const end = Math.min(start + rawSz, total);
+        renderNsPaginationBar(nsPg.page, totalPages, total, start, end);
+    }
+
+    function renderNsPaginationBar(page, totalPages, total, start, end) {
+        const infoEl = document.getElementById('ns-page-info');
+        const btnsEl = document.getElementById('ns-page-btns');
+        if (!infoEl || !btnsEl) return;
+
+        infoEl.textContent = total > 0 ? (start + 1) + '–' + end + ' of ' + total : '0 records';
+        btnsEl.innerHTML   = '';
+        if (totalPages <= 1) return;
+
+        btnsEl.appendChild(nsPageBtn('‹', page <= 1, () => goNsPage(page - 1)));
+
+        calcNsPageNums(page, totalPages).forEach(p => {
+            if (p === '…') {
+                const s = document.createElement('span');
+                s.textContent = '…';
+                s.style.cssText = 'padding:0 4px;line-height:30px;color:#6c757d;';
+                btnsEl.appendChild(s);
+            } else {
+                btnsEl.appendChild(nsPageBtn(p, false, () => goNsPage(p), p === page));
+            }
+        });
+
+        btnsEl.appendChild(nsPageBtn('›', page >= totalPages, () => goNsPage(page + 1)));
+    }
+
+    function nsPageBtn(label, disabled, onClick, active) {
+        const b = document.createElement('button');
+        b.className   = 'page-btn' + (active ? ' active' : '');
+        b.textContent = label;
+        b.disabled    = !!disabled;
+        b.onclick     = onClick;
+        return b;
+    }
+
+    function calcNsPageNums(cur, total) {
+        if (total <= 7) return Array.from({length: total}, (_, i) => i + 1);
+        if (cur <= 4)   return [1, 2, 3, 4, 5, '…', total];
+        if (cur >= total - 3) return [1, '…', total-4, total-3, total-2, total-1, total];
+        return [1, '…', cur - 1, cur, cur + 1, '…', total];
+    }
+
+    function goNsPage(page)  { nsPg.page = page; renderNsTable(); }
+    function onNsSizeChange() { nsPg.page = 1;   renderNsTable(); }
+
+    document.addEventListener('DOMContentLoaded', function () { renderNsTable(); });
+</script>
+
+</body>
+</html>

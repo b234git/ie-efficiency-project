@@ -7,7 +7,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "split_entry_details")
+@Table(name = "split_entry_details",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uq_sed_entry_slot", columnNames = {"split_entry_id", "time_slot"})
+    })
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

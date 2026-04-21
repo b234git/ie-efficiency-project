@@ -1,5 +1,7 @@
 package thienloc.manage.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,8 +18,14 @@ import java.util.List;
 public class SplitEntryDto {
 
     private Long id;
+
+    @NotNull(message = "Ngày sản xuất không được để trống")
     private LocalDate productionDate;
+
+    @NotBlank(message = "Section không được để trống")
     private String section;
+
+    @NotBlank(message = "Line không được để trống")
     private String line;
 
     // Page 1: Manpower

@@ -4,6 +4,7 @@ import lombok.Data;
 import org.apache.poi.ss.usermodel.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import thienloc.manage.util.ExcelCellUtil;
 
 import java.io.InputStream;
 import java.time.LocalDate;
@@ -118,29 +119,10 @@ public class LineSummaryImportService {
     }
 
     private String getCellString(Cell cell) {
-        if (cell == null) return "";
-        return switch (cell.getCellType()) {
-            case STRING -> cell.getStringCellValue();
-            case NUMERIC -> {
-                double d = cell.getNumericCellValue();
-                yield d == Math.floor(d) ? String.valueOf((long) d) : String.valueOf(d);
-            }
-            default -> "";
-        };
+        return ExcelCellUtil.getStringOrEmpty(cell);
     }
 
     private double getNumeric(Cell cell) {
-        if (cell == null) return 0;
-        return switch (cell.getCellType()) {
-            case NUMERIC -> cell.getNumericCellValue();
-            case STRING -> {
-                try {
-                    yield Double.parseDouble(cell.getStringCellValue().trim());
-                } catch (NumberFormatException e) {
-                    yield 0.0;
-                }
-            }
-            default -> 0.0;
-        };
+        return ExcelCellUtil.getNumericOrZero(cell);
     }
 }

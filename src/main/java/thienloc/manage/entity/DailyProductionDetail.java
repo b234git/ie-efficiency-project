@@ -7,7 +7,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "daily_production_details")
+@Table(name = "daily_production_details",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uq_dpd_prod_slot", columnNames = {"daily_production_id", "time_slot"})
+    })
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

@@ -6,7 +6,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import thienloc.manage.dto.DailyProductionDto;
-import thienloc.manage.service.ProductionService;
+import thienloc.manage.service.IProductionService;
+import thienloc.manage.util.RecordFilterUtil;
 
 import java.security.Principal;
 import java.time.LocalDate;
@@ -17,7 +18,7 @@ import java.util.List;
 public class DashboardController {
 
     @Autowired
-    private ProductionService productionService;
+    private IProductionService productionService;
 
     @GetMapping("/")
     public String showDashboard(
@@ -56,15 +57,7 @@ public class DashboardController {
                 break;
         }
 
-        if (article != null && !article.trim().isEmpty()) {
-            String lowerArticle = article.toLowerCase().trim();
-            records = records.stream()
-                    .filter(r -> (r.getArticle() != null && r.getArticle().toLowerCase().contains(lowerArticle)) ||
-                            (r.getDetails() != null && r.getDetails().stream()
-                                    .anyMatch(d -> d.getArticleNo() != null
-                                            && d.getArticleNo().toLowerCase().contains(lowerArticle))))
-                    .collect(java.util.stream.Collectors.toList());
-        }
+        records = RecordFilterUtil.filterByArticle(records, article);
 
         model.addAttribute("selectedDate", date != null ? date : today);
         model.addAttribute("selectedRange", range);

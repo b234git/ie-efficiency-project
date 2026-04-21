@@ -27,6 +27,40 @@ public class WeeklyReportDto {
 
     private SummaryRow total;
 
+    /**
+     * Recompute the {@link #total} summary row from the current {@link #dailyRows}.
+     * Called after controllers mutate {@code dailyRows} (e.g. removing Sunday rows
+     * for non-privileged users) so the summary stays in sync.
+     */
+    public void recalculateSummary() {
+        if (total == null) total = new SummaryRow();
+        int n = dailyRows.size();
+        int sumOutput = 0, sumTargetOutput = 0, targetCount = 0;
+        double sumMp = 0, sumWt = 0, sumEff = 0, sumActPph = 0, sumStdPph = 0, sumDli = 0;
+        int effCount = 0, stdCount = 0;
+
+        for (DailyRow row : dailyRows) {
+            sumOutput += (row.getOutput() != null ? row.getOutput() : 0);
+            sumMp += (row.getMp() != null ? row.getMp() : 0);
+            sumWt += (row.getWt() != null ? row.getWt() : 0);
+            if (row.getActualPph() != null) sumActPph += row.getActualPph();
+            if (row.getStdPph() != null) { sumStdPph += row.getStdPph(); stdCount++; }
+            if (row.getEff() != null) { sumEff += row.getEff(); effCount++; }
+            sumDli += (row.getDli() != null ? row.getDli() : 0);
+            if (row.getTargetOutput() != null) { sumTargetOutput += row.getTargetOutput(); targetCount++; }
+        }
+
+        total.setTotalOutput(sumOutput);
+        total.setDayCount(n);
+        total.setAvgMp(n > 0 ? sumMp / n : 0);
+        total.setAvgWt(n > 0 ? sumWt / n : 0);
+        total.setAvgEff(effCount > 0 ? sumEff / effCount : null);
+        total.setAvgActualPph(n > 0 ? sumActPph / n : null);
+        total.setAvgStdPph(stdCount > 0 ? sumStdPph / stdCount : null);
+        total.setAvgDli(n > 0 ? sumDli / n : 0);
+        total.setTotalTargetOutput(targetCount > 0 ? sumTargetOutput : null);
+    }
+
     @Data
     @Builder
     @NoArgsConstructor

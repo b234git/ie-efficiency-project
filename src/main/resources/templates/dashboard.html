@@ -17,13 +17,13 @@
         <form th:action="@{/dashboard/}" method="get" class="filter-bar"
             style="margin-bottom: 20px;">
 
-            <!-- Combo box chọn phạm vi -->
+            <!-- Range selector -->
             <div>
                 <label style="font-weight:600; margin-right:6px;" th:text="#{dashboard.viewby}">Xem theo:</label>
                 <select id="rangeSelect" name="range" class="form-control" style="width:200px; display:inline-block;"
                     onchange="handleRangeChange(this.value)">
                     <option value="TODAY" th:selected="${selectedRange == 'TODAY'}"
-                        th:text="'📅 ' + #{dashboard.oneday}">📅 Một ngày cụ thể</option>
+                        th:text="'📅 ' + #{dashboard.oneday}">📅 Specific date</option>
                     <option value="1M" th:selected="${selectedRange == '1M'}" th:text="'📆 ' + #{dashboard.onemonth}">📆
                         Last 1 month</option>
                     <option value="6M" th:selected="${selectedRange == '6M'}" th:text="'🗓 ' + #{dashboard.sixmonths}">
@@ -33,7 +33,7 @@
                 </select>
             </div>
 
-            <!-- Date picker – chỉ hiện khi chọn TODAY -->
+            <!-- Date picker – only shown when TODAY is selected -->
             <div id="datePicker" th:style="${selectedRange != 'TODAY'} ? 'display:none' : ''">
                 <label style="margin-right:6px;" th:text="#{dashboard.date}">Date:</label>
                 <input type="date" name="date" th:value="${selectedDate}" class="form-control"
@@ -43,7 +43,7 @@
             <!-- Article Search -->
             <div>
                 <input type="text" name="article" th:value="${article}" class="form-control"
-                    placeholder="Tìm kiếm Article..." style="width: 200px; display: inline-block;" />
+                    placeholder="Search article..." style="width: 200px; display: inline-block;" />
             </div>
 
             <button type="submit" class="btn btn-primary">Load Data</button>
@@ -55,14 +55,14 @@
             <input type="hidden" name="date" th:value="${selectedDate}" />
             <input type="hidden" name="range" th:value="${selectedRange}" />
             <input type="hidden" name="article" th:value="${article}" />
-            <!-- Các input ẩn chứa ID sẽ được sinh ra ở đây qua JS -->
+            <!-- Hidden ID inputs will be generated here by JS -->
         </form>
 
-        <!-- Label phạm vi đang hiển thị -->
+        <!-- Current range label -->
         <div th:if="${rangeLabel != null and !rangeLabel.isEmpty()}"
             style="margin-bottom:12px; padding:8px 14px; background:#e7f3ff; border-left:4px solid #0d6efd; border-radius:4px; font-weight:600;">
-            🔍 Đang hiển thị: <span th:text="${rangeLabel}"></span>
-            &nbsp;·&nbsp; <strong th:text="${#lists.size(records)}">0</strong> bản ghi
+            🔍 Showing: <span th:text="${rangeLabel}"></span>
+            &nbsp;·&nbsp; <strong th:text="${#lists.size(records)}">0</strong> records
         </div>
 
         <script>
@@ -236,7 +236,7 @@
             const checkboxes = document.querySelectorAll('.recordCheckbox');
             const selectAllCb = document.getElementById('selectAllCheckbox');
 
-            // Nếu tất cả đều được check, thì đánh dấu nút Select All
+            // If all are checked, mark the Select All button
             const allChecked = Array.from(checkboxes).every(cb => cb.checked);
             selectAllCb.checked = allChecked;
 
@@ -260,10 +260,10 @@
             }
 
             const form = document.getElementById('deleteMultipleForm');
-            // Xóa hết thẻ input ẩn sinh ra lần trước nếu có (tránh rác khi click hụt)
+            // Remove previously generated hidden inputs to avoid duplicates
             form.querySelectorAll('input[name="ids"]').forEach(el => el.remove());
 
-            // Thêm từng ID đã chọn vào mảng ids
+            // Add each selected ID to the ids array
             checkedBoxes.forEach(cb => {
                 const input = document.createElement('input');
                 input.type = 'hidden';

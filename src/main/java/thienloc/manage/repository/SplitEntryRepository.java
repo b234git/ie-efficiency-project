@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import thienloc.manage.entity.SplitEntry;
+import thienloc.manage.entity.SplitEntryStatus;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -27,7 +28,7 @@ public interface SplitEntryRepository extends JpaRepository<SplitEntry, Long> {
     @Query("SELECT DISTINCT s FROM SplitEntry s LEFT JOIN FETCH s.details " +
            "WHERE s.status = :status AND s.productionDate < :cutoffDate")
     List<SplitEntry> findByStatusAndProductionDateBefore(
-            @Param("status") String status,
+            @Param("status") SplitEntryStatus status,
             @Param("cutoffDate") LocalDate cutoffDate);
 
     @Query("SELECT s.linkedDailyProductionId FROM SplitEntry s " +
@@ -35,7 +36,7 @@ public interface SplitEntryRepository extends JpaRepository<SplitEntry, Long> {
     List<Long> findLinkedProductionIdsByDate(@Param("date") LocalDate date);
 
     @Query("SELECT DISTINCT s FROM SplitEntry s LEFT JOIN FETCH s.details " +
-           "WHERE s.status = 'PARTIAL' AND s.productionDate BETWEEN :from AND :to " +
+           "WHERE s.status = thienloc.manage.entity.SplitEntryStatus.PARTIAL AND s.productionDate BETWEEN :from AND :to " +
            "ORDER BY s.productionDate DESC, s.section ASC")
     List<SplitEntry> findPartialByDateRange(@Param("from") LocalDate from, @Param("to") LocalDate to);
 

@@ -167,7 +167,7 @@
             </div>
             <div class="filter-form">
                 <form th:action="@{/report/weekly}" method="get" style="display:flex; gap:8px; align-items:center;">
-                    <label style="font-weight:600;" th:text="#{report.weekstart}">Tuần bắt đầu:</label>
+                    <label style="font-weight:600;" th:text="#{report.weekstart}">Week start:</label>
                     <input type="date" name="weekStart" th:value="${weekStart}" class="form-control"
                         style="width:170px;" />
                     <button type="submit" class="btn btn-primary" th:text="#{report.view}">Xem</button>
@@ -180,10 +180,9 @@
 
         <!-- Week navigation -->
         <div class="week-nav" style="margin-bottom:14px;">
-            <a th:href="@{/report/weekly(weekStart=${prevWeek})}">◀ <span th:text="#{report.prevweek}">Tuần
-                    trước</span></a>
+            <a th:href="@{/report/weekly(weekStart=${prevWeek})}">◀ <span th:text="#{report.prevweek}">Previous week</span></a>
             <span class="week-label" th:text="${weekStart} + ' → ' + ${weekEnd}"></span>
-            <a th:href="@{/report/weekly(weekStart=${nextWeek})}"><span th:text="#{report.nextweek}">Tuần sau</span>
+            <a th:href="@{/report/weekly(weekStart=${nextWeek})}"><span th:text="#{report.nextweek}">Next week</span>
                 ▶</a>
             <span style="margin-left:10px; color:#6c757d;"
                 th:text="'(' + ${#lists.size(blocks)} + ' ' + #{report.sectionline} + ')'"></span>
@@ -194,6 +193,13 @@
             style="margin-bottom:20px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; background:#f8f9fa; padding:10px 14px; border-radius:6px; border:1px solid #dee2e6; position:sticky; top:0; z-index:100;">
             <span style="font-weight:600; color:#495057; margin-right:4px;">🔍 Filter:</span>
             <button class="btn btn-primary btn-sm" id="filterBtn_ALL" onclick="filterSection('ALL')">All</button>
+
+            <span style="border-left:1px solid #ccc; height:24px; margin:0 6px;"></span>
+
+            <span style="font-weight:600; color:#495057; font-size:0.85em;">Sort EFF%:</span>
+            <button class="btn btn-outline-secondary btn-sm" id="sortBtn_HIGH" onclick="sortBlocks('high')">↑ Highest</button>
+            <button class="btn btn-outline-secondary btn-sm" id="sortBtn_LOW" onclick="sortBlocks('low')">↓ Lowest</button>
+            <button class="btn btn-outline-secondary btn-sm" id="sortBtn_DEFAULT" onclick="sortBlocks('default')">— Default</button>
 
             <span style="border-left:1px solid #ccc; height:24px; margin:0 6px;"></span>
 
@@ -210,8 +216,8 @@
 
         <!-- Empty state -->
         <div th:if="${blocks.isEmpty()}" class="empty-state">
-            <h3>📭 <span th:text="#{report.nodata}">Không có dữ liệu sản xuất cho tuần này</span></h3>
-            <p th:text="#{report.nodata.hint}">Hãy chọn tuần khác hoặc nhập dữ liệu tại trang Entry.</p>
+            <h3>📭 <span th:text="#{report.nodata}">No production data for this week</span></h3>
+            <p th:text="#{report.nodata.hint}">Please select another week or enter data at the Entry page.</p>
         </div>
 
         <!-- Blocks -->
@@ -234,7 +240,7 @@
                 <table>
                     <thead>
                         <tr>
-                            <th th:text="#{table.date}">Ngày</th>
+                            <th th:text="#{table.date}">Date</th>
                             <th th:text="#{table.pattern}">Pattern#</th>
                             <th th:text="#{table.style}">Style</th>
                             <th th:text="#{table.article}">Article#</th>
@@ -246,7 +252,7 @@
                             <th th:text="#{table.eff}">EFF%</th>
                             <th th:text="#{table.actualpph}">ACTUAL PPH</th>
                             <th th:text="#{table.stdpph}">STD PPH</th>
-                            <th th:text="#{table.compare}">So sánh</th>
+                            <th th:text="#{table.compare}">Compare</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -319,7 +325,7 @@
             if (s.includes('SEW')) return 'SEW';
             if (s.includes('STOCKFIT') || s.includes(' SF') || s === 'SF') return 'SF';
             if (s.includes('ASSY') || s.includes('ASSEMBLY')) return 'ASSY';
-            return section; // fallback: dùng tên gốc
+            return section; // fallback: use original name
         }
 
         function filterSection(cat) {
@@ -335,8 +341,49 @@
             });
         }
 
+        // Save initial order of blocks
+        var originalOrder = [];
+
+        function getBlockEff(block) {
+            // Get EFF% from Total row (tr.total) eff-cell column
+            var effCell = block.querySelector('tr.total .eff-cell');
+            if (!effCell) return -1;
+            var text = effCell.textContent.trim().replace('%', '');
+            return parseFloat(text) || -1;
+        }
+
+        function sortBlocks(mode) {
+            // Update sort button styles
+            ['HIGH', 'LOW', 'DEFAULT'].forEach(function (k) {
+                var btn = document.getElementById('sortBtn_' + k);
+                if (btn) btn.className = 'btn btn-outline-secondary btn-sm';
+            });
+            var activeBtn = document.getElementById('sortBtn_' + mode.toUpperCase());
+            if (activeBtn) activeBtn.className = 'btn btn-primary btn-sm';
+
+            var container = document.querySelector('.container-lg');
+            var blocks = Array.from(document.querySelectorAll('.block[data-section]'));
+
+            if (mode === 'default') {
+                // Restore initial order
+                originalOrder.forEach(function (b) { container.appendChild(b); });
+                return;
+            }
+
+            blocks.sort(function (a, b) {
+                var effA = getBlockEff(a);
+                var effB = getBlockEff(b);
+                return mode === 'high' ? effB - effA : effA - effB;
+            });
+
+            blocks.forEach(function (b) { container.appendChild(b); });
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
             var blocks = document.querySelectorAll('.block[data-section]');
+            // Save original order
+            originalOrder = Array.from(blocks);
+
             var cats = [];
             var seen = new Set();
             blocks.forEach(function (b) {

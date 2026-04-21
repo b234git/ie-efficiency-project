@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="#{salary.title}">Salary Bonus Calculation</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}"/>
+    <style>
+        .salary-block {
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            margin-bottom: 28px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+        }
+        .block-header {
+            background: linear-gradient(135deg, #1a6bbf 0%, #0d4d8c 100%);
+            color: #fff;
+            padding: 12px 18px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 18px;
+            align-items: center;
+        }
+        .block-header .excel-btn {
+            margin-left: auto;
+            background: rgba(255,255,255,0.18);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.4);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+            white-space: nowrap;
+        }
+        .block-header .excel-btn:hover { background: rgba(255,255,255,0.3); }
+        @media print { .excel-btn { display: none !important; } }
+        .block-header .hitem {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .block-header .hlabel {
+            font-size: 0.7rem;
+            opacity: 0.75;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .block-header .hvalue {
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+        .block-header .hvalue.pct-good  { color: #7fffb4; }
+        .block-header .hvalue.pct-warn  { color: #ffe07a; }
+        .block-header .hvalue.pct-bad   { color: #ff8787; }
+        .salary-table-wrap { overflow-x: auto; }
+        .salary-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+            min-width: 900px;
+        }
+        .salary-table thead th {
+            background: #f1f4f9;
+            border: 1px solid #dee2e6;
+            padding: 7px 10px;
+            text-align: center;
+            font-weight: 700;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+        .salary-table tbody td {
+            border: 1px solid #dee2e6;
+            padding: 5px 10px;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .salary-table tbody tr:hover { background: #f8faff; }
+        .salary-table tfoot td {
+            border: 1px solid #dee2e6;
+            padding: 7px 10px;
+            font-weight: 700;
+            text-align: center;
+            background: #eaf1fb;
+            white-space: nowrap;
+        }
+        .num  { text-align: right !important; font-variant-numeric: tabular-nums; }
+        .eff-good { color: #198754; font-weight: 700; }
+        .eff-warn { color: #f08c00; font-weight: 700; }
+        .eff-bad  { color: #dc3545; font-weight: 700; }
+        .grade-col { background: #f9f9ff; }
+        .new-style-row td {
+            background: #fff8e1;
+            color: #7d5a00;
+            font-style: italic;
+        }
+        .month-filter { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+        .section-tag {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            background: rgba(255,255,255,0.2);
+        }
+    </style>
+</head>
+
+<body>
+<div th:replace="~{fragments/layout :: navbar}"></div>
+
+<div class="container-xl" style="padding: 24px 20px;">
+
+    <!-- Page header -->
+    <div class="page-header" style="margin-bottom: 20px;">
+        <h2 th:text="#{salary.title}">Salary Bonus Calculation</h2>
+        <p style="color:#6c757d; margin:4px 0 0;" th:text="#{salary.subtitle}">
+            Monthly EFF bonus table — Section &amp; Line
+        </p>
+    </div>
+
+    <!-- Filters -->
+    <div class="month-filter">
+        <form method="get" th:action="@{/salary/}" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <label style="font-weight:600;" th:text="#{salary.month}">Month:</label>
+            <select name="month" class="form-control" style="width:160px;" onchange="this.form.submit()">
+                <option value="" th:text="#{salary.selectmonth}">-- Select month --</option>
+                <option th:each="m : ${allMonths}"
+                        th:value="${m}"
+                        th:text="${m}"
+                        th:selected="${m == selectedMonth}"></option>
+            </select>
+
+            <label style="font-weight:600;" th:text="#{salary.section}">Section:</label>
+            <select name="section" class="form-control" style="width:180px;" onchange="this.form.submit()">
+                <option value="">-- All --</option>
+                <option th:each="s : ${allSections}"
+                        th:value="${s}"
+                        th:text="${s}"
+                        th:selected="${s == selectedSection}"></option>
+            </select>
+
+            <label style="font-weight:600;" th:text="#{salary.line}">Line:</label>
+            <input type="text" name="line" class="form-control" style="width:120px;"
+                   th:value="${selectedLine}" placeholder="Line"/>
+
+            <button type="submit" class="btn btn-primary" th:text="#{salary.view}">View</button>
+        </form>
+    </div>
+
+    <!-- No data -->
+    <div th:if="${report == null or report.blocks == null or report.blocks.isEmpty()}"
+         class="alert alert-info" th:text="#{salary.nodata}">
+        No production data for this month.
+    </div>
+
+    <!-- Blocks -->
+    <div th:if="${report != null and !report.blocks.isEmpty()}">
+        <div th:each="block,iter : ${report.blocks}" class="salary-block"
+             th:id="'salary-block-' + ${iter.index}">
+
+            <!-- Block header -->
+            <div class="block-header">
+                <div class="hitem">
+                    <span class="hlabel" th:text="#{salary.section}">Section</span>
+                    <span class="hvalue" th:text="${block.section}">SEW</span>
+                </div>
+                <div class="hitem">
+                    <span class="hlabel" th:text="#{salary.line}">Line</span>
+                    <span class="hvalue" th:text="${block.line}">1A</span>
+                </div>
+                <div class="hitem">
+                    <span class="hlabel" th:text="#{salary.sixs}">6S Score</span>
+                    <span class="hvalue"
+                          th:classappend="${block.sixSPercent >= 95 ? 'pct-good' : (block.sixSPercent >= 80 ? 'pct-warn' : 'pct-bad')}"
+                          th:text="${#numbers.formatDecimal(block.sixSPercent, 1, 2)} + '%'">95.00%</span>
+                </div>
+                <div class="hitem">
+                    <span class="hlabel" th:text="#{salary.reprocess}">Reprocess%</span>
+                    <span class="hvalue"
+                          th:classappend="${block.reprocessPercent <= 2 ? 'pct-good' : (block.reprocessPercent <= 5 ? 'pct-warn' : 'pct-bad')}"
+                          th:text="${#numbers.formatDecimal(block.reprocessPercent, 1, 2)} + '%'">2.00%</span>
+                </div>
+                <div class="hitem">
+                    <span class="hlabel" th:text="#{salary.effective}">Effective%</span>
+                    <span class="hvalue"
+                          th:classappend="${block.effectivePct >= 90 ? 'pct-good' : (block.effectivePct >= 70 ? 'pct-warn' : 'pct-bad')}"
+                          th:text="${#numbers.formatDecimal(block.effectivePct, 1, 2)} + '%'">93.00%</span>
+                </div>
+                <div class="hitem">
+                    <span class="hlabel" th:text="#{salary.newstylecount}">New Style Count</span>
+                    <span class="hvalue" th:text="${block.newStyleCount}">0</span>
+                </div>
+                <div class="hitem">
+                    <span class="hlabel" th:text="#{salary.newincentive}">New Style Incentive</span>
+                    <span class="hvalue"
+                          th:text="${#numbers.formatInteger(block.newStyleIncentive, 0, 'COMMA')} + ' ₫'">0 ₫</span>
+                </div>
+                <button type="button" class="excel-btn"
+                        th:attr="data-block-id='salary-block-' + ${iter.index},
+                                 data-file-name=${block.section} + '_Line-' + ${block.line} + '_' + ${selectedMonth} + '.xlsx',
+                                 data-sheet-name=${block.section} + '_' + ${block.line},
+                                 data-section=${block.section},
+                                 data-line=${block.line},
+                                 data-six-s=${block.sixSPercent},
+                                 data-reprocess=${block.reprocessPercent},
+                                 data-effective=${block.effectivePct},
+                                 data-new-style-count=${block.newStyleCount},
+                                 data-new-style-incentive=${block.newStyleIncentive}"
+                        onclick="exportBlockToExcel(this)">
+                    📊 Xuất Excel
+                </button>
+            </div>
+
+            <!-- No daily data for this block -->
+            <div th:if="${block.dailyRows == null or block.dailyRows.isEmpty()}"
+                 style="padding:16px 18px; color:#888;">
+                No daily data for this month.
+            </div>
+
+            <!-- Daily table -->
+            <div th:if="${block.dailyRows != null and !block.dailyRows.isEmpty()}"
+                 class="salary-table-wrap">
+                <table class="salary-table">
+                    <thead>
+                        <tr>
+                            <th th:text="#{salary.col.date}">Date</th>
+                            <th th:text="#{salary.col.mp}">MP</th>
+                            <th th:text="#{salary.col.wt}">WT (h)</th>
+                            <th th:text="#{salary.col.sec}">SEC</th>
+                            <th th:text="#{salary.col.eff}">EFF Salary%</th>
+                            <th th:text="#{salary.col.rate}">Rate (₫)</th>
+                            <!-- Grade columns -->
+                            <th th:each="label : ${block.gradeLabels}"
+                                class="grade-col"
+                                th:text="${label}">G</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="row : ${block.dailyRows}">
+                            <td th:text="${#temporals.format(row.date, 'dd/MM')}">01/04</td>
+                            <td th:text="${row.mp}">10</td>
+                            <td th:text="${#numbers.formatDecimal(row.wt, 1, 1)}">10.0</td>
+                            <td th:text="${row.sec}">SEW10</td>
+                            <td th:classappend="${row.effSalary >= 100 ? 'eff-good' : (row.effSalary >= 79.5 ? 'eff-warn' : 'eff-bad')}"
+                                th:text="${#numbers.formatDecimal(row.effSalary, 1, 2)} + '%'">104.50%</td>
+                            <td class="num"
+                                th:text="${#numbers.formatInteger(row.baseRate, 0, 'COMMA')}">7,969</td>
+                            <!-- Grade amount cells -->
+                            <td th:each="label,i : ${block.gradeLabels}"
+                                class="num grade-col"
+                                th:text="${#numbers.formatInteger(row.gradeAmounts[i.index], 0, 'COMMA')}">0</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <!-- Monthly total row -->
+                        <tr>
+                            <td colspan="6" style="text-align:left;" th:text="#{salary.total}">Monthly Total</td>
+                            <td th:each="label,i : ${block.gradeLabels}"
+                                class="num"
+                                th:text="${#numbers.formatInteger(block.gradeTotals[i.index], 0, 'COMMA')}">0</td>
+                        </tr>
+                        <!-- New Style Incentive row (only if > 0) -->
+                        <tr th:if="${block.newStyleIncentive > 0}" class="new-style-row">
+                            <td colspan="6" style="text-align:left;"
+                                th:text="'+ ' + #{salary.newstylelabel} + ' (' + ${block.newStyleCount} + ' styles × 30,000 ₫)'">
+                                + New Style
+                            </td>
+                            <td th:each="label,i : ${block.gradeLabels}"
+                                class="num"
+                                th:text="${#numbers.formatInteger(block.newStyleIncentive, 0, 'COMMA')}">0</td>
+                        </tr>
+                        <!-- Grand Total row (monthly total + new style incentive) -->
+                        <tr th:if="${block.newStyleIncentive > 0}" style="background:#d4e6f9; font-weight:800;">
+                            <td colspan="6" style="text-align:left;" th:text="#{salary.grandtotal}">Grand Total</td>
+                            <td th:each="label,i : ${block.gradeLabels}"
+                                class="num"
+                                th:text="${#numbers.formatInteger(block.gradeTotals[i.index] + block.newStyleIncentive, 0, 'COMMA')}">0</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div><!-- end block -->
+    </div>
+
+</div><!-- end container -->
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script th:inline="javascript">
+    var SELECTED_MONTH = /*[[${selectedMonth}]]*/ '';
+
+    function exportBlockToExcel(btn) {
+        var blockId = btn.getAttribute('data-block-id');
+        var fileName = btn.getAttribute('data-file-name') || 'salary.xlsx';
+        var sheetName = (btn.getAttribute('data-sheet-name') || 'Salary').substring(0, 31);
+        var block = document.getElementById(blockId);
+        if (!block || typeof XLSX === 'undefined') {
+            alert('Không thể xuất Excel. Vui lòng thử lại.');
+            return;
+        }
+        var table = block.querySelector('.salary-table');
+        if (!table) return;
+
+        var originalText = btn.innerHTML;
+        btn.innerHTML = '⏳ Đang xuất...';
+        btn.disabled = true;
+
+        try {
+            buildAndSave(btn, block, table, fileName, sheetName);
+        } catch (err) {
+            console.error('Excel export failed', err);
+            alert('Xuất Excel thất bại: ' + (err && err.message ? err.message : err));
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+
+    function buildAndSave(btn, block, table, fileName, sheetName) {
+        var mParts = (SELECTED_MONTH || '').split('-');
+        var year = Number(mParts[0]) || new Date().getFullYear();
+        var month = Number(mParts[1]) || (new Date().getMonth() + 1);
+        var monthLabel = (month < 10 ? '0' + month : month) + '/' + year;
+
+        var headers = [];
+        table.querySelectorAll('thead th').forEach(function (th) {
+            headers.push(th.textContent.trim());
+        });
+        var numCols = headers.length;
+
+        var bodyRows = [];
+        table.querySelectorAll('tbody tr').forEach(function (tr) {
+            var r = [];
+            tr.querySelectorAll('td').forEach(function (td) { r.push(td.textContent.trim()); });
+            bodyRows.push(r);
+        });
+
+        var footerRaw = [];
+        table.querySelectorAll('tfoot tr').forEach(function (tr) {
+            var cells = [];
+            tr.querySelectorAll('td').forEach(function (td) {
+                cells.push({ text: td.textContent.trim(), colspan: Number(td.getAttribute('colspan') || 1) });
+            });
+            footerRaw.push(cells);
+        });
+
+        var EFF_COL = 4, RATE_COL = 5, GRADE_START = 6;
+
+        var aoa = [];
+        var merges = [];
+
+        aoa.push(['Salary Bonus — ' + (btn.getAttribute('data-section') || '') +
+                  ' / Line ' + (btn.getAttribute('data-line') || '') +
+                  ' — ' + monthLabel]);
+        merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: numCols - 1 } });
+
+        var sixS = Number(btn.getAttribute('data-six-s')) || 0;
+        var reproc = Number(btn.getAttribute('data-reprocess')) || 0;
+        var effec = Number(btn.getAttribute('data-effective')) || 0;
+        var nsCount = Number(btn.getAttribute('data-new-style-count')) || 0;
+        var nsIncent = Number(btn.getAttribute('data-new-style-incentive')) || 0;
+        aoa.push(['6S Score', sixS / 100, 'Reprocess %', reproc / 100, 'Effective %', effec / 100]);
+        aoa.push(['New Style Count', nsCount, 'New Style Incentive (₫)', nsIncent]);
+        aoa.push([]);
+
+        var headerRowIdx = aoa.length;
+        aoa.push(headers);
+
+        var bodyStart = aoa.length;
+        bodyRows.forEach(function (row) {
+            var parsed = row.slice();
+            var dm = /^(\d{1,2})\/(\d{1,2})$/.exec(parsed[0]);
+            if (dm) parsed[0] = new Date(year, Number(dm[2]) - 1, Number(dm[1]));
+            if (parsed[EFF_COL] != null) {
+                var pn = Number(String(parsed[EFF_COL]).replace('%', '').trim());
+                if (!isNaN(pn)) parsed[EFF_COL] = pn / 100;
+            }
+            for (var c = RATE_COL; c < numCols; c++) {
+                var n = Number(String(parsed[c] || '').replace(/,/g, '').trim());
+                if (!isNaN(n) && parsed[c] !== '') parsed[c] = n;
+            }
+            aoa.push(parsed);
+        });
+        var bodyEnd = aoa.length - 1;
+
+        var footerStart = aoa.length;
+        footerRaw.forEach(function (fr) {
+            var out = [];
+            fr.forEach(function (cell) {
+                out.push(cell.text);
+                for (var k = 1; k < cell.colspan; k++) out.push('');
+            });
+            for (var c = GRADE_START; c < out.length; c++) {
+                var n = Number(String(out[c]).replace(/,/g, '').trim());
+                if (!isNaN(n) && out[c] !== '') out[c] = n;
+            }
+            aoa.push(out);
+            var currRow = aoa.length - 1;
+            var cIdx = 0;
+            fr.forEach(function (cell) {
+                if (cell.colspan > 1) {
+                    merges.push({ s: { r: currRow, c: cIdx }, e: { r: currRow, c: cIdx + cell.colspan - 1 } });
+                }
+                cIdx += cell.colspan;
+            });
+        });
+        var footerEnd = aoa.length - 1;
+
+        var ws = XLSX.utils.aoa_to_sheet(aoa);
+        ws['!merges'] = merges;
+
+        var cols = [];
+        for (var c = 0; c < numCols; c++) {
+            var w = 11;
+            if (c === 0) w = 13;
+            else if (c === 1) w = 6;
+            else if (c === 2) w = 7;
+            else if (c === 3) w = 9;
+            else if (c === EFF_COL) w = 12;
+            else if (c === RATE_COL) w = 11;
+            cols.push({ wch: w });
+        }
+        ws['!cols'] = cols;
+        ws['!views'] = [{ state: 'frozen', ySplit: headerRowIdx + 1, xSplit: 1 }];
+
+        var addr = function (r, c) { return XLSX.utils.encode_cell({ r: r, c: c }); };
+        var ensure = function (a) { if (!ws[a]) ws[a] = { t: 's', v: '' }; return ws[a]; };
+        var applyStyle = function (a, s) { var cell = ensure(a); cell.s = Object.assign({}, cell.s || {}, s); };
+
+        var thin = { style: 'thin', color: { rgb: 'BFBFBF' } };
+        var border = { top: thin, bottom: thin, left: thin, right: thin };
+
+        for (var r = bodyStart; r <= bodyEnd; r++) {
+            var a0 = addr(r, 0);
+            if (ws[a0] && ws[a0].v instanceof Date) { ws[a0].t = 'd'; ws[a0].z = 'dd/mm/yyyy'; }
+            var ae = addr(r, EFF_COL);
+            if (ws[ae] && typeof ws[ae].v === 'number') { ws[ae].t = 'n'; ws[ae].z = '0.00%'; }
+            for (var c2 = RATE_COL; c2 < numCols; c2++) {
+                var ac = addr(r, c2);
+                if (ws[ac] && typeof ws[ac].v === 'number') { ws[ac].t = 'n'; ws[ac].z = '#,##0'; }
+            }
+        }
+        for (var r2 = footerStart; r2 <= footerEnd; r2++) {
+            for (var c3 = GRADE_START; c3 < numCols; c3++) {
+                var af = addr(r2, c3);
+                if (ws[af] && typeof ws[af].v === 'number') { ws[af].t = 'n'; ws[af].z = '#,##0'; }
+            }
+        }
+        // Meta rows percent formatting (row 1 cols 1,3,5)
+        [1, 3, 5].forEach(function (c) {
+            var a = addr(1, c);
+            if (ws[a] && typeof ws[a].v === 'number') { ws[a].t = 'n'; ws[a].z = '0.00%'; }
+        });
+        var aInc = addr(2, 3);
+        if (ws[aInc] && typeof ws[aInc].v === 'number') { ws[aInc].t = 'n'; ws[aInc].z = '#,##0'; }
+
+        applyStyle(addr(0, 0), {
+            font: { bold: true, sz: 14, color: { rgb: 'FFFFFF' } },
+            fill: { patternType: 'solid', fgColor: { rgb: '0D4D8C' } },
+            alignment: { horizontal: 'center', vertical: 'center' }
+        });
+
+        [1, 2].forEach(function (r) {
+            for (var c = 0; c < numCols; c++) {
+                var a = addr(r, c);
+                if (ws[a] && ws[a].v !== '' && ws[a].v != null) {
+                    applyStyle(a, {
+                        font: { bold: c % 2 === 0, sz: 11 },
+                        alignment: { horizontal: c % 2 === 0 ? 'left' : 'right', vertical: 'center' }
+                    });
+                }
+            }
+        });
+
+        for (var c4 = 0; c4 < numCols; c4++) {
+            applyStyle(addr(headerRowIdx, c4), {
+                font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
+                fill: { patternType: 'solid', fgColor: { rgb: '1A6BBF' } },
+                alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+                border: border
+            });
+        }
+        if (!ws['!rows']) ws['!rows'] = [];
+        ws['!rows'][headerRowIdx] = { hpt: 22 };
+        ws['!rows'][0] = { hpt: 24 };
+
+        for (var r3 = bodyStart; r3 <= bodyEnd; r3++) {
+            var zebra = (r3 - bodyStart) % 2 === 1;
+            for (var c5 = 0; c5 < numCols; c5++) {
+                var align = 'right';
+                if (c5 === 0) align = 'center';
+                else if (c5 === 3) align = 'center';
+                else if (c5 === 1 || c5 === 2) align = 'center';
+                var st = {
+                    alignment: { horizontal: align, vertical: 'center' },
+                    border: border,
+                    font: { sz: 10 }
+                };
+                if (zebra) st.fill = { patternType: 'solid', fgColor: { rgb: 'F8FAFF' } };
+                applyStyle(addr(r3, c5), st);
+            }
+        }
+
+        for (var r4 = footerStart; r4 <= footerEnd; r4++) {
+            for (var c6 = 0; c6 < numCols; c6++) {
+                applyStyle(addr(r4, c6), {
+                    font: { bold: true, sz: 10 },
+                    fill: { patternType: 'solid', fgColor: { rgb: 'EAF1FB' } },
+                    alignment: { horizontal: c6 >= GRADE_START ? 'right' : 'left', vertical: 'center' },
+                    border: border
+                });
+            }
+        }
+
+        var wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        XLSX.writeFile(wb, fileName);
+    }
+</script>
+</body>
+</html>

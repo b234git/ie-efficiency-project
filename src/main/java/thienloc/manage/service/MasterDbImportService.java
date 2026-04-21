@@ -3,12 +3,15 @@ package thienloc.manage.service;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.util.IOUtils;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import io.micrometer.core.instrument.MeterRegistry;
+import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import thienloc.manage.dto.ImportPreviewDto;
 import thienloc.manage.entity.MasterDb;
 import thienloc.manage.repository.MasterDbRepository;
+import thienloc.manage.util.ExcelCellUtil;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -26,6 +29,12 @@ public class MasterDbImportService {
     @Autowired
     private MasterDbRepository masterDbRepository;
 
+    @Autowired
+    private MasterDbService masterDbService;
+
+    @Autowired
+    private MeterRegistry meterRegistry;
+
     // ─── Direct Import (backward compat) ────────────────────────────────────
 
     public int importFromExcel(MultipartFile file) throws IOException {
@@ -33,9 +42,10 @@ public class MasterDbImportService {
     }
 
     public int importFromExcel(MultipartFile file, String dataMonth) throws IOException {
+        long t0 = System.nanoTime();
         IOUtils.setByteArrayMaxOverride(100_000_000); // 100MB max
 
-        // Pre-load existing records 1 lần thay vì query từng dòng
+        // Pre-load all existing records once instead of querying per row
         Map<String, MasterDb> existingMap = loadExistingAsMap(dataMonth);
 
         List<MasterDb> toSave = new ArrayList<>();
@@ -58,8 +68,9 @@ public class MasterDbImportService {
             }
         }
 
-        // Batch save — 1 transaction thay vì N transaction riêng lẻ
-        masterDbRepository.saveAll(toSave);
+        // Batch save — routes through MasterDbService to trigger cache eviction
+        masterDbService.saveAll(toSave);
+        meterRegistry.timer("excel.masterdb.import").record(System.nanoTime() - t0, TimeUnit.NANOSECONDS);
         return toSave.size();
     }
 
@@ -74,7 +85,7 @@ public class MasterDbImportService {
                 .rows(new ArrayList<>())
                 .build();
 
-        // Pre-load existing records 1 lần thay vì query từng dòng
+        // Pre-load all existing records once instead of querying per row
         Map<String, MasterDb> existingMap = loadExistingAsMap(dataMonth);
 
         int newCount = 0, updateCount = 0;
@@ -122,7 +133,7 @@ public class MasterDbImportService {
         List<MasterDb> toSave = preview.getRows().stream()
                 .map(ImportPreviewDto.ImportRowPreview::getEntity)
                 .collect(Collectors.toList());
-        masterDbRepository.saveAll(toSave);
+        masterDbService.saveAll(toSave);
         return toSave.size();
     }
 
@@ -146,7 +157,7 @@ public class MasterDbImportService {
     private Sheet getDbSheet(Workbook workbook) {
         Sheet sheet = workbook.getSheet("DB");
         if (sheet == null) {
-            throw new IllegalArgumentException("Sheet 'DB' không tìm thấy trong file Excel.");
+            throw new IllegalArgumentException("Sheet 'DB' not found in Excel file.");
         }
         return sheet;
     }
@@ -216,36 +227,10 @@ public class MasterDbImportService {
     }
 
     String getCellValueAsString(Cell cell) {
-        if (cell == null) return null;
-        return switch (cell.getCellType()) {
-            case STRING -> cell.getStringCellValue();
-            case NUMERIC -> {
-                double d = cell.getNumericCellValue();
-                yield (d == (long) d) ? String.valueOf((long) d) : String.valueOf(d);
-            }
-            case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
-            case FORMULA -> {
-                try {
-                    yield cell.getStringCellValue();
-                } catch (IllegalStateException e) {
-                    double fd = cell.getNumericCellValue();
-                    yield (fd == (long) fd) ? String.valueOf((long) fd) : String.valueOf(fd);
-                }
-            }
-            default -> null;
-        };
+        return ExcelCellUtil.getString(cell);
     }
 
     Double getCellValueAsDouble(Cell cell) {
-        if (cell == null) return null;
-        try {
-            return switch (cell.getCellType()) {
-                case NUMERIC, FORMULA -> cell.getNumericCellValue();
-                case STRING -> Double.parseDouble(cell.getStringCellValue());
-                default -> null;
-            };
-        } catch (NumberFormatException | IllegalStateException e) {
-            return null;
-        }
+        return ExcelCellUtil.getDouble(cell);
     }
 }

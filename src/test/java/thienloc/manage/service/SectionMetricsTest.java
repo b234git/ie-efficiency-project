@@ -112,6 +112,111 @@ class SectionMetricsTest {
         assertEquals(36.0, big.getPph(m));
     }
 
+    // ─── ArticleKey parsing ─────────────────────────────────────────────────
+
+    @Test
+    void testArticleKeyStripsDash2() {
+        SectionMetrics.ArticleKey k = SectionMetrics.ArticleKey.parse("406203-2");
+        assertEquals("406203", k.cleanedArticle());
+        assertTrue(k.isSecondSubsection());
+    }
+
+    @Test
+    void testArticleKeyPreservesDash02() {
+        // "-02" is NOT the subsection marker; keep intact.
+        SectionMetrics.ArticleKey k = SectionMetrics.ArticleKey.parse("406203-02");
+        assertEquals("406203-02", k.cleanedArticle());
+        assertFalse(k.isSecondSubsection());
+    }
+
+    @Test
+    void testArticleKeyNoSuffix() {
+        SectionMetrics.ArticleKey k = SectionMetrics.ArticleKey.parse("406203");
+        assertEquals("406203", k.cleanedArticle());
+        assertFalse(k.isSecondSubsection());
+    }
+
+    @Test
+    void testArticleKeyNullAndBlank() {
+        assertNull(SectionMetrics.ArticleKey.parse(null).cleanedArticle());
+        assertNull(SectionMetrics.ArticleKey.parse("  ").cleanedArticle());
+    }
+
+    // ─── Per-slot resolveSlot rules ──────────────────────────────────────────
+
+    @Test
+    void testResolveSlotBuffSuffixWinsOverRowSubsec1() {
+        // row BUFF 1, article "-2" → primary = BUFF_2ND, no fallback.
+        SectionMetrics.ResolvedSection r = SectionMetrics.resolveSlot("BUFF 1", "406203-2");
+        assertEquals(SectionMetrics.BUFF_2ND, r.primary());
+        assertNull(r.fallback());
+    }
+
+    @Test
+    void testResolveSlotBuffSubsec2NoSuffixFallsBack() {
+        // row BUFF 2, article without -2 → primary = BUFF_2ND, fallback = BUFF_1ST.
+        SectionMetrics.ResolvedSection r = SectionMetrics.resolveSlot("BUFF 2", "406203");
+        assertEquals(SectionMetrics.BUFF_2ND, r.primary());
+        assertEquals(SectionMetrics.BUFF_1ST, r.fallback());
+    }
+
+    @Test
+    void testResolveSlotBuff1stNoSuffix() {
+        SectionMetrics.ResolvedSection r = SectionMetrics.resolveSlot("BUFF 1", "406203");
+        assertEquals(SectionMetrics.BUFF_1ST, r.primary());
+        assertNull(r.fallback());
+    }
+
+    @Test
+    void testResolveSlotStockfitSuffixWins() {
+        SectionMetrics.ResolvedSection r = SectionMetrics.resolveSlot("SF 1", "406203-2");
+        assertEquals(SectionMetrics.STOCKFIT_2ND, r.primary());
+        assertNull(r.fallback());
+    }
+
+    @Test
+    void testResolveSlotStockfitSubsec2NoSuffixFallsBack() {
+        SectionMetrics.ResolvedSection r = SectionMetrics.resolveSlot("SF 2", "406203");
+        assertEquals(SectionMetrics.STOCKFIT_2ND, r.primary());
+        assertEquals(SectionMetrics.STOCKFIT_1ST, r.fallback());
+    }
+
+    @Test
+    void testResolveSlotStockfitUvIgnoresSuffix() {
+        SectionMetrics.ResolvedSection r = SectionMetrics.resolveSlot("SF UV", "406203-2");
+        assertEquals(SectionMetrics.STOCKFIT_UV, r.primary());
+        assertNull(r.fallback());
+    }
+
+    @Test
+    void testResolveSlotSewIgnoresSuffix() {
+        // Non-BUFF/SF sections pass through, suffix has no effect.
+        SectionMetrics.ResolvedSection r = SectionMetrics.resolveSlot("SEW", "406203-2");
+        assertEquals(SectionMetrics.SEW, r.primary());
+        assertNull(r.fallback());
+    }
+
+    // ─── fallback getters ───────────────────────────────────────────────────
+
+    @Test
+    void testGetCtOrFallbackPrefersPrimary() {
+        MasterDb m = MasterDb.builder().buff2ndCt(50.0).buff1stCt(99.0).build();
+        assertEquals(50.0, SectionMetrics.BUFF_2ND.getCtOrFallback(m, SectionMetrics.BUFF_1ST));
+    }
+
+    @Test
+    void testGetCtOrFallbackUsesFallbackWhenPrimaryNull() {
+        MasterDb m = MasterDb.builder().buff2ndCt(null).buff1stCt(99.0).build();
+        assertEquals(99.0, SectionMetrics.BUFF_2ND.getCtOrFallback(m, SectionMetrics.BUFF_1ST));
+    }
+
+    @Test
+    void testGetPphOrFallbackUsesFallback() {
+        MasterDb m = MasterDb.builder().buff2ndPph(null).buff2ndCt(null)
+                .buff1stPph(36.0).build();
+        assertEquals(36.0, SectionMetrics.BUFF_2ND.getPphOrFallback(m, SectionMetrics.BUFF_1ST));
+    }
+
     @Test
     void testAllSectionsExist() {
         String[] sections = {"SEW", "BUFFING 1ST", "BUFFING 2ND",

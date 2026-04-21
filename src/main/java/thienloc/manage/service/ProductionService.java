@@ -1,36 +1,41 @@
 package thienloc.manage.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import thienloc.manage.dto.DailyProductionDto;
-import thienloc.manage.dto.DailyProductionDetailDto;
-import thienloc.manage.dto.WeeklyReportDto;
-import thienloc.manage.entity.DailyProduction;
-import thienloc.manage.entity.DailyProductionDetail;
-import thienloc.manage.entity.MasterDb;
-import thienloc.manage.entity.User;
-import thienloc.manage.entity.SplitEntry;
-import thienloc.manage.repository.DailyProductionRepository;
-import thienloc.manage.repository.MasterDbRepository;
-import thienloc.manage.repository.SplitEntryRepository;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-
-import thienloc.manage.exception.ResourceNotFoundException;
-
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import thienloc.manage.dto.DailyProductionDetailDto;
+import thienloc.manage.dto.DailyProductionDto;
+import thienloc.manage.dto.WeeklyReportDto;
+import thienloc.manage.entity.DailyProduction;
+import thienloc.manage.entity.DailyProductionDetail;
+import thienloc.manage.entity.User;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import thienloc.manage.exception.ResourceNotFoundException;
+import thienloc.manage.exception.ServiceUnavailableException;
+import thienloc.manage.mapper.ProductionMapper;
+import thienloc.manage.repository.DailyProductionRepository;
+import thienloc.manage.repository.MasterDbRepository;
+import thienloc.manage.repository.SplitEntryRepository;
+import thienloc.manage.util.NormalizationUtil;
+
 @Service
-public class ProductionService {
+public class ProductionService implements IProductionService {
+
+    private static final Logger log = LoggerFactory.getLogger(ProductionService.class);
 
     @Autowired
     private DailyProductionRepository productionRepository;
@@ -45,10 +50,14 @@ public class ProductionService {
     private UserService userService;
 
     @Autowired
-    private EfficiencyCalculatorService efficiencyCalculator;
+    private IEfficiencyCalculatorService efficiencyCalculator;
+
+    @Autowired
+    private ProductionMapper productionMapper;
 
     // ─── Save ────────────────────────────────────────────────────────────────────
 
+    @Transactional
     public Long saveDailyProduction(DailyProductionDto dto, String username) {
         User user = userService.findByUsername(username);
         if (user == null) {
@@ -68,13 +77,11 @@ public class ProductionService {
         }
         dto.setSection(section);
 
-        double allowanceVal = 1.0;
-        if (dto.getAllowance() != null && dto.getAllowance() > 0) {
-            allowanceVal = dto.getAllowance() > 1 ? dto.getAllowance() / 100.0 : dto.getAllowance();
-        }
+        double allowanceVal = NormalizationUtil.normalizeAllowance(dto.getAllowance());
 
         DailyProduction entity;
-        if (dto.getId() != null) {
+        boolean isNew = dto.getId() == null;
+        if (!isNew) {
             entity = productionRepository.findById(dto.getId())
                     .orElseThrow(() -> new ResourceNotFoundException("Record not found"));
             entity.setProductionDate(dto.getProductionDate());
@@ -102,6 +109,11 @@ public class ProductionService {
         }
 
         entity.getDetails().clear();
+        if (!isNew) {
+            // Force orphan-removal DELETEs to run before the new INSERTs,
+            // otherwise the (daily_production_id, time_slot) unique constraint fires.
+            productionRepository.flush();
+        }
         if (dto.getDetails() != null) {
             for (DailyProductionDetailDto detailDto : dto.getDetails()) {
                 if (detailDto.getArticleNo() != null && !detailDto.getArticleNo().trim().isEmpty()) {
@@ -116,16 +128,14 @@ public class ProductionService {
             }
         }
         entity.setTotalOutput(dto.getOutput() != null ? dto.getOutput() : 0);
-        entity = productionRepository.save(entity);
+        if (isNew) {
+            entity = productionRepository.save(entity);
+        }
         return entity.getId();
     }
 
-    /** Normalize RFT: if stored as decimal (0-1), convert to percentage (0-100). */
     private Double normalizeRft(Double rft) {
-        if (rft != null && rft > 0 && rft <= 1.0) {
-            return rft * 100.0;
-        }
-        return rft;
+        return NormalizationUtil.normalizeRft(rft);
     }
 
     // ─── Query methods ───────────────────────────────────────────────────────────
@@ -151,7 +161,65 @@ public class ProductionService {
         List<DailyProductionDto> entries = getMyDataRange(username, from, to);
         entries.forEach(e -> e.setSource("ENTRY"));
 
-        List<DailyProductionDto> splitRows = splitEntryRepository.findPartialByDateRange(from, to)
+        List<DailyProductionDto> splitRows = buildSplitDtos(from, to);
+
+        List<DailyProductionDto> merged = new ArrayList<>(entries);
+        merged.addAll(splitRows);
+        return merged;
+    }
+
+    /** DB-level paginated version — section/line lọc tại DB, article/errorsOnly/source lọc in-memory trên trang. */
+    public Page<DailyProductionDto> getMyDataRangeWithSplitEntriesPaged(
+            String username, LocalDate from, LocalDate to,
+            String section, String line, int page, int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        String sectionFilter = (section == null) ? "" : section;
+        String lineFilter   = (line == null)    ? "" : line;
+
+        // Pass 1: lấy IDs có LIMIT/OFFSET, section/line lọc tại DB
+        Page<Long> idPage = productionRepository.findIdsByUsernameAndDateRange(
+                username, from, to, sectionFilter, lineFilter, pageable);
+
+        // Pass 2: load đúng entities + details bằng IDs (tránh N+1)
+        List<DailyProductionDto> dtos = new ArrayList<>();
+        if (!idPage.isEmpty()) {
+            List<DailyProduction> entities = productionRepository.findByIdsWithDetails(idPage.getContent());
+            dtos = convertAllToDtoAndCalculateEff(entities);
+            dtos.forEach(e -> e.setSource("ENTRY"));
+        }
+
+        long totalElements = idPage.getTotalElements();
+
+        // Page 0: prepend PARTIAL split entries (luôn ít, không cần phân trang)
+        if (page == 0) {
+            List<DailyProductionDto> splitRows = buildSplitDtos(from, to);
+
+            // Áp dụng cùng filter section/line cho splits
+            if (!sectionFilter.isEmpty()) {
+                splitRows = splitRows.stream()
+                        .filter(s -> sectionFilter.equals(s.getSection()))
+                        .collect(Collectors.toList());
+            }
+            if (!lineFilter.isEmpty()) {
+                String lowerLine = lineFilter.toLowerCase();
+                splitRows = splitRows.stream()
+                        .filter(s -> s.getLine() != null && s.getLine().toLowerCase().contains(lowerLine))
+                        .collect(Collectors.toList());
+            }
+
+            List<DailyProductionDto> merged = new ArrayList<>(splitRows);
+            merged.addAll(dtos);
+            totalElements += splitRows.size();
+            return new PageImpl<>(merged, pageable, totalElements);
+        }
+
+        return new PageImpl<>(dtos, pageable, totalElements);
+    }
+
+    /** Extract split entry rows thành PARTIAL DTOs (dùng chung cho cả 2 phương thức trên). */
+    private List<DailyProductionDto> buildSplitDtos(LocalDate from, LocalDate to) {
+        return splitEntryRepository.findPartialByDateRange(from, to)
                 .stream()
                 .map(se -> {
                     DailyProductionDto dto = new DailyProductionDto();
@@ -163,9 +231,9 @@ public class ProductionService {
                     dto.setDli(se.getDli());
                     dto.setIdl(se.getIdl());
                     dto.setWt(se.getWt());
-                    dto.setOutput(se.getTotalOutput());
+                    dto.setOutput(se.getTotalOutput() != null ? se.getTotalOutput() : 0);
                     dto.setRft(se.getRft());
-                    dto.setAllowance(se.getAllowance() != null ? se.getAllowance() * 100.0 : 100.0);
+                    dto.setAllowance(se.getAllowance() != null ? se.getAllowance() : 1.0);
                     dto.setSource("SPLIT");
                     dto.setCreatedBy(se.getManpowerFilledBy() != null
                             ? se.getManpowerFilledBy().getUsername() : "-");
@@ -173,10 +241,6 @@ public class ProductionService {
                     return dto;
                 })
                 .collect(Collectors.toList());
-
-        List<DailyProductionDto> merged = new ArrayList<>(entries);
-        merged.addAll(splitRows);
-        return merged;
     }
 
     public Page<DailyProductionDto> getUserEntries(String username, Pageable pageable) {
@@ -229,75 +293,7 @@ public class ProductionService {
 
     /** Field mapping only — no DB queries for efficiency calculations. */
     private DailyProductionDto convertToDto(DailyProduction entity) {
-        DailyProductionDto dto = new DailyProductionDto();
-        dto.setId(entity.getId());
-        dto.setProductionDate(entity.getProductionDate());
-        dto.setSection(entity.getSection());
-        dto.setLine(entity.getLine());
-        dto.setMp(entity.getMp());
-        dto.setDli(entity.getDli());
-        dto.setIdl(entity.getIdl());
-        dto.setWt(entity.getWt());
-        dto.setRft(entity.getRft());
-        dto.setAllowance(entity.getAllowance());
-        if (entity.getCreatedAt() != null) {
-            dto.setCreatedAt(entity.getCreatedAt().format(
-                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-        }
-        if (entity.getCreatedBy() != null) {
-            dto.setCreatedBy(entity.getCreatedBy().getUsername());
-        }
-
-        // Build display article and detail DTOs
-        String displayArticle = "N/A";
-        if (entity.getDetails() != null && !entity.getDetails().isEmpty()) {
-            List<String> distinctArticles = entity.getDetails().stream()
-                    .map(DailyProductionDetail::getArticleNo)
-                    .filter(a -> a != null && !a.trim().isEmpty())
-                    .distinct()
-                    .collect(Collectors.toList());
-
-            if (!distinctArticles.isEmpty()) {
-                displayArticle = distinctArticles.get(0);
-                if (distinctArticles.size() > 1) {
-                    displayArticle += " (+)";
-                    dto.setArticleTooltip(String.join(", ", distinctArticles));
-                }
-            }
-
-            List<DailyProductionDetailDto> detailDtos = entity.getDetails().stream()
-                    .map(d -> {
-                        DailyProductionDetailDto dDto = new DailyProductionDetailDto();
-                        dDto.setTimeSlot(d.getTimeSlot());
-                        dDto.setArticleNo(d.getArticleNo());
-                        dDto.setOutput(d.getOutput());
-                        return dDto;
-                    }).collect(Collectors.toList());
-            dto.setDetails(detailDtos);
-
-            // Build articlesJson: {"07:00-08:00":"Y1234", ...}
-            StringBuilder json = new StringBuilder("{");
-            boolean first = true;
-            for (DailyProductionDetailDto d : detailDtos) {
-                if (d.getTimeSlot() != null && d.getArticleNo() != null && !d.getArticleNo().isEmpty()) {
-                    if (!first)
-                        json.append(",");
-                    json.append("\"").append(d.getTimeSlot()).append("\":\"")
-                            .append(d.getArticleNo().replace("\\", "\\\\").replace("\"", "\\\"")).append("\"");
-                    first = false;
-                }
-            }
-            json.append("}");
-            dto.setArticlesJson(json.toString());
-        }
-        dto.setArticle(displayArticle);
-        dto.setOutput(entity.getTotalOutput());
-
-        String ref = (entity.getSection() != null ? entity.getSection() : "") +
-                (entity.getLine() != null ? entity.getLine() : "");
-        dto.setRef(ref);
-
-        return dto;
+        return productionMapper.toDto(entity);
     }
 
     /** Single record: field mapping + efficiency calculation (used by getById). */
@@ -318,43 +314,35 @@ public class ProductionService {
 
     // ─── Weekly Report ───────────────────────────────────────────────────────────
 
+    @CircuitBreaker(name = "weeklyReport", fallbackMethod = "getWeeklyReportFallback")
+    @Transactional(readOnly = true, timeout = 10)
     public List<WeeklyReportDto> getWeeklyReport(LocalDate weekStart) {
         LocalDate weekEnd = weekStart.plusDays(7); // Fri→Fri inclusive = 8 days
 
         List<DailyProduction> allRecords = productionRepository
                 .findByProductionDateBetweenOrderByProductionDateAscSectionAscLineAsc(weekStart, weekEnd);
 
-        Map<String, List<DailyProduction>> grouped = new LinkedHashMap<>();
-        for (DailyProduction rec : allRecords) {
-            String recSection = rec.getSection();
-            if ("ASSEMBLY BIG".equalsIgnoreCase(recSection) && "5".equals(rec.getLine())) {
-                recSection = SectionMetrics.ASSEMBLY_SMALL.getSectionName();
+        // Reuse the same DTO conversion + efficiency calculation as the daily report
+        List<DailyProductionDto> allDtos = convertAllToDtoAndCalculateEff(allRecords);
+
+        // Group DTOs by section|line (with ASSEMBLY BIG line 5 → ASSEMBLY SMALL override)
+        Map<String, List<DailyProductionDto>> grouped = new LinkedHashMap<>();
+        for (DailyProductionDto dto : allDtos) {
+            String section = dto.getSection();
+            if ("ASSEMBLY BIG".equalsIgnoreCase(section) && "5".equals(dto.getLine())) {
+                section = SectionMetrics.ASSEMBLY_SMALL.getSectionName();
             }
-            String key = recSection + "|" + rec.getLine();
-            grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(rec);
+            String key = section + "|" + dto.getLine();
+            grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(dto);
         }
-
-        // Batch load MasterDb — 1 query thay vì N queries (N+1 fix)
-        Set<String> allArticleNos = allRecords.stream()
-                .filter(r -> r.getDetails() != null && !r.getDetails().isEmpty())
-                .map(r -> r.getDetails().get(0).getArticleNo())
-                .filter(a -> a != null && !a.trim().isEmpty() && !"N/A".equals(a))
-                .map(a -> a.replace(" (+)", ""))
-                .collect(Collectors.toSet());
-
-        Map<String, MasterDb> masterDbMap = allArticleNos.isEmpty()
-                ? Map.of()
-                : masterDbRepository.findByArticleNoInOrderByRefAsc(allArticleNos)
-                        .stream()
-                        .collect(Collectors.toMap(MasterDb::getArticleNo, m -> m, (a, b) -> a));
 
         List<WeeklyReportDto> blocks = new ArrayList<>();
 
-        for (Map.Entry<String, List<DailyProduction>> entry : grouped.entrySet()) {
+        for (Map.Entry<String, List<DailyProductionDto>> entry : grouped.entrySet()) {
             String[] parts = entry.getKey().split("\\|");
             String section = parts[0];
             String line = parts.length > 1 ? parts[1] : "";
-            List<DailyProduction> records = entry.getValue();
+            List<DailyProductionDto> dtos = entry.getValue();
 
             WeeklyReportDto block = new WeeklyReportDto();
             block.setSection(section);
@@ -364,74 +352,46 @@ public class ProductionService {
             double sumEff = 0, sumActPph = 0, sumStdPph = 0, sumMp = 0, sumWt = 0, sumDli = 0;
             int sumOutput = 0, effCount = 0, stdCount = 0, sumTargetOutput = 0, targetCount = 0;
 
-            Optional<SectionMetrics> smOpt = SectionMetrics.fromSection(section);
-
-            for (DailyProduction rec : records) {
+            for (DailyProductionDto dto : dtos) {
                 WeeklyReportDto.DailyRow row = new WeeklyReportDto.DailyRow();
-                row.setDate(rec.getProductionDate());
-                row.setOutput(rec.getTotalOutput());
-                row.setMp(rec.getMp());
-                row.setWt(rec.getWt());
-                row.setDli(rec.getDli());
+                row.setDate(dto.getProductionDate());
+                row.setOutput(dto.getOutput());
+                row.setMp(dto.getMp());
+                row.setWt(dto.getWt());
+                row.setDli(dto.getDli());
+                row.setArticleNo(dto.getArticle());
+                row.setPatternNo(dto.getPatternNo());
+                row.setShoeName(dto.getShoeName());
+                row.setStdPph(dto.getStdPph());
+                row.setActualPph(dto.getActualPph());
 
-                String articleNo = "N/A";
-                if (rec.getDetails() != null && !rec.getDetails().isEmpty()) {
-                    articleNo = rec.getDetails().get(0).getArticleNo();
-                }
-                row.setArticleNo(articleNo);
-
-                // Map lookup thay vì query DB (đã batch load ở trên)
-                Optional<MasterDb> masterOpt = "N/A".equals(articleNo)
-                        ? Optional.empty()
-                        : Optional.ofNullable(masterDbMap.get(articleNo.replace(" (+)", "")));
-                if (masterOpt.isPresent() && smOpt.isPresent()) {
-                    MasterDb master = masterOpt.get();
-                    row.setPatternNo(master.getPatternNo());
-                    row.setShoeName(master.getShoeName());
-
-                    Double stdPph = smOpt.get().getPph(master);
-                    row.setStdPph(stdPph);
-                    if (stdPph != null) {
-                        sumStdPph += stdPph;
-                        stdCount++;
-                    }
+                // Use EFF KPI from daily report's EfficiencyCalculatorService
+                if (dto.getEffKpi() != null) {
+                    row.setEff(dto.getEffKpi());
+                    sumEff += dto.getEffKpi();
+                    effCount++;
                 }
 
-                if (rec.getDli() != null && rec.getWt() != null
-                        && rec.getDli() > 0 && rec.getWt() > 0) {
-                    double actualPph = (double) rec.getTotalOutput() / rec.getDli() / rec.getWt();
-                    row.setActualPph(actualPph);
-                    sumActPph += actualPph;
-
-                    if (row.getStdPph() != null && row.getStdPph() > 0) {
-                        double eff = actualPph / row.getStdPph();
-                        row.setEff(eff);
-                        sumEff += eff;
-                        effCount++;
-                    }
-                }
-
-                if (row.getStdPph() != null && row.getStdPph() > 0
-                        && rec.getDli() != null && rec.getDli() > 0
-                        && rec.getWt() != null && rec.getWt() > 0) {
-                    row.setTargetOutput((int) Math.round(row.getStdPph() * rec.getDli() * rec.getWt()));
-                }
-
-                sumOutput += (rec.getTotalOutput() != null ? rec.getTotalOutput() : 0);
-                sumMp += (rec.getMp() != null ? rec.getMp() : 0);
-                sumWt += (rec.getWt() != null ? rec.getWt() : 0);
-                sumDli += (rec.getDli() != null ? rec.getDli() : 0);
-                if (row.getTargetOutput() != null) {
+                // Use Target from daily report's calculation
+                if (dto.getTarget() != null) {
+                    row.setTargetOutput((int) Math.round(dto.getTarget()));
                     sumTargetOutput += row.getTargetOutput();
                     targetCount++;
                 }
+
+                if (dto.getStdPph() != null) { sumStdPph += dto.getStdPph(); stdCount++; }
+                if (dto.getActualPph() != null) sumActPph += dto.getActualPph();
+                sumOutput += (dto.getOutput() != null ? dto.getOutput() : 0);
+                sumMp += (dto.getMp() != null ? dto.getMp() : 0);
+                sumWt += (dto.getWt() != null ? dto.getWt() : 0);
+                sumDli += (dto.getDli() != null ? dto.getDli() : 0);
 
                 dailyRows.add(row);
             }
 
             block.setDailyRows(dailyRows);
 
-            int n = records.size();
+            int n = dtos.size();
             WeeklyReportDto.SummaryRow summary = new WeeklyReportDto.SummaryRow();
             summary.setTotalOutput(sumOutput);
             summary.setDayCount(n);
@@ -448,5 +408,14 @@ public class ProductionService {
         }
 
         return blocks;
+    }
+
+    List<WeeklyReportDto> getWeeklyReportFallback(LocalDate weekStart, Throwable t) {
+        log.warn("Circuit open for weeklyReport, weekStart={}: {}", weekStart, t.getMessage());
+        throw new ServiceUnavailableException("Báo cáo tuần tạm thời không khả dụng. Vui lòng thử lại sau.");
+    }
+
+    public List<String> getDistinctMonths() {
+        return productionRepository.findDistinctMonths();
     }
 }
