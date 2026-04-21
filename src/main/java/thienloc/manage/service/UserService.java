@@ -39,4 +39,15 @@ public class UserService {
         user.setRole(newRole);
         return userRepository.save(user);
     }
+
+    public boolean changePassword(String username, String currentPassword, String newPassword) {
+        User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new thienloc.manage.exception.ResourceNotFoundException("User not found"));
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            return false;
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        return true;
+    }
 }

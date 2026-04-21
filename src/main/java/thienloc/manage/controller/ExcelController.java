@@ -13,17 +13,20 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import thienloc.manage.dto.EntryImportPreviewDto;
-import thienloc.manage.service.ExcelService;
+import thienloc.manage.entity.ImportJob;
+import thienloc.manage.service.IExcelService;
+import thienloc.manage.service.ImportJobService;
+import thienloc.manage.util.ExcelFileValidator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/excel")
@@ -34,7 +37,10 @@ public class ExcelController {
     private static final String SESSION_FILE = "entryImportFile";
 
     @Autowired
-    private ExcelService excelService;
+    private IExcelService excelService;
+
+    @Autowired
+    private ImportJobService importJobService;
 
     @GetMapping("/template")
     public ResponseEntity<InputStreamResource> downloadTemplate() throws IOException {
@@ -65,6 +71,7 @@ public class ExcelController {
         }
 
         try {
+            ExcelFileValidator.validate(file);
             EntryImportPreviewDto preview = excelService.parseForPreview(file);
             // Store file as temp file on disk to avoid holding large byte[] in session RAM
             Path tempFile = Files.createTempFile("ie-eff-import-", ".xlsx");
@@ -81,7 +88,7 @@ public class ExcelController {
     }
 
     /**
-     * Step 2: User confirms — actually import the data.
+     * Step 2: User confirms — kick off async import and redirect to status page.
      */
     @PostMapping("/import/confirm")
     public String confirmImport(HttpSession session,
@@ -92,21 +99,30 @@ public class ExcelController {
             redirectAttributes.addFlashAttribute("error", "Session expired. Please upload the file again.");
             return "redirect:/entry";
         }
+        // Clear session immediately — async task owns the temp file now
+        session.removeAttribute(SESSION_FILE);
+        session.removeAttribute(SESSION_PREVIEW);
 
-        Path tempFile = Path.of(filePath);
-        try (FileInputStream fis = new FileInputStream(tempFile.toFile())) {
-            excelService.importExcel(fis, authentication.getName());
-            redirectAttributes.addFlashAttribute("success", "File imported successfully!");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "Failed to import file: " + e.getMessage());
-            log.error("Failed to import file", e);
-        } finally {
-            session.removeAttribute(SESSION_FILE);
-            session.removeAttribute(SESSION_PREVIEW);
-            try { Files.deleteIfExists(tempFile); } catch (IOException ignored) {}
-        }
+        ImportJob job = importJobService.createJob("ENTRY_IMPORT", authentication.getName());
+        importJobService.runEntryImport(job.getId(), filePath, authentication.getName());
+        return "redirect:/excel/import/status/" + job.getId();
+    }
 
-        return "redirect:/entry";
+    @GetMapping("/import/status/{id}")
+    public String importStatus(@PathVariable Long id, Model model) {
+        model.addAttribute("job", importJobService.findById(id));
+        return "excel-import-status";
+    }
+
+    @GetMapping("/import/jobs/{id}/poll")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> pollJob(@PathVariable Long id) {
+        ImportJob job = importJobService.findById(id);
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("status", job.getStatus());
+        body.put("progress", job.getProgress());
+        body.put("errorMessage", job.getErrorMessage() != null ? job.getErrorMessage() : "");
+        return ResponseEntity.ok(body);
     }
 
     /**

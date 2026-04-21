@@ -33,7 +33,7 @@ public class NotificationController {
     public String dismissAll(Authentication auth, RedirectAttributes redirectAttributes) {
         String role = getPrimaryRole(auth);
         notificationService.dismissAll(role);
-        redirectAttributes.addFlashAttribute("success", "Đã đánh dấu tất cả đã đọc.");
+        redirectAttributes.addFlashAttribute("success", "All notifications marked as read.");
         return "redirect:/notifications";
     }
 

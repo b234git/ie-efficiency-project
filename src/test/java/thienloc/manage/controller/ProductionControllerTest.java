@@ -6,13 +6,11 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import thienloc.manage.dto.DailyProductionDto;
 import thienloc.manage.security.SecurityConfig;
 import thienloc.manage.service.NotificationService;
 import thienloc.manage.service.ProductionService;
 import thienloc.manage.service.SystemLogService;
 
-import java.time.LocalDate;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -40,10 +38,10 @@ class ProductionControllerTest {
     private NotificationService notificationService;
 
     @Test
-    void testShowEntryForm_UserRole() throws Exception {
-        when(productionService.getMyDataRange(eq("user"), any(), any())).thenReturn(List.of());
+    void testShowEntryForm_ManagerRole() throws Exception {
+        when(productionService.getMyDataRange(eq("manager"), any(), any())).thenReturn(List.of());
 
-        mockMvc.perform(get("/entry/").with(user("user").roles("USER")))
+        mockMvc.perform(get("/entry/").with(user("manager").roles("MANAGER")))
                 .andExpect(status().isOk())
                 .andExpect(view().name("entry"))
                 .andExpect(model().attributeExists("production", "entries"));
@@ -51,17 +49,17 @@ class ProductionControllerTest {
 
     @Test
     void testShowEntryForm_RangeFilter() throws Exception {
-        when(productionService.getMyDataRangeWithSplitEntries(eq("user"), any(), any())).thenReturn(List.of());
+        when(productionService.getMyDataRangeWithSplitEntries(eq("manager"), any(), any())).thenReturn(List.of());
 
-        mockMvc.perform(get("/entry/").param("range", "1M").with(user("user").roles("USER")))
+        mockMvc.perform(get("/entry/").param("range", "1M").with(user("manager").roles("MANAGER")))
                 .andExpect(status().isOk());
 
-        verify(productionService).getMyDataRangeWithSplitEntries(eq("user"), any(), any());
+        verify(productionService).getMyDataRangeWithSplitEntries(eq("manager"), any(), any());
     }
 
     @Test
     void testSaveEntry() throws Exception {
-        when(productionService.saveDailyProduction(any(), eq("user"))).thenReturn(1L);
+        when(productionService.saveDailyProduction(any(), eq("manager"))).thenReturn(1L);
 
         mockMvc.perform(post("/entry/save")
                 .param("productionDate", "2026-03-15")
@@ -69,12 +67,12 @@ class ProductionControllerTest {
                 .param("line", "1A")
                 .param("mp", "30.0")
                 .param("wt", "8.0")
-                .with(user("user").roles("USER"))
+                .with(user("manager").roles("MANAGER"))
                 .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/entry/?success"));
 
-        verify(productionService).saveDailyProduction(any(), eq("user"));
+        verify(productionService).saveDailyProduction(any(), eq("manager"));
     }
 
     @Test
@@ -117,23 +115,13 @@ class ProductionControllerTest {
     }
 
     @Test
-    void testRequestEdit_UserRole() throws Exception {
-        DailyProductionDto record = new DailyProductionDto();
-        record.setProductionDate(LocalDate.of(2026, 3, 15));
-        record.setSection("SEW");
-        record.setLine("1A");
-        record.setOutput(1000);
-        when(productionService.getById(1L)).thenReturn(record);
-
+    void testRequestEdit_UserRole_Forbidden() throws Exception {
         mockMvc.perform(post("/entry/request-edit")
                 .param("id", "1")
                 .param("reason", "Wrong data")
                 .with(user("user").roles("USER"))
                 .with(csrf()))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/entry/?requestSent"));
-
-        verify(notificationService).notifyAdminAndManager(anyString(), anyString(), eq("INFO"));
+                .andExpect(status().isForbidden());
     }
 
     @Test

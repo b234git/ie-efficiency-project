@@ -26,6 +26,9 @@
         <!-- EXCEL IMPORT SECTION -->
         <div style="margin-bottom: 20px; padding: 15px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;">
             <h4 th:text="#{masterdb.import.title}">Import via Excel</h4>
+            <div th:if="${importError}" style="color:#dc3545; margin-bottom:10px; padding:10px; background:#f8d7da; border-radius:4px;">
+                <span th:text="${importError}"></span>
+            </div>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <a th:href="@{/excel/template}" class="btn"
                     style="background: #28a745; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px;"

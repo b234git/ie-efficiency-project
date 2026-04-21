@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="#{effconfig.title}">EFF Config</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}"/>
+    <style>
+        .tab-buttons { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab-btn {
+            padding: 9px 22px; border: 2px solid #dee2e6; border-radius: 6px;
+            background: #f8f9fa; cursor: pointer; font-weight: 600; font-size: 0.9rem;
+            transition: all 0.15s;
+        }
+        .tab-btn.active { background: #0d6efd; color: #fff; border-color: #0d6efd; }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+        .grade-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .grade-grid .form-group label { font-size: 0.82rem; color: #555; }
+        .sec-badge {
+            display: inline-block; padding: 2px 7px; border-radius: 4px;
+            font-size: 0.78rem; background: #e9ecef; color: #495057;
+            margin-left: 4px;
+        }
+        .num { text-align: right; font-variant-numeric: tabular-nums; }
+        .alias-tag {
+            font-size: 0.78rem; color: #6c757d; font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+<div th:replace="~{fragments/layout :: navbar}"></div>
+
+<div class="container-xl" style="padding: 20px;">
+
+    <div class="page-header" style="margin-bottom: 18px;">
+        <h2 th:text="#{effconfig.title}">EFF Coefficient Configuration</h2>
+        <p style="color: #6c757d; margin: 4px 0 0;" th:text="#{effconfig.subtitle}">
+            Manage output-level multipliers and incentive rate tables by EFF%.
+            Admin and Manager only.
+        </p>
+    </div>
+
+    <!-- Flash messages -->
+    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <!-- Tab buttons -->
+    <div class="tab-buttons">
+        <button class="tab-btn active" id="btn-multiplier" onclick="showTab('multiplier')">
+            <span th:text="#{effconfig.tab.multiplier}">Output Level Multipliers</span>
+            <span class="sec-badge" th:text="${multipliers.size()}"></span>
+        </button>
+        <button class="tab-btn" id="btn-rate" onclick="showTab('rate')">
+            <span th:text="#{effconfig.tab.rate}">Incentive Rates by EFF%</span>
+            <span class="sec-badge" th:text="${allRates.size()}"></span>
+        </button>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- TAB 1: Multiplier                                                   -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="tab-multiplier" class="tab-pane active">
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 style="margin:0;" th:text="#{effconfig.multiplier.section.title}">Multipliers by SEC</h3>
+            <button class="btn btn-primary" onclick="openAddMultiplierModal()" th:text="#{effconfig.addnew}">+ Add New</button>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>SEC</th>
+                    <th>Section</th>
+                    <th>WT (h)</th>
+                    <th>Rate Alias</th>
+                    <th class="num" colspan="9" style="text-align:center;">Rates</th>
+                    <th th:text="#{effconfig.col.actions}">Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+
+                <th:block th:if="${multipliersBySection.isEmpty()}">
+                    <tr>
+                        <td colspan="15" style="text-align:center; color:#6c757d; padding:20px;"
+                            th:text="#{effconfig.nodata.multiplier}">
+                            No data yet. Click "+ Add New" to get started.
+                        </td>
+                    </tr>
+                </th:block>
+
+                <th:block th:each="entry : ${multipliersBySection}">
+                    <!-- Section sub-header row -->
+                    <tr style="background:#dbeafe;">
+                        <th colspan="5"
+                            style="text-align:left; font-size:0.85rem; color:#1e40af; padding:6px 12px; font-weight:700;">
+                            <span th:text="${entry.key}"></span>
+                        </th>
+                        <th class="num" style="font-size:0.82rem; color:#1e40af;"
+                            th:each="lbl : ${gradeLabels[entry.key] ?: #lists.emptyList()}"
+                            th:text="${lbl}">Gn</th>
+                        <th style="background:#dbeafe;"></th>
+                    </tr>
+
+                    <!-- Data rows -->
+                    <tr th:each="m, stat : ${entry.value}">
+                        <td th:text="${stat.index + 1}"></td>
+                        <td style="font-weight:600;" th:text="${m.sec}"></td>
+                        <td th:text="${m.section}"></td>
+                        <td th:text="${m.wt}"></td>
+                        <td>
+                            <span th:if="${m.rateAlias != null}" class="alias-tag"
+                                  th:text="'→ ' + ${m.rateAlias}"></span>
+                            <span th:if="${m.rateAlias == null}" style="color:#ccc;">—</span>
+                        </td>
+                        <td class="num" th:text="${m.grade1}"></td>
+                        <td class="num" th:text="${m.grade2 != null ? m.grade2 : '—'}"></td>
+                        <td class="num" th:text="${m.grade3 != null ? m.grade3 : '—'}"></td>
+                        <td class="num" th:text="${m.grade4 != null ? m.grade4 : '—'}"></td>
+                        <td class="num" th:text="${m.grade5 != null ? m.grade5 : '—'}"></td>
+                        <td class="num" th:text="${m.grade6 != null ? m.grade6 : '—'}"></td>
+                        <td class="num" th:text="${m.grade7 != null ? m.grade7 : '—'}"></td>
+                        <td class="num" th:text="${m.grade8 != null ? m.grade8 : '—'}"></td>
+                        <td class="num" th:text="${m.grade9 != null ? m.grade9 : '—'}"></td>
+                        <td>
+                            <button class="btn btn-warning btn-sm" onclick="openEditMultiplierModal(this)"
+                                    th:attr="data-id=${m.id},
+                                             data-sec=${m.sec},
+                                             data-section=${m.section},
+                                             data-wt=${m.wt},
+                                             data-ratealias=${m.rateAlias ?: ''},
+                                             data-g1=${m.grade1 ?: 1.0},
+                                             data-g2=${m.grade2 ?: ''},
+                                             data-g3=${m.grade3 ?: ''},
+                                             data-g4=${m.grade4 ?: ''},
+                                             data-g5=${m.grade5 ?: ''},
+                                             data-g6=${m.grade6 ?: ''},
+                                             data-g7=${m.grade7 ?: ''},
+                                             data-g8=${m.grade8 ?: ''},
+                                             data-g9=${m.grade9 ?: ''}"
+                                    th:text="#{effconfig.btn.edit}">✏ Edit</button>
+                            <form th:action="@{/eff-config/multiplier/delete}" method="post"
+                                  style="display:inline;"
+                                  onsubmit="return confirm(I18N.confirmDelMultiplier)">
+                                <input type="hidden" name="id" th:value="${m.id}"/>
+                                <button type="submit" class="btn btn-danger btn-sm" th:text="#{effconfig.btn.delete}">🗑 Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                </th:block>
+
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- TAB 2: Incentive Rate                                              -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="tab-rate" class="tab-pane">
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <h3 style="margin:0;" th:text="#{effconfig.rate.section.title}">Incentive Rates by EFF%</h3>
+                <select id="rateSecFilter" class="form-control" style="width:150px;"
+                        onchange="filterRatesBySec(this.value)">
+                    <option value="" th:text="#{effconfig.rate.filter.all}">-- All SEC --</option>
+                    <option th:each="s : ${rateSecs}" th:value="${s}" th:text="${s}"></option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="openAddRateModal()" th:text="#{effconfig.addnew}">+ Add New</button>
+        </div>
+
+        <div class="table-wrapper">
+            <table id="rateTable">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>SEC</th>
+                    <th>Section</th>
+                    <th>WT (h)</th>
+                    <th class="num">EFF%</th>
+                    <th class="num" th:text="#{effconfig.col.rate}">Rate (VNĐ)</th>
+                    <th th:text="#{effconfig.col.actions}">Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="r, stat : ${allRates}"
+                    th:attr="data-sec=${r.sec}">
+                    <td class="row-num" th:text="${stat.index + 1}"></td>
+                    <td style="font-weight:600;" th:text="${r.sec}"></td>
+                    <td th:text="${r.section}"></td>
+                    <td th:text="${r.wt}"></td>
+                    <td class="num" th:text="${r.effPercent + '%'}"></td>
+                    <td class="num" th:text="${#numbers.formatInteger(r.rate, 1, 'COMMA')}"></td>
+                    <td>
+                        <button class="btn btn-warning btn-sm" onclick="openEditRateModal(this)"
+                                th:attr="data-id=${r.id},
+                                         data-sec=${r.sec},
+                                         data-section=${r.section},
+                                         data-wt=${r.wt},
+                                         data-eff=${r.effPercent},
+                                         data-rate=${r.rate}"
+                                th:text="#{effconfig.btn.edit}">✏ Edit</button>
+                        <form th:action="@{/eff-config/rate/delete}" method="post"
+                              style="display:inline;"
+                              onsubmit="return confirm(I18N.confirmDelRate)">
+                            <input type="hidden" name="id" th:value="${r.id}"/>
+                            <button type="submit" class="btn btn-danger btn-sm" th:text="#{effconfig.btn.delete}">🗑 Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr th:if="${allRates.isEmpty()}">
+                    <td colspan="7" style="text-align:center; color:#6c757d; padding:20px;"
+                        th:text="#{effconfig.nodata.rate}">
+                        No data yet.
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- MODAL 1: Add / Edit Multiplier                                          -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div id="multiplierModal" class="modal-overlay" onclick="closeModalOnOverlay(event,'multiplierModal')">
+    <div class="modal-box" style="width: min(820px, 95vw);">
+        <button class="modal-close" onclick="closeMultiplierModal()">×</button>
+        <h3 id="mModalTitle" class="modal-title" th:text="#{effconfig.modal.add.multiplier}">Add Multiplier</h3>
+
+        <form th:action="@{/eff-config/multiplier/save}" method="post" id="multiplierForm">
+            <input type="hidden" id="m-id" name="id"/>
+
+            <div class="form-grid" style="grid-template-columns: repeat(2, 1fr);">
+                <div class="form-group">
+                    <label>SEC <span style="color:red">*</span></label>
+                    <input type="text" id="m-sec" name="sec" class="form-control" required
+                           placeholder="e.g. SEW8, ASSY10"/>
+                </div>
+                <div class="form-group">
+                    <label>Section <span style="color:red">*</span></label>
+                    <select id="m-section" name="section" class="form-control" required
+                            onchange="updateGradeLabels(this.value)">
+                        <option value="" th:text="#{effconfig.select.placeholder}">-- Select --</option>
+                        <option value="SEW">SEW</option>
+                        <option value="ASSY">ASSY</option>
+                        <option value="SF">SF</option>
+                        <option value="BUFF">BUFF</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><span th:text="#{effconfig.label.wt.hours}">WT (hours)</span> <span style="color:red">*</span></label>
+                    <select id="m-wt" name="wt" class="form-control" required>
+                        <option value="" th:text="#{effconfig.select.placeholder}">-- Select --</option>
+                        <option value="4">4</option>
+                        <option value="8">8</option>
+                        <option value="10">10</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Rate Alias
+                        <small style="color:#6c757d;" th:text="#{effconfig.label.ratealias.hint}">(for BUFF only, e.g. SF8)</small>
+                    </label>
+                    <input type="text" id="m-rateAlias" name="rateAlias" class="form-control"
+                           th:placeholder="#{effconfig.label.ratealias.placeholder}"
+                           placeholder="Leave blank if not BUFF"/>
+                </div>
+            </div>
+
+            <div style="margin-top:16px;">
+                <div style="font-weight:600; font-size:0.9rem; margin-bottom:6px; color:#495057;">
+                    <span th:text="#{effconfig.label.grade.multiplier}">Multiplier by Grade</span>
+                    <small style="color:#6c757d; font-weight:400;" th:text="#{effconfig.label.grade.g1.fixed}">(G1 = 1.0, always fixed)</small>
+                </div>
+                <div class="grade-grid">
+                    <div class="form-group">
+                        <label th:text="#{effconfig.label.g1}">G1 (base level)</label>
+                        <input type="number" step="0.0001" id="m-g1" name="grade1"
+                               class="form-control" value="1.0" readonly
+                               style="background:#f0f0f0; color:#666;"/>
+                    </div>
+                    <div class="form-group">
+                        <label>G2</label>
+                        <input type="number" step="0.0001" id="m-g2" name="grade2" class="form-control" min="0"/>
+                    </div>
+                    <div class="form-group">
+                        <label>G3</label>
+                        <input type="number" step="0.0001" id="m-g3" name="grade3" class="form-control" min="0"/>
+                    </div>
+                    <div class="form-group">
+                        <label>G4</label>
+                        <input type="number" step="0.0001" id="m-g4" name="grade4" class="form-control" min="0"/>
+                    </div>
+                    <div class="form-group">
+                        <label>G5</label>
+                        <input type="number" step="0.0001" id="m-g5" name="grade5" class="form-control" min="0"/>
+                    </div>
+                    <div class="form-group">
+                        <label>G6</label>
+                        <input type="number" step="0.0001" id="m-g6" name="grade6" class="form-control" min="0"/>
+                    </div>
+                    <div class="form-group">
+                        <label>G7</label>
+                        <input type="number" step="0.0001" id="m-g7" name="grade7" class="form-control" min="0"/>
+                    </div>
+                    <div class="form-group">
+                        <label>G8</label>
+                        <input type="number" step="0.0001" id="m-g8" name="grade8" class="form-control" min="0"/>
+                    </div>
+                    <div class="form-group">
+                        <label>G9</label>
+                        <input type="number" step="0.0001" id="m-g9" name="grade9" class="form-control" min="0"/>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" class="btn" onclick="closeMultiplierModal()"
+                        style="border:1px solid #ccc; background:#fff;"
+                        th:text="#{effconfig.btn.cancel}">Cancel</button>
+                <button type="submit" class="btn btn-primary" th:text="#{effconfig.btn.save}">💾 Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- MODAL 2: Add / Edit Incentive Rate                                      -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div id="rateModal" class="modal-overlay" onclick="closeModalOnOverlay(event,'rateModal')">
+    <div class="modal-box" style="width: min(500px, 95vw);">
+        <button class="modal-close" onclick="closeRateModal()">×</button>
+        <h3 id="rModalTitle" class="modal-title" th:text="#{effconfig.modal.add.rate}">Add Incentive Rate</h3>
+
+        <form th:action="@{/eff-config/rate/save}" method="post">
+            <input type="hidden" id="r-id" name="id"/>
+
+            <div class="form-grid" style="grid-template-columns: repeat(2, 1fr);">
+                <div class="form-group">
+                    <label>SEC <span style="color:red">*</span></label>
+                    <select id="r-sec" name="sec" class="form-control" required
+                            onchange="autoFillSectionWt(this.value)">
+                        <option value="" th:text="#{effconfig.select.placeholder}">-- Select --</option>
+                        <option th:each="s : ${rateSecs}" th:value="${s}" th:text="${s}"></option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Section <span style="color:red">*</span></label>
+                    <input type="text" id="r-section" name="section" class="form-control" required
+                           placeholder="SEW / ASSY / SF"/>
+                </div>
+                <div class="form-group">
+                    <label><span th:text="#{effconfig.label.wt.hours}">WT (hours)</span> <span style="color:red">*</span></label>
+                    <select id="r-wt" name="wt" class="form-control" required>
+                        <option value="">--</option>
+                        <option value="4">4</option>
+                        <option value="8">8</option>
+                        <option value="10">10</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>EFF% <span style="color:red">*</span></label>
+                    <input type="number" step="0.1" id="r-eff" name="effPercent"
+                           class="form-control" required min="0"
+                           placeholder="e.g. 79.5"/>
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                    <label><span th:text="#{effconfig.col.rate}">Rate (VNĐ)</span> <span style="color:red">*</span></label>
+                    <input type="number" step="1" id="r-rate" name="rate"
+                           class="form-control" required min="0"
+                           placeholder="e.g. 8121"/>
+                </div>
+            </div>
+
+            <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" class="btn" onclick="closeRateModal()"
+                        style="border:1px solid #ccc; background:#fff;"
+                        th:text="#{effconfig.btn.cancel}">Cancel</button>
+                <button type="submit" class="btn btn-primary" th:text="#{effconfig.btn.save}">💾 Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- JavaScript                                                              -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    const ACTIVE_TAB = /*[[${activeTab}]]*/ null;
+    const GRADE_LABELS = /*[[${gradeLabels}]]*/ {};
+    const I18N = {
+        addMultiplier:        /*[[#{effconfig.modal.add.multiplier}]]*/ '',
+        editMultiplier:       /*[[#{effconfig.modal.edit.multiplier}]]*/ '',
+        addRate:              /*[[#{effconfig.modal.add.rate}]]*/ '',
+        editRate:             /*[[#{effconfig.modal.edit.rate}]]*/ '',
+        confirmDelMultiplier: /*[[#{effconfig.confirm.delete.multiplier}]]*/ '',
+        confirmDelRate:       /*[[#{effconfig.confirm.delete.rate}]]*/ ''
+    };
+    /*]]>*/
+</script>
+<script>
+    // ── Tab switching ────────────────────────────────────────────────────────
+    function showTab(name) {
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + name).classList.add('active');
+        document.getElementById('btn-' + name).classList.add('active');
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        if (ACTIVE_TAB && ACTIVE_TAB !== 'null') {
+            showTab(ACTIVE_TAB);
+        }
+    });
+
+    // ── Grade label updater ──────────────────────────────────────────────────
+    function updateGradeLabels(section) {
+        const labels = GRADE_LABELS[section] || ['G1','G2','G3','G4','G5','G6','G7','G8','G9'];
+        for (let i = 1; i <= 9; i++) {
+            const lbl = document.querySelector(
+                '#multiplierModal .grade-grid .form-group:nth-child(' + i + ') label'
+            );
+            if (lbl) lbl.textContent = labels[i - 1] || ('G' + i);
+        }
+    }
+
+    // ── Multiplier modal ─────────────────────────────────────────────────────
+    function openAddMultiplierModal() {
+        document.getElementById('mModalTitle').textContent = I18N.addMultiplier;
+        document.getElementById('multiplierForm').reset();
+        document.getElementById('m-id').value = '';
+        document.getElementById('m-g1').value = '1.0';
+        updateGradeLabels('');
+        document.getElementById('multiplierModal').style.display = 'flex';
+    }
+
+    function openEditMultiplierModal(btn) {
+        const d = btn.dataset;
+        document.getElementById('mModalTitle').textContent = I18N.editMultiplier;
+        document.getElementById('m-id').value = d.id;
+        document.getElementById('m-sec').value = d.sec;
+        document.getElementById('m-section').value = d.section;
+        document.getElementById('m-wt').value = d.wt;
+        document.getElementById('m-rateAlias').value = d.ratealias || '';
+        document.getElementById('m-g1').value = d.g1 || '1.0';
+        document.getElementById('m-g2').value = d.g2 || '';
+        document.getElementById('m-g3').value = d.g3 || '';
+        document.getElementById('m-g4').value = d.g4 || '';
+        document.getElementById('m-g5').value = d.g5 || '';
+        document.getElementById('m-g6').value = d.g6 || '';
+        document.getElementById('m-g7').value = d.g7 || '';
+        document.getElementById('m-g8').value = d.g8 || '';
+        document.getElementById('m-g9').value = d.g9 || '';
+        document.getElementById('multiplierModal').style.display = 'flex';
+        updateGradeLabels(d.section);
+    }
+
+    function closeMultiplierModal() {
+        document.getElementById('multiplierModal').style.display = 'none';
+    }
+
+    // ── Rate modal ───────────────────────────────────────────────────────────
+    function openAddRateModal() {
+        document.getElementById('rModalTitle').textContent = I18N.addRate;
+        document.getElementById('rateModal').querySelector('form').reset();
+        document.getElementById('r-id').value = '';
+        document.getElementById('rateModal').style.display = 'flex';
+    }
+
+    function openEditRateModal(btn) {
+        const d = btn.dataset;
+        document.getElementById('rModalTitle').textContent = I18N.editRate;
+        document.getElementById('r-id').value = d.id;
+        document.getElementById('r-sec').value = d.sec;
+        document.getElementById('r-section').value = d.section;
+        document.getElementById('r-wt').value = d.wt;
+        document.getElementById('r-eff').value = d.eff;
+        document.getElementById('r-rate').value = d.rate;
+        document.getElementById('rateModal').style.display = 'flex';
+    }
+
+    function closeRateModal() {
+        document.getElementById('rateModal').style.display = 'none';
+    }
+
+    // Auto-fill Section and WT from SEC selection
+    function autoFillSectionWt(sec) {
+        if (!sec) return;
+        const sectionMap = {
+            'SEW': 'SEW', 'ASSY': 'ASSY', 'SF': 'SF'
+        };
+        const wtMatch = sec.match(/(\d+)$/);
+        const sectionMatch = sec.match(/^([A-Z]+)/);
+        if (sectionMatch) {
+            const section = sectionMatch[1];
+            document.getElementById('r-section').value = sectionMap[section] || section;
+        }
+        if (wtMatch) {
+            document.getElementById('r-wt').value = wtMatch[1];
+        }
+    }
+
+    // ── Close on overlay click ───────────────────────────────────────────────
+    function closeModalOnOverlay(event, modalId) {
+        if (event.target === document.getElementById(modalId)) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+    }
+
+    // ── Rate table SEC filter (client-side) ──────────────────────────────────
+    function filterRatesBySec(sec) {
+        const rows = document.querySelectorAll('#rateTable tbody tr[data-sec]');
+        let visibleIndex = 1;
+        rows.forEach(row => {
+            const rowSec = row.getAttribute('data-sec');
+            if (!sec || rowSec === sec) {
+                row.style.display = '';
+                const numCell = row.querySelector('.row-num');
+                if (numCell) numCell.textContent = visibleIndex++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    // ── Escape key closes modals ─────────────────────────────────────────────
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeMultiplierModal();
+            closeRateModal();
+        }
+    });
+</script>
+
+</body>
+</html>

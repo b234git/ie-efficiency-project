@@ -10,10 +10,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import thienloc.manage.service.ExcelService;
+import thienloc.manage.service.IExcelService;
+import thienloc.manage.service.IProductionService;
 import thienloc.manage.dto.DailyProductionDto;
 import thienloc.manage.dto.WeeklyReportDto;
-import thienloc.manage.service.ProductionService;
+import thienloc.manage.util.ProductionStatsUtil;
+import thienloc.manage.util.RecordFilterUtil;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -26,10 +28,10 @@ import java.util.stream.Collectors;
 public class ReportController {
 
     @Autowired
-    private ProductionService productionService;
+    private IProductionService productionService;
 
     @Autowired
-    private ExcelService excelService;
+    private IExcelService excelService;
 
     @GetMapping({ "/", "" })
     public String report(
@@ -81,28 +83,9 @@ public class ReportController {
                 .map(DailyProductionDto::getLine).filter(Objects::nonNull)
                 .distinct().sorted().collect(Collectors.toList());
 
-        // Filter by article if provided
-        if (article != null && !article.trim().isEmpty()) {
-            String lowerArticle = article.toLowerCase().trim();
-            records = records.stream()
-                    .filter(r -> (r.getArticle() != null && r.getArticle().toLowerCase().contains(lowerArticle)) ||
-                            (r.getDetails() != null && r.getDetails().stream()
-                                    .anyMatch(d -> d.getArticleNo() != null
-                                            && d.getArticleNo().toLowerCase().contains(lowerArticle))))
-                    .collect(Collectors.toList());
-        }
-
-        // Filter by section if provided
-        if (section != null && !section.trim().isEmpty()) {
-            String sec = section.trim();
-            records = records.stream().filter(r -> r.getSection() != null && r.getSection().startsWith(sec)).collect(Collectors.toList());
-        }
-
-        // Filter by line if provided
-        if (line != null && !line.trim().isEmpty()) {
-            String ln = line.trim();
-            records = records.stream().filter(r -> ln.equals(r.getLine())).collect(Collectors.toList());
-        }
+        records = RecordFilterUtil.filterByArticle(records, article);
+        records = RecordFilterUtil.filterBySectionPrefix(records, section);
+        records = RecordFilterUtil.filterByLineExact(records, line);
 
         model.addAttribute("records", records);
         model.addAttribute("rangeLabel", rangeLabel);
@@ -117,12 +100,8 @@ public class ReportController {
         model.addAttribute("dateTo", dateTo != null ? dateTo : today);
 
         // Pre-compute stats (Thymeleaf SpEL does NOT support lambdas)
-        int totalOutput = records.stream().mapToInt(r -> r.getOutput() != null ? r.getOutput() : 0).sum();
-        double avgEff = records.stream().filter(r -> r.getEff() != null)
-                .mapToDouble(r -> r.getEff()).average().orElse(0);
-        long effCount = records.stream().filter(r -> r.getEff() != null).count();
-        model.addAttribute("totalOutput", totalOutput);
-        model.addAttribute("avgEff", effCount > 0 ? avgEff : null);
+        model.addAttribute("totalOutput", ProductionStatsUtil.totalOutput(records));
+        model.addAttribute("avgEff", ProductionStatsUtil.averageEff(records));
         return "report";
 
     }
@@ -151,7 +130,7 @@ public class ReportController {
             for (WeeklyReportDto block : blocks) {
                 block.getDailyRows().removeIf(row ->
                         row.getDate() != null && row.getDate().getDayOfWeek() == DayOfWeek.SUNDAY);
-                recalculateSummary(block);
+                block.recalculateSummary();
             }
             blocks.removeIf(b -> b.getDailyRows().isEmpty());
         }
@@ -161,7 +140,7 @@ public class ReportController {
             for (WeeklyReportDto block : blocks) {
                 block.getDailyRows().removeIf(row ->
                         row.getDate() == null || !row.getDate().equals(filterDate));
-                recalculateSummary(block);
+                block.recalculateSummary();
             }
             blocks.removeIf(b -> b.getDailyRows().isEmpty());
         }
@@ -197,7 +176,7 @@ public class ReportController {
             for (WeeklyReportDto block : blocks) {
                 block.getDailyRows().removeIf(row ->
                         row.getDate() != null && row.getDate().getDayOfWeek() == DayOfWeek.SUNDAY);
-                recalculateSummary(block);
+                block.recalculateSummary();
             }
             blocks.removeIf(b -> b.getDailyRows().isEmpty());
         }
@@ -249,22 +228,9 @@ public class ReportController {
                 records = productionService.getDashboardDataRange(from, to);
         }
 
-        if (article != null && !article.trim().isEmpty()) {
-            String lowerArticle = article.toLowerCase().trim();
-            records = records.stream()
-                    .filter(r -> (r.getArticle() != null && r.getArticle().toLowerCase().contains(lowerArticle)) ||
-                            (r.getDetails() != null && r.getDetails().stream()
-                                    .anyMatch(d -> d.getArticleNo() != null
-                                            && d.getArticleNo().toLowerCase().contains(lowerArticle))))
-                    .collect(Collectors.toList());
-        }
-        if (section != null && !section.trim().isEmpty()) {
-            String sec = section.trim();
-            records = records.stream().filter(r -> r.getSection() != null && r.getSection().startsWith(sec)).collect(Collectors.toList());
-        }
-        if (line != null && !line.trim().isEmpty()) {
-            records = records.stream().filter(r -> line.trim().equals(r.getLine())).collect(Collectors.toList());
-        }
+        records = RecordFilterUtil.filterByArticle(records, article);
+        records = RecordFilterUtil.filterBySectionPrefix(records, section);
+        records = RecordFilterUtil.filterByLineExact(records, line);
 
         byte[] bytes = excelService.exportDailyReport(records, from, to).readAllBytes();
         String filename = "Daily_Report_" + from + "_to_" + to + ".xlsx";
@@ -276,33 +242,4 @@ public class ReportController {
                 .body(bytes);
     }
 
-    private void recalculateSummary(WeeklyReportDto block) {
-        List<WeeklyReportDto.DailyRow> rows = block.getDailyRows();
-        int n = rows.size();
-        int sumOutput = 0;
-        double sumMp = 0, sumWt = 0, sumEff = 0, sumActPph = 0, sumStdPph = 0, sumDli = 0;
-        int effCount = 0, stdCount = 0, sumTargetOutput = 0, targetCount = 0;
-
-        for (WeeklyReportDto.DailyRow row : rows) {
-            sumOutput += (row.getOutput() != null ? row.getOutput() : 0);
-            sumMp += (row.getMp() != null ? row.getMp() : 0);
-            sumWt += (row.getWt() != null ? row.getWt() : 0);
-            if (row.getActualPph() != null) sumActPph += row.getActualPph();
-            if (row.getStdPph() != null) { sumStdPph += row.getStdPph(); stdCount++; }
-            if (row.getEff() != null) { sumEff += row.getEff(); effCount++; }
-            sumDli += (row.getDli() != null ? row.getDli() : 0);
-            if (row.getTargetOutput() != null) { sumTargetOutput += row.getTargetOutput(); targetCount++; }
-        }
-
-        WeeklyReportDto.SummaryRow summary = block.getTotal();
-        summary.setTotalOutput(sumOutput);
-        summary.setDayCount(n);
-        summary.setAvgMp(n > 0 ? sumMp / n : 0);
-        summary.setAvgWt(n > 0 ? sumWt / n : 0);
-        summary.setAvgEff(effCount > 0 ? sumEff / effCount : null);
-        summary.setAvgActualPph(n > 0 ? sumActPph / n : null);
-        summary.setAvgStdPph(stdCount > 0 ? sumStdPph / stdCount : null);
-        summary.setAvgDli(n > 0 ? sumDli / n : 0);
-        summary.setTotalTargetOutput(targetCount > 0 ? sumTargetOutput : null);
-    }
 }

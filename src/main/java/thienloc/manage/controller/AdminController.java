@@ -7,6 +7,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.RequestParam;
 import thienloc.manage.service.UserService;
 
@@ -30,9 +31,10 @@ public class AdminController {
     }
 
     @PostMapping("/update-role")
-    public String updateRole(@RequestParam Long userId, @RequestParam String newRole) {
+    public String updateRole(@RequestParam Long userId, @RequestParam String newRole,
+                             HttpServletRequest request) {
         userService.updateRole(userId, newRole);
-        systemLogService.logAction("UPDATE_ROLE", "User ID " + userId + " changed to role: " + newRole);
+        systemLogService.logAction("UPDATE_ROLE", "User ID " + userId + " changed to role: " + newRole, request);
         return "redirect:/admin/?success";
     }
 }

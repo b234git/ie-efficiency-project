@@ -1,5 +1,10 @@
 package thienloc.manage.dto;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,15 +18,30 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class DailyProductionDto {
     private Long id;
+
+    @NotNull(message = "Ngày sản xuất không được để trống")
     private LocalDate productionDate;
+
+    @NotBlank(message = "Section không được để trống")
     private String section;
+
+    @NotBlank(message = "Line không được để trống")
     private String line;
+
     private String article;
     private Integer output;
+
+    @NotNull(message = "Manpower (MP) không được để trống")
+    @Positive(message = "Manpower (MP) phải lớn hơn 0")
     private Double mp; // DL - Direct Labor (Manpower)
+
     private Double dli; // Direct Labor Indirect
     private Double idl; // Indirect Labor
+
+    @NotNull(message = "Working Time (WT) không được để trống")
+    @Positive(message = "Working Time (WT) phải lớn hơn 0")
     private Double wt; // Working Time
+
     private Double rft; // Right First Time (%)
     private String patternNo; // Pattern #
     private String shoeName; // Style
@@ -30,7 +50,10 @@ public class DailyProductionDto {
     // Sheet D KPI fields
     private Double effKpi;
     private Double effSalary;
-    // Allowance = % sản lượng cho phép (1.0 = 100%, 0.8 = 80%)
+
+    // Allowance = allowed output percentage (1.0 = 100%, 0.8 = 80%)
+    @DecimalMin(value = "0.1", message = "Allowance phải từ 0.1 đến 1.0")
+    @DecimalMax(value = "1.0", message = "Allowance phải từ 0.1 đến 1.0")
     private Double allowance;
     private String createdAt;
     private String createdBy; // username of creator

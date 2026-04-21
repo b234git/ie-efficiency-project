@@ -15,7 +15,6 @@ import thienloc.manage.repository.MasterDbRepository;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -54,8 +53,8 @@ class EfficiencyCalculatorServiceTest {
         DailyProduction entity = buildEntity("SEW", "Y12345", 1000, 25.0, 8.0, 30.0, 0.85);
         entity.setDli(25.0);
 
-        when(masterDbRepository.findFirstByArticleNoAndDataMonthOrderByRefAsc(anyString(), anyString()))
-                .thenReturn(Optional.of(sampleMasterDb));
+        when(masterDbRepository.findByArticleNoInAndDataMonthOrderByRefAsc(anyList(), anyString()))
+                .thenReturn(List.of(sampleMasterDb));
 
         calculator.populateEfficiencyMetrics(dto, entity);
 
@@ -71,8 +70,8 @@ class EfficiencyCalculatorServiceTest {
         DailyProduction entity = buildEntity("SEW", "Y12345", 1000, 25.0, 8.0, 30.0, 0.85);
         entity.setDli(25.0);
 
-        when(masterDbRepository.findFirstByArticleNoAndDataMonthOrderByRefAsc(anyString(), anyString()))
-                .thenReturn(Optional.of(sampleMasterDb));
+        when(masterDbRepository.findByArticleNoInAndDataMonthOrderByRefAsc(anyList(), anyString()))
+                .thenReturn(List.of(sampleMasterDb));
 
         calculator.populateEfficiencyMetrics(dto, entity);
 
@@ -90,8 +89,8 @@ class EfficiencyCalculatorServiceTest {
         DailyProduction entity = buildEntity("SEW", "Y12345", null, 25.0, 8.0, 30.0, 0.85);
         entity.setDli(25.0);
 
-        when(masterDbRepository.findFirstByArticleNoAndDataMonthOrderByRefAsc(anyString(), anyString()))
-                .thenReturn(Optional.of(sampleMasterDb));
+        when(masterDbRepository.findByArticleNoInAndDataMonthOrderByRefAsc(anyList(), anyString()))
+                .thenReturn(List.of(sampleMasterDb));
 
         calculator.populateEfficiencyMetrics(dto, entity);
 
@@ -106,8 +105,8 @@ class EfficiencyCalculatorServiceTest {
         DailyProduction entity = buildEntity("SEW", "Y12345", 1000, 25.0, 8.0, 0.0, 0.85);
         entity.setDli(25.0);
 
-        when(masterDbRepository.findFirstByArticleNoAndDataMonthOrderByRefAsc(anyString(), anyString()))
-                .thenReturn(Optional.of(sampleMasterDb));
+        when(masterDbRepository.findByArticleNoInAndDataMonthOrderByRefAsc(anyList(), anyString()))
+                .thenReturn(List.of(sampleMasterDb));
 
         calculator.populateEfficiencyMetrics(dto, entity);
 
@@ -121,8 +120,8 @@ class EfficiencyCalculatorServiceTest {
         DailyProduction entity = buildEntity("SEW", "UNKNOWN", 1000, 25.0, 8.0, 30.0, 0.85);
         entity.setDli(25.0);
 
-        when(masterDbRepository.findFirstByArticleNoAndDataMonthOrderByRefAsc(anyString(), anyString()))
-                .thenReturn(Optional.empty());
+        when(masterDbRepository.findByArticleNoInAndDataMonthOrderByRefAsc(anyList(), anyString()))
+                .thenReturn(Collections.emptyList());
 
         calculator.populateEfficiencyMetrics(dto, entity);
 
@@ -153,9 +152,7 @@ class EfficiencyCalculatorServiceTest {
         detail.setArticleNo("Y12345");
         entity.setDetails(List.of(detail));
 
-        // Month-specific lookup returns empty (both single and batch)
-        when(masterDbRepository.findFirstByArticleNoAndDataMonthOrderByRefAsc("Y12345", "2026-03"))
-                .thenReturn(Optional.empty());
+        // Month-specific batch lookup returns empty
         when(masterDbRepository.findByArticleNoInAndDataMonthOrderByRefAsc(anyList(), eq("2026-03")))
                 .thenReturn(Collections.emptyList());
         // Fallback batch load returns sampleMasterDb
@@ -167,6 +164,101 @@ class EfficiencyCalculatorServiceTest {
         // Should have found MasterDb via fallback batch map
         assertEquals("P001", dto.getPatternNo());
         assertEquals("TestShoe", dto.getShoeName());
+    }
+
+    // ─── Per-slot suffix "-2" → 1ST vs 2ND column ──────────────────────────
+
+    @Test
+    void testBuffSlotWithSuffixDash2UsesSecondColumn() {
+        // Row section = "BUFF 1" (subsec=1), but one slot has article "406203-2".
+        // That slot must resolve to BUFF_2ND and look up buff2nd* columns.
+        MasterDb md = MasterDb.builder()
+                .articleNo("406203")
+                .patternNo("P-BUFF").shoeName("BuffShoe")
+                .buff1stCt(100.0).buff1stMp(5.0).buff1stQuotaDb(500.0).buff1stPph(36.0)
+                .buff2ndCt(200.0).buff2ndMp(4.0).buff2ndQuotaDb(400.0).buff2ndPph(18.0)
+                .build();
+
+        DailyProductionDto dto = new DailyProductionDto();
+        dto.setArticle("406203-2");
+        DailyProduction entity = buildEntity("BUFF 1", "406203-2", 1000, 20.0, 8.0, 10.0, 1.0);
+        entity.setDli(20.0);
+
+        // Detail with "-2" suffix — should resolve to BUFF_2ND.
+        DailyProductionDetail d = new DailyProductionDetail();
+        d.setArticleNo("406203-2");
+        d.setOutput(1000);
+        d.setTimeSlot("07:00-08:00");
+        entity.setDetails(List.of(d));
+
+        // MasterDb is stored under cleaned article "406203".
+        when(masterDbRepository.findByArticleNoInAndDataMonthOrderByRefAsc(anyList(), anyString()))
+                .thenReturn(List.of(md));
+
+        calculator.populateEfficiencyMetrics(dto, entity);
+
+        // stdPph should come from 2ND column = 18.0, not 1ST (36.0)
+        assertEquals(18.0, dto.getStdPph(), 0.001);
+    }
+
+    @Test
+    void testBuffSubsec2NoSuffixFallsBackTo1StWhenNo2ndData() {
+        // Row section = "BUFF 2", article has no "-2". MasterDb only has 1ST data.
+        // Expected: try 2ND first (null) → fallback to 1ST.
+        MasterDb md = MasterDb.builder()
+                .articleNo("406203")
+                .patternNo("P-BUFF").shoeName("BuffShoe")
+                .buff1stCt(100.0).buff1stMp(5.0).buff1stQuotaDb(500.0).buff1stPph(36.0)
+                .buff2ndCt(null).buff2ndMp(null).buff2ndQuotaDb(null).buff2ndPph(null)
+                .build();
+
+        DailyProductionDto dto = new DailyProductionDto();
+        dto.setArticle("406203");
+        DailyProduction entity = buildEntity("BUFF 2", "406203", 500, 20.0, 8.0, 10.0, 1.0);
+        entity.setDli(20.0);
+        DailyProductionDetail d = new DailyProductionDetail();
+        d.setArticleNo("406203");
+        d.setOutput(500);
+        d.setTimeSlot("07:00-08:00");
+        entity.setDetails(List.of(d));
+
+        when(masterDbRepository.findByArticleNoInAndDataMonthOrderByRefAsc(anyList(), anyString()))
+                .thenReturn(List.of(md));
+
+        calculator.populateEfficiencyMetrics(dto, entity);
+
+        // stdPph falls back to 1ST column = 36.0
+        assertEquals(36.0, dto.getStdPph(), 0.001);
+    }
+
+    @Test
+    void testBuffSubsec2NoSuffixPrefers2ndWhenAvailable() {
+        // Row section = "BUFF 2", article has no "-2". MasterDb has BOTH 1ST and 2ND data.
+        // Expected: 2ND preferred (user rule: fallback chỉ khi primary null).
+        MasterDb md = MasterDb.builder()
+                .articleNo("406203")
+                .patternNo("P-BUFF").shoeName("BuffShoe")
+                .buff1stCt(100.0).buff1stMp(5.0).buff1stQuotaDb(500.0).buff1stPph(36.0)
+                .buff2ndCt(200.0).buff2ndMp(4.0).buff2ndQuotaDb(400.0).buff2ndPph(18.0)
+                .build();
+
+        DailyProductionDto dto = new DailyProductionDto();
+        dto.setArticle("406203");
+        DailyProduction entity = buildEntity("BUFF 2", "406203", 500, 20.0, 8.0, 10.0, 1.0);
+        entity.setDli(20.0);
+        DailyProductionDetail d = new DailyProductionDetail();
+        d.setArticleNo("406203");
+        d.setOutput(500);
+        d.setTimeSlot("07:00-08:00");
+        entity.setDetails(List.of(d));
+
+        when(masterDbRepository.findByArticleNoInAndDataMonthOrderByRefAsc(anyList(), anyString()))
+                .thenReturn(List.of(md));
+
+        calculator.populateEfficiencyMetrics(dto, entity);
+
+        // Prefers 2ND = 18.0 (not fallback to 1ST)
+        assertEquals(18.0, dto.getStdPph(), 0.001);
     }
 
     // ─── Helper ─────────────────────────────────────────────────────────────

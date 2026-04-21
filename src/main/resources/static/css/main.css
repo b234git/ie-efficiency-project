@@ -1,5 +1,135 @@
 /* main.css */
 
+/* ── System Health Dashboard (sh-*) ───────────────────── */
+.sh-banner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 22px;
+    border-radius: 10px;
+    margin-bottom: 24px;
+    font-weight: 600;
+}
+
+.sh-banner--up {
+    background: #d1e7dd;
+    color: #0a3622;
+    border: 1px solid #a3cfbb;
+}
+
+.sh-banner--down {
+    background: #f8d7da;
+    color: #58151c;
+    border: 1px solid #f1aeb5;
+}
+
+.sh-banner__icon {
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.sh-banner__title {
+    font-size: 1.15rem;
+}
+
+.sh-banner__sub {
+    font-size: 0.82rem;
+    opacity: 0.75;
+    margin-top: 2px;
+}
+
+.sh-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.sh-card {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    padding: 18px 16px;
+}
+
+.sh-card__label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6c757d;
+    margin-bottom: 6px;
+}
+
+.sh-card__value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #212529;
+    line-height: 1.2;
+}
+
+.sh-card__sub {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-top: 4px;
+}
+
+.sh-card__pct {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-top: 4px;
+    text-align: right;
+}
+
+.sh-progress {
+    height: 8px;
+    background: #dee2e6;
+    border-radius: 99px;
+    overflow: hidden;
+    margin-top: 10px;
+}
+
+.sh-progress-bar {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.4s ease;
+}
+
+.sh-progress-bar--ok     { background: #28a745; }
+.sh-progress-bar--warn   { background: #ffc107; }
+.sh-progress-bar--danger { background: #dc3545; }
+
+.sh-badge {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 99px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.sh-badge--up   { background: #d1e7dd; color: #0a3622; }
+.sh-badge--down { background: #f8d7da; color: #58151c; }
+
+.sh-section-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #495057;
+    margin: 0 0 12px;
+}
+
+.sh-info-key {
+    padding: 6px 12px 6px 0;
+    color: #6c757d;
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.sh-info-val {
+    padding: 6px 0;
+    font-size: 0.85rem;
+}
+/* ── End System Health Dashboard ─────────────────────── */
+
 /* ── Reset ────────────────────────────────────────────── */
 *, *::before, *::after {
     box-sizing: border-box;
@@ -21,19 +151,25 @@ body {
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 12px;
+    position: relative;
 }
 
 .navbar a {
     color: white;
     text-decoration: none;
-    margin-right: 15px;
 }
 
 .navbar-brand {
     display: flex;
     align-items: center;
     gap: 8px;
+    min-width: 0;
+}
+
+.navbar-brand h2 {
+    margin: 0;
+    font-size: 2rem;
 }
 
 .navbar-brand img {
@@ -41,22 +177,219 @@ body {
     width: auto;
 }
 
-.navbar-links {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0;
+.navbar-auth,
+.navbar-guest {
+    position: relative;
+    margin-left: auto;
 }
 
 .navbar-toggle {
-    display: none;
-    background: none;
-    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
     color: white;
-    font-size: 1.6rem;
+    font-size: 1rem;
     cursor: pointer;
-    padding: 4px 8px;
+    padding: 8px 12px;
     line-height: 1;
+}
+
+.navbar-toggle:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.navbar-toggle-icon {
+    font-size: 1.35rem;
+}
+
+.navbar-toggle-label {
+    font-weight: 600;
+}
+
+.navbar-menu-panel,
+.navbar-guest-panel {
+    display: none;
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    min-width: 320px;
+    max-width: min(420px, calc(100vw - 24px));
+    background: #ffffff;
+    color: #1f2933;
+    border-radius: 14px;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.28);
+    padding: 16px;
+    z-index: 1000;
+}
+
+.navbar-menu-panel.open,
+.navbar-guest-panel.open {
+    display: block;
+}
+
+.navbar-menu-panel a,
+.navbar-guest-panel a {
+    color: #1f2933;
+}
+
+.navbar-menu-groups {
+    display: grid;
+    gap: 10px;
+}
+
+.nav-hub {
+    border: 1px solid #d7e2ee;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #f7fafc;
+}
+
+.nav-hub-toggle {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: transparent;
+    border: none;
+    color: #1f2933;
+    cursor: pointer;
+    font-size: 0.98rem;
+    font-weight: 700;
+    padding: 12px 14px;
+    text-align: left;
+}
+
+.nav-hub.is-open .nav-hub-toggle {
+    background: #eaf2ff;
+}
+
+.nav-hub-caret {
+    transition: transform 0.2s ease;
+}
+
+.nav-hub.is-open .nav-hub-caret {
+    transform: rotate(180deg);
+}
+
+.nav-hub-links {
+    display: none;
+    background: #ffffff;
+    padding: 8px;
+}
+
+.nav-hub.is-open .nav-hub-links {
+    display: grid;
+    gap: 6px;
+}
+
+.nav-panel-link {
+    display: block;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-weight: 500;
+}
+
+.nav-panel-link:hover,
+.nav-panel-link:focus {
+    background: #eef4ff;
+}
+
+.nav-standalone-link {
+    border: 1px solid #d7e2ee;
+    background: #ffffff;
+}
+
+.navbar-panel-utility {
+    border-top: 1px solid #e5e7eb;
+    display: grid;
+    gap: 12px;
+    margin-top: 14px;
+    padding-top: 14px;
+}
+
+.navbar-user {
+    color: #556070;
+    font-weight: 600;
+}
+
+.navbar-utility-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.navbar-notification {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    background: #eef2f7;
+    font-size: 1.1rem;
+}
+
+.navbar-notification-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #dc3545;
+    border-radius: 999px;
+    color: #ffffff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    min-width: 20px;
+    padding: 2px 6px;
+    text-align: center;
+}
+
+.language-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.language-switch a {
+    color: inherit;
+    font-weight: 600;
+}
+
+.language-switch-separator {
+    opacity: 0.45;
+}
+
+.navbar-panel-utility form {
+    margin: 0;
+}
+
+.navbar-logout {
+    width: 100%;
+}
+
+.navbar-guest-desktop {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.navbar-guest .navbar-toggle {
+    display: none;
+}
+
+.navbar-guest-panel {
+    min-width: 240px;
+}
+
+.navbar-guest-links {
+    display: grid;
+    gap: 8px;
 }
 
 /* ── Containers ───────────────────────────────────────── */
@@ -94,6 +427,59 @@ body {
     background: white;
     border-radius: 8px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+/* ── Auth alerts ──────────────────────────────────────── */
+.alert-error {
+    color: #842029;
+    background-color: #f8d7da;
+    border: 1px solid #f5c2c7;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+}
+
+.alert-success {
+    color: #0f5132;
+    background-color: #d1e7dd;
+    border: 1px solid #badbcc;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+}
+
+.field-error {
+    color: #dc3545;
+    font-size: 0.85em;
+    margin-top: 3px;
+    display: block;
+}
+
+/* ── Password field with toggle ───────────────────────── */
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-wrapper .form-control {
+    padding-right: 40px;
+}
+
+.btn-password-toggle {
+    position: absolute;
+    right: 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    color: #666;
+    font-size: 0.9em;
+    line-height: 1;
+}
+
+.btn-password-toggle:hover {
+    color: #333;
 }
 
 /* ── Forms ─────────────────────────────────────────────── */
@@ -279,29 +665,28 @@ th {
    ══════════════════════════════════════════════════════════ */
 @media (max-width: 992px) {
 
-    /* Navbar: show hamburger, stack links vertically */
-    .navbar-toggle {
-        display: block;
-    }
-    .navbar-links {
-        display: none;
-        flex-direction: column;
-        width: 100%;
-        padding-top: 12px;
-        gap: 4px;
+    /* Navbar panel adapts to tablet width */
+    .navbar {
         align-items: flex-start;
     }
-    .navbar-links.open {
-        display: flex;
-    }
-    .navbar-links a {
-        padding: 10px 0;
-        margin-right: 0;
-        border-bottom: 1px solid rgba(255,255,255,0.1);
+    .navbar-auth,
+    .navbar-guest {
         width: 100%;
+        margin-left: 0;
     }
-    .navbar-links form {
-        padding: 10px 0;
+    .navbar-auth .navbar-toggle,
+    .navbar-guest .navbar-toggle {
+        display: inline-flex;
+    }
+    .navbar-guest-desktop {
+        display: none;
+    }
+    .navbar-menu-panel,
+    .navbar-guest-panel {
+        left: 0;
+        right: auto;
+        width: 100%;
+        max-width: 100%;
     }
 
     /* Containers: full-width */
@@ -460,7 +845,35 @@ th {
     .navbar {
         padding: 10px 14px;
     }
+    .navbar-brand {
+        width: 100%;
+    }
+    .navbar-brand h2 {
+        font-size: 1.5rem;
+    }
     .navbar-brand img {
         height: 32px;
+    }
+    .navbar-toggle {
+        width: 100%;
+        justify-content: center;
+    }
+    .navbar-menu-panel,
+    .navbar-guest-panel {
+        min-width: 0;
+        padding: 14px;
+    }
+    .navbar-utility-row {
+        align-items: stretch;
+    }
+    .navbar-notification {
+        width: 100%;
+        border-radius: 10px;
+        justify-content: flex-start;
+        padding-left: 14px;
+    }
+    .language-switch {
+        width: 100%;
+        justify-content: center;
     }
 }

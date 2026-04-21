@@ -18,6 +18,8 @@ import thienloc.manage.service.SystemLogService;
 import java.util.List;
 import java.util.Optional;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -58,6 +60,42 @@ class SplitEntryControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("split-entry"))
                 .andExpect(model().attributeExists("entries", "selectedDate"));
+    }
+
+    @Test
+    void testShowLanding_UserNavbarShowsOnlySplitEntry() throws Exception {
+        when(splitEntryService.getEntriesForDate(any())).thenReturn(List.of());
+
+        mockMvc.perform(get("/split-entry/").with(user("user").roles("USER")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("/js/main.js")))
+                .andExpect(content().string(containsString("href=\"/split-entry/\"")))
+                .andExpect(content().string(not(containsString("href=\"/entry/\""))))
+                .andExpect(content().string(not(containsString("href=\"/report/\""))))
+                .andExpect(content().string(not(containsString("href=\"/report/weekly\""))))
+                .andExpect(content().string(not(containsString("href=\"/masterdb/\""))))
+                .andExpect(content().string(not(containsString("href=\"/weekly-tracking/\""))))
+                .andExpect(content().string(not(containsString("href=\"/salary/\""))))
+                .andExpect(content().string(not(containsString("href=\"/admin/\""))));
+    }
+
+    @Test
+    void testShowLanding_ManagerNavbarShowsBothHubs() throws Exception {
+        when(splitEntryService.getEntriesForDate(any())).thenReturn(List.of());
+
+        mockMvc.perform(get("/split-entry/").with(user("manager").roles("MANAGER")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("/js/main.js")))
+                .andExpect(content().string(containsString("href=\"/entry/\"")))
+                .andExpect(content().string(containsString("href=\"/split-entry/\"")))
+                .andExpect(content().string(containsString("href=\"/report/\"")))
+                .andExpect(content().string(containsString("href=\"/report/weekly\"")))
+                .andExpect(content().string(containsString("href=\"/masterdb/\"")))
+                .andExpect(content().string(containsString("href=\"/eff-config/\"")))
+                .andExpect(content().string(containsString("href=\"/weekly-tracking/\"")))
+                .andExpect(content().string(containsString("href=\"/new-style/\"")))
+                .andExpect(content().string(containsString("href=\"/salary/\"")))
+                .andExpect(content().string(not(containsString("href=\"/admin/\""))));
     }
 
     @Test

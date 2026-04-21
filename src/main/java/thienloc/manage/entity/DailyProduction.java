@@ -5,14 +5,17 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import thienloc.manage.util.NormalizationUtil;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "daily_production", indexes = {
-    @Index(name = "idx_dp_production_date", columnList = "productionDate"),
-    @Index(name = "idx_dp_user_id", columnList = "user_id")
+    @Index(name = "idx_dp_production_date",  columnList = "production_date"),
+    @Index(name = "idx_dp_user_id",           columnList = "user_id"),
+    @Index(name = "idx_dp_section_line",      columnList = "section, line"),
+    @Index(name = "idx_dp_date_section_line", columnList = "production_date, section, line")
 })
 @Data
 @NoArgsConstructor
@@ -23,6 +26,9 @@ public class DailyProduction {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Version
+    private Long version;
 
     @Column(nullable = false)
     private LocalDate productionDate;
@@ -45,7 +51,7 @@ public class DailyProduction {
 
     private Double rft; // Right First Time (%)
 
-    // Allowance = % sản lượng cho phép (1.0 = 100%, 0.8 = 80%)
+    // Allowance = allowed output percentage (1.0 = 100%, 0.8 = 80%)
     @Builder.Default
     @Column(nullable = false)
     private Double allowance = 1.0;
@@ -83,17 +89,11 @@ public class DailyProduction {
     }
 
     private void roundFields() {
-        this.mp = round(this.mp);
-        this.dli = round(this.dli);
-        this.idl = round(this.idl);
-        this.wt = round(this.wt);
-        this.rft = round(this.rft);
-        this.allowance = round(this.allowance);
-    }
-
-    private Double round(Double val) {
-        if (val == null)
-            return null;
-        return Math.round(val * 100.0) / 100.0;
+        this.mp        = NormalizationUtil.round(this.mp);
+        this.dli       = NormalizationUtil.round(this.dli);
+        this.idl       = NormalizationUtil.round(this.idl);
+        this.wt        = NormalizationUtil.round(this.wt);
+        this.rft       = NormalizationUtil.round(this.rft);
+        this.allowance = NormalizationUtil.round(this.allowance);
     }
 }

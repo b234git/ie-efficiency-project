@@ -13,29 +13,41 @@
     <div class="container" style="max-width: 400px; margin-top: 50px;">
         <h2 th:text="#{login.title}">Login</h2>
 
-        <div th:if="${param.error}" style="color: red; margin-bottom: 10px;" th:text="#{login.error}">Invalid username
-            and password.</div>
-        <div th:if="${param.logout}" style="color: green; margin-bottom: 10px;" th:text="#{login.logout}">You have been
-            logged out.</div>
-        <div th:if="${param.success}" style="color: green; margin-bottom: 10px;" th:text="#{login.success}">Registration
-            successful. Please log in.</div>
+        <div th:if="${param.error}" class="alert-error" role="alert" th:text="#{login.error}">
+            Tên đăng nhập hoặc mật khẩu không hợp lệ.
+        </div>
+        <div th:if="${param.logout}" class="alert-success" role="alert" th:text="#{login.logout}">
+            Bạn đã đăng xuất thành công.
+        </div>
+        <div th:if="${param.success}" class="alert-success" role="alert" th:text="#{login.success}">
+            Đăng ký thành công. Vui lòng đăng nhập.
+        </div>
 
         <form th:action="@{/login}" method="post">
             <div class="form-group">
-                <label th:text="#{login.username}">Username</label>
-                <input type="text" name="username" class="form-control" required autofocus />
+                <label for="username" th:text="#{login.username}">Tên đăng nhập</label>
+                <input type="text" id="username" name="username" class="form-control"
+                       required autofocus autocomplete="username" />
             </div>
             <div class="form-group">
-                <label th:text="#{login.password}">Password</label>
-                <input type="password" name="password" class="form-control" required />
+                <label for="password" th:text="#{login.password}">Mật khẩu</label>
+                <div class="password-wrapper">
+                    <input type="password" id="password" name="password" class="form-control"
+                           required autocomplete="current-password" />
+                    <button type="button" class="btn-password-toggle"
+                            onclick="togglePassword('password', this)"
+                            aria-label="Hiện/ẩn mật khẩu">&#128065;</button>
+                </div>
             </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%;" th:text="#{login.submit}">Sign
-                In</button>
+            <button type="submit" class="btn btn-primary" style="width: 100%;"
+                    th:text="#{login.submit}">Đăng Nhập</button>
         </form>
         <div style="margin-top: 15px; text-align: center;">
-            <a th:href="@{/register}" th:text="#{login.create.account}">Create an account</a>
+            <a th:href="@{/register}" th:text="#{login.create.account}">Tạo tài khoản mới</a>
         </div>
     </div>
+
+    <script th:src="@{/js/main.js}"></script>
 </body>
 
 </html>

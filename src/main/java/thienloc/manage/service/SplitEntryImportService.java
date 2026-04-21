@@ -8,17 +8,17 @@ import thienloc.manage.dto.DailyProductionDetailDto;
 import thienloc.manage.dto.SplitEntryDto;
 import thienloc.manage.dto.SplitEntryImportPreviewDto;
 import thienloc.manage.dto.SplitEntryImportPreviewDto.RowPreview;
+import thienloc.manage.util.ExcelCellUtil;
 
 import java.io.IOException;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.*;
 
 @Service
 public class SplitEntryImportService {
 
     @Autowired
-    private SplitEntryService splitEntryService;
+    private ISplitEntryService splitEntryService;
 
     private static final List<String> TIME_SLOTS = Arrays.asList(
             "07:00-08:00", "08:00-09:00", "09:00-10:00", "10:00-11:00",
@@ -180,9 +180,9 @@ public class SplitEntryImportService {
                     Map<String, String> articles = new LinkedHashMap<>();
                     int articleCount = 0;
                     for (int j = 0; j < TIME_SLOTS.size(); j++) {
-                        String articleNo = getCellString(row.getCell(5 + j));
+                        String articleNo = cleanArticleNo(getCellString(row.getCell(5 + j)));
                         if (articleNo != null && !articleNo.isBlank()) {
-                            articles.put(TIME_SLOTS.get(j), articleNo.trim());
+                            articles.put(TIME_SLOTS.get(j), articleNo);
                             articleCount++;
                         }
                     }
@@ -253,11 +253,11 @@ public class SplitEntryImportService {
             List<DailyProductionDetailDto> details = new ArrayList<>();
             if (row.getArticles() != null) {
                 for (String slot : TIME_SLOTS) {
-                    String articleNo = row.getArticles().get(slot);
+                    String articleNo = cleanArticleNo(row.getArticles().get(slot));
                     if (articleNo != null && !articleNo.isBlank()) {
                         details.add(DailyProductionDetailDto.builder()
                                 .timeSlot(slot)
-                                .articleNo(articleNo.trim())
+                                .articleNo(articleNo)
                                 .build());
                     }
                 }
@@ -273,58 +273,24 @@ public class SplitEntryImportService {
     // ─── Cell helpers ───────────────────────────────────────────────────
 
     private LocalDate parseDateCell(Cell cell) {
-        if (cell == null) return null;
-        try {
-            if (cell.getCellType() == CellType.NUMERIC) {
-                Date javaDate = DateUtil.getJavaDate(cell.getNumericCellValue());
-                return javaDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-            } else if (cell.getCellType() == CellType.STRING) {
-                String val = cell.getStringCellValue().trim();
-                if (val.isEmpty()) return null;
-                return LocalDate.parse(val);
-            }
-        } catch (Exception e) {
-            return null;
-        }
-        return null;
+        return ExcelCellUtil.parseDateCell(cell);
+    }
+
+    private String cleanArticleNo(String articleNo) {
+        if (articleNo == null) return null;
+        String cleaned = articleNo.trim();
+        return cleaned.isEmpty() ? null : cleaned;
     }
 
     private String getCellString(Cell cell) {
-        if (cell == null) return null;
-        return switch (cell.getCellType()) {
-            case STRING -> cell.getStringCellValue();
-            case NUMERIC -> String.valueOf((long) cell.getNumericCellValue());
-            default -> null;
-        };
+        return ExcelCellUtil.getString(cell);
     }
 
     private Double getCellDouble(Cell cell) {
-        if (cell == null) return null;
-        return switch (cell.getCellType()) {
-            case NUMERIC -> cell.getNumericCellValue();
-            case STRING -> {
-                try {
-                    yield Double.parseDouble(cell.getStringCellValue().trim());
-                } catch (Exception e) {
-                    yield null;
-                }
-            }
-            default -> null;
-        };
+        return ExcelCellUtil.getDouble(cell);
     }
 
     private Integer getCellInteger(Cell cell) {
-        if (cell == null) return null;
-        return switch (cell.getCellType()) {
-            case NUMERIC -> (int) cell.getNumericCellValue();
-            case STRING -> {
-                try {
-                    yield Integer.parseInt(cell.getStringCellValue().trim());
-                } catch (Exception e) {
-                    yield null;
-                }
-            }
-            default -> null;
-        };
+        return ExcelCellUtil.getInteger(cell);
     }
 }

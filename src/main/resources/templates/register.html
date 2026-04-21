@@ -11,28 +11,54 @@
     <div th:replace="~{fragments/layout :: navbar}"></div>
 
     <div class="container" style="max-width: 400px; margin-top: 50px;">
-        <h2 th:text="#{register.title}">Register</h2>
+        <h2 th:text="#{register.title}">Đăng Ký</h2>
 
-        <div th:if="${error}" style="color: red; margin-bottom: 10px;">
+        <div th:if="${error}" class="alert-error" role="alert">
             <span th:text="${error}"></span>
+        </div>
+        <div th:if="${confirmError}" class="alert-error" role="alert">
+            <span th:text="${confirmError}"></span>
         </div>
 
         <form th:action="@{/register}" th:object="${user}" method="post">
             <div class="form-group">
-                <label th:text="#{login.username}">Username</label>
-                <input type="text" th:field="*{username}" class="form-control" required autofocus />
+                <label for="reg-username" th:text="#{login.username}">Tên đăng nhập</label>
+                <input type="text" id="reg-username" th:field="*{username}" class="form-control"
+                       required autofocus autocomplete="username" />
+                <span th:if="${#fields.hasErrors('username')}" th:errors="*{username}"
+                      class="field-error"></span>
             </div>
             <div class="form-group">
-                <label th:text="#{login.password}">Password</label>
-                <input type="password" th:field="*{password}" class="form-control" required />
+                <label for="reg-password" th:text="#{login.password}">Mật khẩu</label>
+                <div class="password-wrapper">
+                    <input type="password" id="reg-password" th:field="*{password}" class="form-control"
+                           required autocomplete="new-password" />
+                    <button type="button" class="btn-password-toggle"
+                            onclick="togglePassword('reg-password', this)"
+                            aria-label="Hiện/ẩn mật khẩu">&#128065;</button>
+                </div>
+                <span th:if="${#fields.hasErrors('password')}" th:errors="*{password}"
+                      class="field-error"></span>
+            </div>
+            <div class="form-group">
+                <label for="confirmPassword" th:text="#{register.confirm.password}">Nhập lại mật khẩu</label>
+                <div class="password-wrapper">
+                    <input type="password" id="confirmPassword" name="confirmPassword" class="form-control"
+                           required autocomplete="new-password" />
+                    <button type="button" class="btn-password-toggle"
+                            onclick="togglePassword('confirmPassword', this)"
+                            aria-label="Hiện/ẩn mật khẩu">&#128065;</button>
+                </div>
             </div>
             <button type="submit" class="btn btn-primary" style="width: 100%;"
-                th:text="#{register.submit}">Register</button>
+                    th:text="#{register.submit}">Đăng Ký</button>
         </form>
         <div style="margin-top: 15px; text-align: center;">
-            <a th:href="@{/login}" th:text="#{register.login.link}">Already have an account? Login</a>
+            <a th:href="@{/login}" th:text="#{register.login.link}">Đã có tài khoản? Đăng nhập</a>
         </div>
     </div>
+
+    <script th:src="@{/js/main.js}"></script>
 </body>
 
 </html>

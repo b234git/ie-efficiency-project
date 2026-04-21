@@ -17,7 +17,7 @@ import org.springframework.data.domain.Pageable;
 @Repository
 public interface DailyProductionRepository extends JpaRepository<DailyProduction, Long> {
 
-        // JOIN FETCH để tải details cùng 1 query, tránh N+1
+        // JOIN FETCH to load details in a single query, avoids N+1
         @Query("SELECT DISTINCT p FROM DailyProduction p LEFT JOIN FETCH p.details " +
                "WHERE p.productionDate = :date ORDER BY p.section ASC, p.line ASC")
         List<DailyProduction> findByProductionDateOrderBySectionAscLineAsc(@Param("date") LocalDate date);
@@ -49,6 +49,33 @@ public interface DailyProductionRepository extends JpaRepository<DailyProduction
                "ORDER BY p.productionDate DESC, p.section ASC")
         List<DailyProduction> findByCreatedBy_UsernameOrderByProductionDateDescSectionAsc(
                         @Param("username") String username);
+
+        // ─── Distinct months ───────────────────────────────────────────────────────
+        @Query("SELECT DISTINCT TO_CHAR(p.productionDate, 'YYYY-MM') FROM DailyProduction p ORDER BY 1 DESC")
+        List<String> findDistinctMonths();
+
+        // ─── DB-level pagination (two-pass) ───────────────────────────────────────
+        // Pass 1: lấy IDs có LIMIT/OFFSET — section/line lọc tại DB, KHÔNG dùng JOIN FETCH
+        // (JOIN FETCH + Pageable sẽ gây HibernateJpaDialect warning và paginate in-memory)
+        @Query("SELECT p.id FROM DailyProduction p " +
+               "WHERE p.createdBy.username = :username " +
+               "AND p.productionDate BETWEEN :from AND :to " +
+               "AND (:section = '' OR p.section = :section) " +
+               "AND (:line = '' OR LOWER(p.line) LIKE LOWER(CONCAT('%', :line, '%'))) " +
+               "ORDER BY p.productionDate DESC, p.section ASC, p.line ASC")
+        Page<Long> findIdsByUsernameAndDateRange(
+                @Param("username") String username,
+                @Param("from") LocalDate from,
+                @Param("to") LocalDate to,
+                @Param("section") String section,
+                @Param("line") String line,
+                Pageable pageable);
+
+        // Pass 2: load đúng các entity theo IDs với JOIN FETCH details (no N+1)
+        @Query("SELECT DISTINCT p FROM DailyProduction p LEFT JOIN FETCH p.details " +
+               "WHERE p.id IN :ids " +
+               "ORDER BY p.productionDate DESC, p.section ASC, p.line ASC")
+        List<DailyProduction> findByIdsWithDetails(@Param("ids") List<Long> ids);
 
         // ─── Retention ─────────────────────────────────────────────────────────────
         List<DailyProduction> findByProductionDateBefore(LocalDate cutoffDate);

@@ -5,20 +5,17 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import thienloc.manage.entity.SplitEntry;
+import thienloc.manage.entity.SplitEntryStatus;
 import thienloc.manage.repository.DailyProductionRepository;
 import thienloc.manage.repository.MasterDbRepository;
 import thienloc.manage.repository.SplitEntryRepository;
-
-import java.util.List;
+import thienloc.manage.repository.SystemLogRepository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
-/**
- * Handles data retention policy:
- * - Notify ADMIN + MANAGER 30 days before data expires (2-year retention)
- * - Delete expired data (MasterDb by dataMonth, DailyProduction by productionDate)
- */
 @Service
 public class DataRetentionService {
 
@@ -37,50 +34,43 @@ public class DataRetentionService {
     private DailyProductionRepository dailyProductionRepository;
 
     @Autowired
+    private SystemLogRepository systemLogRepository;
+
+    @Autowired
     private NotificationService notificationService;
 
     @Autowired
     private SystemLogService systemLogService;
 
-    /**
-     * Check for data approaching expiration and notify admin/manager.
-     */
     public void checkAndNotify() {
         LocalDate now = LocalDate.now();
-
-        // Data older than (2 years - 30 days) is "approaching expiration"
         LocalDate warningCutoff = now.minusYears(RETENTION_YEARS).plusDays(GRACE_PERIOD_DAYS);
         String warningMonth = warningCutoff.format(DateTimeFormatter.ofPattern("yyyy-MM"));
 
-        // Check MasterDb
         long masterDbCount = masterDbRepository.countByDataMonthBefore(warningMonth);
         if (masterDbCount > 0) {
-            String title = "Dữ liệu MasterDb sắp hết hạn";
-            String message = masterDbCount + " bản ghi MasterDb có dữ liệu trước tháng " + warningMonth
-                    + " sẽ bị xóa tự động sau 30 ngày theo chính sách lưu trữ " + RETENTION_YEARS + " năm.";
-            notificationService.notifyAdminAndManager(title, message, "WARNING");
+            notificationService.notifyAdminAndManager(
+                    "Dữ liệu MasterDb sắp hết hạn",
+                    masterDbCount + " bản ghi MasterDb trước tháng " + warningMonth
+                            + " sẽ bị xóa sau 30 ngày theo chính sách lưu trữ " + RETENTION_YEARS + " năm.",
+                    "WARNING");
         }
 
-        // Check DailyProduction
-        LocalDate prodWarningDate = warningCutoff;
-        long prodCount = dailyProductionRepository.countByProductionDateBefore(prodWarningDate);
+        long prodCount = dailyProductionRepository.countByProductionDateBefore(warningCutoff);
         if (prodCount > 0) {
-            String title = "Dữ liệu sản xuất sắp hết hạn";
-            String message = prodCount + " bản ghi DailyProduction trước ngày " + prodWarningDate
-                    + " sẽ bị xóa tự động sau 30 ngày theo chính sách lưu trữ " + RETENTION_YEARS + " năm.";
-            notificationService.notifyAdminAndManager(title, message, "WARNING");
+            notificationService.notifyAdminAndManager(
+                    "Dữ liệu sản xuất sắp hết hạn",
+                    prodCount + " bản ghi DailyProduction trước ngày " + warningCutoff
+                            + " sẽ bị xóa sau 30 ngày theo chính sách lưu trữ " + RETENTION_YEARS + " năm.",
+                    "WARNING");
         }
     }
 
-    /**
-     * Delete data older than the retention period.
-     */
     public void deleteExpiredData() {
         LocalDate now = LocalDate.now();
         LocalDate cutoffDate = now.minusYears(RETENTION_YEARS);
         String cutoffMonth = cutoffDate.format(DateTimeFormatter.ofPattern("yyyy-MM"));
 
-        // Delete expired MasterDb records
         int masterDeleted = masterDbRepository.deleteByDataMonthBefore(cutoffMonth);
         if (masterDeleted > 0) {
             log.info("Data retention: deleted {} MasterDb records before {}", masterDeleted, cutoffMonth);
@@ -88,7 +78,6 @@ public class DataRetentionService {
                     "Auto-deleted " + masterDeleted + " MasterDb records before " + cutoffMonth);
         }
 
-        // Delete expired DailyProduction records
         int prodDeleted = dailyProductionRepository.deleteByProductionDateBefore(cutoffDate);
         if (prodDeleted > 0) {
             log.info("Data retention: deleted {} DailyProduction records before {}", prodDeleted, cutoffDate);
@@ -97,13 +86,9 @@ public class DataRetentionService {
         }
     }
 
-    /**
-     * Delete incomplete SplitEntry records (status=PARTIAL) older than INCOMPLETE_DAYS days.
-     * Also delete completed SplitEntry records (READY/SYNCED) older than RETENTION_YEARS years.
-     */
     public void deleteIncompleteSplitEntries() {
         LocalDate cutoff = LocalDate.now().minusDays(INCOMPLETE_DAYS);
-        List<SplitEntry> stale = splitEntryRepository.findByStatusAndProductionDateBefore("PARTIAL", cutoff);
+        List<SplitEntry> stale = splitEntryRepository.findByStatusAndProductionDateBefore(SplitEntryStatus.PARTIAL, cutoff);
         if (!stale.isEmpty()) {
             splitEntryRepository.deleteAll(stale);
             log.info("Auto-deleted {} incomplete SplitEntry records before {}", stale.size(), cutoff);
@@ -111,9 +96,8 @@ public class DataRetentionService {
                     "Auto-deleted " + stale.size() + " incomplete SplitEntry records before " + cutoff);
         }
 
-        // Also enforce 2-year retention on completed entries (READY + SYNCED)
         LocalDate retentionCutoff = LocalDate.now().minusYears(RETENTION_YEARS);
-        for (String status : List.of("READY", "SYNCED")) {
+        for (SplitEntryStatus status : List.of(SplitEntryStatus.READY, SplitEntryStatus.SYNCED)) {
             List<SplitEntry> expired = splitEntryRepository.findByStatusAndProductionDateBefore(status, retentionCutoff);
             if (!expired.isEmpty()) {
                 splitEntryRepository.deleteAll(expired);
@@ -121,6 +105,14 @@ public class DataRetentionService {
                 systemLogService.logAction("DATA_RETENTION",
                         "Auto-deleted " + expired.size() + " SplitEntry[" + status + "] records before " + retentionCutoff);
             }
+        }
+    }
+
+    public void deleteOldSystemLogs() {
+        LocalDateTime cutoff = LocalDateTime.now().minusYears(RETENTION_YEARS);
+        int deleted = systemLogRepository.deleteByTimestampBefore(cutoff);
+        if (deleted > 0) {
+            log.info("Data retention: deleted {} SystemLog records before {}", deleted, cutoff);
         }
     }
 }

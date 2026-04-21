@@ -9,9 +9,12 @@ import thienloc.manage.dto.SplitEntryDto;
 import thienloc.manage.entity.DailyProduction;
 import thienloc.manage.entity.SplitEntry;
 import thienloc.manage.entity.SplitEntryDetail;
+import thienloc.manage.entity.SplitEntryStatus;
 import thienloc.manage.entity.User;
+import thienloc.manage.mapper.SplitEntryMapper;
 import thienloc.manage.repository.DailyProductionRepository;
 import thienloc.manage.repository.SplitEntryRepository;
+import thienloc.manage.util.NormalizationUtil;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -24,7 +27,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
-public class SplitEntryService {
+public class SplitEntryService implements ISplitEntryService {
 
     @Autowired
     private SplitEntryRepository splitEntryRepository;
@@ -36,7 +39,10 @@ public class SplitEntryService {
     private UserService userService;
 
     @Autowired
-    private ProductionService productionService;
+    private IProductionService productionService;
+
+    @Autowired
+    private SplitEntryMapper splitEntryMapper;
 
     // ─── Page 1: Manpower ─────────────────────────────────────────────────────────
 
@@ -79,12 +85,7 @@ public class SplitEntryService {
         User user = userService.findByUsername(username);
         SplitEntry entry = findOrCreate(dto.getProductionDate(), dto.getSection(), dto.getLine());
 
-        // Normalize allowance: if > 1 treat as percentage
-        double allowanceVal = 1.0;
-        if (dto.getAllowance() != null && dto.getAllowance() > 0) {
-            allowanceVal = dto.getAllowance() > 1 ? dto.getAllowance() / 100.0 : dto.getAllowance();
-        }
-        entry.setAllowance(allowanceVal);
+        entry.setAllowance(NormalizationUtil.normalizeAllowance(dto.getAllowance()));
 
         // Clear and rebuild details
         entry.getDetails().clear();
@@ -152,9 +153,9 @@ public class SplitEntryService {
 
         if (ready) {
             syncToDailyProduction(entry);
-            entry.setStatus("SYNCED");
+            entry.setStatus(SplitEntryStatus.SYNCED);
         } else {
-            entry.setStatus("PARTIAL");
+            entry.setStatus(SplitEntryStatus.PARTIAL);
         }
         splitEntryRepository.save(entry);
     }
@@ -278,73 +279,10 @@ public class SplitEntryService {
     }
 
     private SplitEntryDto convertDpToSplitDto(DailyProduction dp) {
-        SplitEntryDto dto = new SplitEntryDto();
-        dto.setId(dp.getId());
-        dto.setProductionDate(dp.getProductionDate());
-        dto.setSection(dp.getSection());
-        dto.setLine(dp.getLine());
-        dto.setMp(dp.getMp());
-        dto.setDli(dp.getDli());
-        dto.setIdl(dp.getIdl());
-        dto.setWt(dp.getWt());
-        dto.setTotalOutput(dp.getTotalOutput());
-        dto.setRft(dp.getRft());
-        dto.setAllowance(dp.getAllowance() != null ? dp.getAllowance() * 100.0 : 100.0);
-        dto.setStatus("SYNCED");
-        dto.setManpowerFilled(true);
-        dto.setOutputFilled(true);
-        dto.setArticlesFilled(dp.getDetails() != null && !dp.getDetails().isEmpty());
-        dto.setSource("DIRECT");
-        if (dp.getCreatedBy() != null)
-            dto.setManpowerFilledByUsername(dp.getCreatedBy().getUsername());
-        if (dp.getDetails() != null) {
-            dto.setDetails(dp.getDetails().stream()
-                    .map(d -> DailyProductionDetailDto.builder()
-                            .timeSlot(d.getTimeSlot())
-                            .articleNo(d.getArticleNo())
-                            .output(d.getOutput())
-                            .build())
-                    .collect(Collectors.toList()));
-        }
-        return dto;
+        return splitEntryMapper.fromDailyProduction(dp);
     }
 
     private SplitEntryDto convertToDto(SplitEntry entity) {
-        SplitEntryDto dto = new SplitEntryDto();
-        dto.setId(entity.getId());
-        dto.setProductionDate(entity.getProductionDate());
-        dto.setSection(entity.getSection());
-        dto.setLine(entity.getLine());
-        dto.setMp(entity.getMp());
-        dto.setDli(entity.getDli());
-        dto.setIdl(entity.getIdl());
-        dto.setWt(entity.getWt());
-        dto.setTotalOutput(entity.getTotalOutput());
-        dto.setRft(entity.getRft());
-        dto.setAllowance(entity.getAllowance() != null ? entity.getAllowance() * 100.0 : 100.0);
-        dto.setStatus(entity.getStatus());
-        dto.setManpowerFilled(entity.getMp() != null);
-        dto.setOutputFilled(entity.getTotalOutput() != null);
-        dto.setArticlesFilled(entity.getDetails() != null && !entity.getDetails().isEmpty());
-
-        if (entity.getManpowerFilledBy() != null)
-            dto.setManpowerFilledByUsername(entity.getManpowerFilledBy().getUsername());
-        if (entity.getOutputFilledBy() != null)
-            dto.setOutputFilledByUsername(entity.getOutputFilledBy().getUsername());
-        if (entity.getArticleFilledBy() != null)
-            dto.setArticleFilledByUsername(entity.getArticleFilledBy().getUsername());
-
-        if (entity.getDetails() != null) {
-            List<DailyProductionDetailDto> detailDtos = entity.getDetails().stream()
-                    .map(d -> DailyProductionDetailDto.builder()
-                            .timeSlot(d.getTimeSlot())
-                            .articleNo(d.getArticleNo())
-                            .output(d.getOutput())
-                            .build())
-                    .collect(Collectors.toList());
-            dto.setDetails(detailDtos);
-        }
-
-        return dto;
+        return splitEntryMapper.toDto(entity);
     }
 }

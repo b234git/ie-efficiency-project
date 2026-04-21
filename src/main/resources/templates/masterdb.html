@@ -192,8 +192,8 @@
             <div>
                 <h2 th:text="#{masterdb.title}">Master DB</h2>
                 <small style="color:#6c757d;">
-                    <span th:text="#{masterdb.totalrecords}">Tổng</span>: <strong
-                        th:text="${records.totalElements}">0</strong> <span th:text="#{masterdb.records}">bản ghi</span>
+                    <span th:text="#{masterdb.totalrecords}">Total</span>: <strong
+                        th:text="${records.totalElements}">0</strong> <span th:text="#{masterdb.records}">records</span>
                     &nbsp;·&nbsp;
                     <span th:text="#{masterdb.page}">Trang</span> <strong th:text="${currentPage + 1}">1</strong>
                     / <strong th:text="${totalPages}">1</strong>
@@ -346,7 +346,7 @@
                                 <button type="submit" class="btn btn-danger btn-sm" th:text="#{masterdb.delete}">🗑
                                     Delete</button>
                             </form>
-                            <!-- USER: chỉ xem, không có nút -->
+                            <!-- USER: view only, no action buttons -->
                             <span sec:authorize="hasRole('USER')" style="color:#6c757d; font-size:0.8rem;"
                                 th:text="#{masterdb.viewonly}">📖 View only</span>
                         </td>

@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import thienloc.manage.util.NormalizationUtil;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -15,11 +16,12 @@ import java.util.List;
 @Table(name = "split_entry",
     uniqueConstraints = {
         @UniqueConstraint(name = "uk_split_entry_date_section_line",
-            columnNames = {"productionDate", "section", "line"})
+            columnNames = {"production_date", "section", "line"})
     },
     indexes = {
-        @Index(name = "idx_se_production_date", columnList = "productionDate"),
-        @Index(name = "idx_se_status", columnList = "status")
+        @Index(name = "idx_se_production_date", columnList = "production_date"),
+        @Index(name = "idx_se_status",           columnList = "status"),
+        @Index(name = "idx_se_section_line",     columnList = "section, line")
     })
 @Data
 @NoArgsConstructor
@@ -30,6 +32,9 @@ public class SplitEntry {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Version
+    private Long version;
 
     @Column(nullable = false)
     private LocalDate productionDate;
@@ -75,8 +80,9 @@ public class SplitEntry {
     private Long linkedDailyProductionId;
 
     @Builder.Default
-    @Column(nullable = false)
-    private String status = "PARTIAL"; // PARTIAL | READY | SYNCED
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private SplitEntryStatus status = SplitEntryStatus.PARTIAL;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -96,16 +102,11 @@ public class SplitEntry {
     }
 
     private void roundFields() {
-        this.mp = round(this.mp);
-        this.dli = round(this.dli);
-        this.idl = round(this.idl);
-        this.wt = round(this.wt);
-        this.rft = round(this.rft);
-        this.allowance = round(this.allowance);
-    }
-
-    private Double round(Double val) {
-        if (val == null) return null;
-        return Math.round(val * 100.0) / 100.0;
+        this.mp        = NormalizationUtil.round(this.mp);
+        this.dli       = NormalizationUtil.round(this.dli);
+        this.idl       = NormalizationUtil.round(this.idl);
+        this.wt        = NormalizationUtil.round(this.wt);
+        this.rft       = NormalizationUtil.round(this.rft);
+        this.allowance = NormalizationUtil.round(this.allowance);
     }
 }

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title th:text="#{systemhealth.title}">System Health</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+
+<body>
+    <div th:replace="~{fragments/layout :: navbar}"></div>
+
+    <div class="container">
+
+        <!-- ── Header ──────────────────────────────────────────────────────── -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+            <h2 style="margin:0;" th:text="#{systemhealth.title}">System Health</h2>
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <span id="countdownLabel" style="color:#6c757d; font-size:0.85rem;"></span>
+                <button class="btn btn-primary" onclick="window.location.reload()" th:text="#{systemhealth.btn.refresh}">&#8635; Refresh</button>
+            </div>
+        </div>
+
+        <!-- ── Overall Status Banner ────────────────────────────────────────── -->
+        <div class="sh-banner"
+             th:classappend="${healthUp} ? 'sh-banner--up' : 'sh-banner--down'">
+            <span class="sh-banner__icon" th:text="${healthUp} ? '✓' : '✗'"></span>
+            <div>
+                <div class="sh-banner__title"
+                     th:text="${healthUp} ? #{systemhealth.status.healthy} : #{systemhealth.status.issues}"></div>
+                <div class="sh-banner__sub" th:text="${healthStatus}"></div>
+            </div>
+        </div>
+
+        <!-- ── Metrics Grid ──────────────────────────────────────────────────── -->
+        <div class="sh-grid">
+
+            <!-- JVM Heap Memory -->
+            <div class="sh-card">
+                <div class="sh-card__label" th:text="#{systemhealth.card.heap}">JVM Heap Memory</div>
+                <div class="sh-card__value" th:text="${heapUsedMb}">N/A</div>
+                <div th:if="${heapMaxMb != null}" class="sh-card__sub"
+                     th:text="#{systemhealth.card.heap.of} + ' ' + ${heapMaxMb}"></div>
+                <div th:if="${heapPercent != null}" class="sh-progress">
+                    <div class="sh-progress-bar"
+                         th:classappend="${heapPercent > 85} ? 'sh-progress-bar--danger' : (${heapPercent} > 65 ? 'sh-progress-bar--warn' : 'sh-progress-bar--ok')"
+                         th:style="'width:' + ${heapPercent} + '%'"></div>
+                </div>
+                <div class="sh-card__pct" th:if="${heapPercent != null}"
+                     th:text="${heapPercent} + '%'"></div>
+            </div>
+
+            <!-- Non-Heap Memory -->
+            <div class="sh-card">
+                <div class="sh-card__label" th:text="#{systemhealth.card.nonheap}">Non-Heap Memory</div>
+                <div class="sh-card__value" th:text="${nonHeapUsedMb}">N/A</div>
+                <div class="sh-card__sub" th:text="#{systemhealth.card.nonheap.sub}">Metaspace &amp; CodeCache</div>
+            </div>
+
+            <!-- System CPU -->
+            <div class="sh-card">
+                <div class="sh-card__label" th:text="#{systemhealth.card.cpu}">System CPU</div>
+                <div class="sh-card__value"
+                     th:text="${cpuPercent >= 0} ? ${cpuPercent} + '%' : 'N/A'">N/A</div>
+                <div th:if="${cpuPercent >= 0}" class="sh-progress">
+                    <div class="sh-progress-bar"
+                         th:classappend="${cpuPercent > 85} ? 'sh-progress-bar--danger' : (${cpuPercent} > 65 ? 'sh-progress-bar--warn' : 'sh-progress-bar--ok')"
+                         th:style="'width:' + ${cpuPercent} + '%'"></div>
+                </div>
+                <div class="sh-card__sub" th:text="#{systemhealth.card.cpu.sub}">All cores combined</div>
+            </div>
+
+            <!-- Process CPU -->
+            <div class="sh-card">
+                <div class="sh-card__label" th:text="#{systemhealth.card.processcpu}">JVM Process CPU</div>
+                <div class="sh-card__value"
+                     th:text="${processCpuPercent >= 0} ? ${processCpuPercent} + '%' : 'N/A'">N/A</div>
+                <div th:if="${processCpuPercent >= 0}" class="sh-progress">
+                    <div class="sh-progress-bar"
+                         th:classappend="${processCpuPercent > 85} ? 'sh-progress-bar--danger' : (${processCpuPercent} > 65 ? 'sh-progress-bar--warn' : 'sh-progress-bar--ok')"
+                         th:style="'width:' + ${processCpuPercent} + '%'"></div>
+                </div>
+                <div class="sh-card__sub" th:text="#{systemhealth.card.processcpu.sub}">This JVM process only</div>
+            </div>
+
+            <!-- Uptime -->
+            <div class="sh-card">
+                <div class="sh-card__label" th:text="#{systemhealth.card.uptime}">Process Uptime</div>
+                <div class="sh-card__value" th:text="${uptime}">N/A</div>
+                <div class="sh-card__sub" th:text="#{systemhealth.card.uptime.sub}">Since last restart</div>
+            </div>
+
+            <!-- Live Threads -->
+            <div class="sh-card">
+                <div class="sh-card__label" th:text="#{systemhealth.card.threads}">Live Threads</div>
+                <div class="sh-card__value"
+                     th:text="${threadCount >= 0} ? ${threadCount} : 'N/A'">N/A</div>
+                <div class="sh-card__sub" th:text="#{systemhealth.card.threads.sub}">JVM thread count</div>
+            </div>
+
+            <!-- Database -->
+            <div class="sh-card">
+                <div class="sh-card__label" th:text="#{systemhealth.card.database}">Database</div>
+                <div class="sh-card__value">
+                    <span th:if="${dbStatus != null}"
+                          class="sh-badge"
+                          th:classappend="${dbStatus == 'UP'} ? 'sh-badge--up' : 'sh-badge--down'"
+                          th:text="${dbStatus}"></span>
+                    <span th:if="${dbStatus == null}" class="sh-card__sub">N/A</span>
+                </div>
+                <div class="sh-card__sub" th:text="#{systemhealth.card.database.sub}">PostgreSQL connection</div>
+            </div>
+
+            <!-- Disk Space -->
+            <div th:if="${diskStatus != null}" class="sh-card">
+                <div class="sh-card__label" th:text="#{systemhealth.card.disk}">Disk Space</div>
+                <div class="sh-card__value">
+                    <span class="sh-badge"
+                          th:classappend="${diskStatus == 'OK'} ? 'sh-badge--up' : 'sh-badge--down'"
+                          th:text="${diskStatus}"></span>
+                </div>
+                <div th:if="${diskFree != null}" class="sh-card__sub"
+                     th:text="'Free: ' + ${diskFree} + ' / ' + ${diskTotal}"></div>
+                <div th:if="${diskPercent != null}" class="sh-progress">
+                    <div class="sh-progress-bar"
+                         th:classappend="${diskPercent > 85} ? 'sh-progress-bar--danger' : (${diskPercent} > 65 ? 'sh-progress-bar--warn' : 'sh-progress-bar--ok')"
+                         th:style="'width:' + ${diskPercent} + '%'"></div>
+                </div>
+                <div class="sh-card__pct" th:if="${diskPercent != null}"
+                     th:text="${diskPercent} + '% used'"></div>
+            </div>
+
+        </div>
+
+        <!-- ── App Info ──────────────────────────────────────────────────────── -->
+        <div style="margin-top:28px;">
+            <h3 class="sh-section-title" th:text="#{systemhealth.section.appinfo}">Application Info</h3>
+            <div class="sh-card" style="max-width:420px; display:inline-block;">
+                <table style="width:100%; border-collapse:collapse;">
+                    <tr>
+                        <td class="sh-info-key" th:text="#{systemhealth.info.appname}">App Name</td>
+                        <td class="sh-info-val" th:text="${appName}">IE-Eff</td>
+                    </tr>
+                    <tr>
+                        <td class="sh-info-key" th:text="#{systemhealth.info.version}">Version</td>
+                        <td class="sh-info-val" th:text="${appVersion}">1.0.0</td>
+                    </tr>
+                    <tr th:if="${javaVersion != null}">
+                        <td class="sh-info-key" th:text="#{systemhealth.info.javaversion}">Java Version</td>
+                        <td class="sh-info-val" th:text="${javaVersion}"></td>
+                    </tr>
+                    <tr>
+                        <td class="sh-info-key" th:text="#{systemhealth.info.javaruntime}">Java Runtime</td>
+                        <td class="sh-info-val" th:text="${javaRuntime}"></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- ── Raw Actuator Links ────────────────────────────────────────────── -->
+        <div style="margin-top:28px;">
+            <h3 class="sh-section-title" th:text="#{systemhealth.section.actuator}">Raw Actuator Endpoints</h3>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <a th:href="@{/actuator/health}" target="_blank" class="btn" th:text="#{systemhealth.btn.healthjson}">Health JSON</a>
+                <a th:href="@{/actuator/metrics}" target="_blank" class="btn" th:text="#{systemhealth.btn.metricsjson}">Metrics JSON</a>
+                <a th:href="@{/actuator/info}"   target="_blank" class="btn" th:text="#{systemhealth.btn.infojson}">Info JSON</a>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ── Auto-refresh countdown ───────────────────────────────────────────
+        var REFRESH_SECONDS = 30;
+        var countdown = REFRESH_SECONDS;
+        var label = document.getElementById('countdownLabel');
+
+        function tick() {
+            label.textContent = 'Auto-refresh in ' + countdown + 's';
+            if (countdown <= 0) {
+                window.location.reload();
+            } else {
+                countdown--;
+                setTimeout(tick, 1000);
+            }
+        }
+        tick();
+    </script>
+
+</body>
+</html>

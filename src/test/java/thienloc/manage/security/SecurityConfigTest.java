@@ -5,8 +5,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+// import thienloc.manage.config.SampleDataInitializer;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -20,6 +22,9 @@ class SecurityConfigTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    // @MockitoBean
+    // private SampleDataInitializer sampleDataInitializer;
 
     // ─── CSRF verification ───────────────────────────────────────────────────────
 
@@ -95,14 +100,20 @@ class SecurityConfigTest {
     // ─── /entry/** ──────────────────────────────────────────────────────────────
 
     @Test
-    void testEntry_AllRoles_UserAllowed() throws Exception {
+    void testEntry_UserForbidden() throws Exception {
         mockMvc.perform(get("/entry/").with(user("user").roles("USER")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void testEntry_ManagerAllowed() throws Exception {
+        mockMvc.perform(get("/entry/").with(user("manager").roles("MANAGER")))
                 .andExpect(status().isOk());
     }
 
     @Test
-    void testEntry_AllRoles_ManagerAllowed() throws Exception {
-        mockMvc.perform(get("/entry/").with(user("manager").roles("MANAGER")))
+    void testSplitEntry_UserAllowed() throws Exception {
+        mockMvc.perform(get("/split-entry/").with(user("user").roles("USER")))
                 .andExpect(status().isOk());
     }
 
@@ -137,9 +148,33 @@ class SecurityConfigTest {
     // ─── /masterdb/** ───────────────────────────────────────────────────────────
 
     @Test
-    void testMasterDb_AllRoles() throws Exception {
+    void testMasterDb_UserForbidden() throws Exception {
         mockMvc.perform(get("/masterdb/").with(user("user").roles("USER")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void testMasterDb_ManagerAllowed() throws Exception {
+        mockMvc.perform(get("/masterdb/").with(user("manager").roles("MANAGER")))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void testWeeklyTracking_ManagerAllowed() throws Exception {
+        mockMvc.perform(get("/weekly-tracking/").with(user("manager").roles("MANAGER")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void testWeeklyTracking_UserForbidden() throws Exception {
+        mockMvc.perform(get("/weekly-tracking/").with(user("user").roles("USER")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void testSalary_UserForbidden() throws Exception {
+        mockMvc.perform(get("/salary/").with(user("user").roles("USER")))
+                .andExpect(status().isForbidden());
     }
 
     // ─── /report/** ─────────────────────────────────────────────────────────────

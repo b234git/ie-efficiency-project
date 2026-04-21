@@ -106,6 +106,107 @@ public enum SectionMetrics {
     }
 
     /**
+     * Per-slot article identity. For BUFF/SF, suffix "-2" marks the 2ND subsection
+     * variant; the cleanedArticle strips that suffix so it can match MasterDb.articleNo.
+     */
+    public static record ArticleKey(String cleanedArticle, boolean isSecondSubsection) {
+        public static ArticleKey parse(String rawArticle) {
+            if (rawArticle == null) return new ArticleKey(null, false);
+            String t = rawArticle.trim();
+            if (t.isEmpty()) return new ArticleKey(null, false);
+            if (t.endsWith("-2") && !t.endsWith("-02")) {
+                return new ArticleKey(t.substring(0, t.length() - 2), true);
+            }
+            return new ArticleKey(t, false);
+        }
+    }
+
+    /**
+     * Slot-level resolution: primary metrics to use for a given slot, plus an optional
+     * fallback metrics applied when the primary column has no data in MasterDb.
+     */
+    public static record ResolvedSection(SectionMetrics primary, SectionMetrics fallback) {}
+
+    /**
+     * Resolve primary + fallback SectionMetrics for one slot, based on row-level
+     * section and the slot's raw article (which may carry a "-2" suffix).
+     *
+     * Rules (BUFF/STOCKFIT only — other sections pass through without fallback):
+     *   - article ends with "-2"            → primary = 2ND,  no fallback (suffix wins).
+     *   - no "-2", row is ...2ND             → primary = 2ND,  fallback = 1ST (try 2ND first).
+     *   - no "-2", row is ...1ST/UV          → primary = row,  no fallback.
+     */
+    public static ResolvedSection resolveSlot(String rowSection, String rawArticle) {
+        Optional<SectionMetrics> rowOpt = fromSection(rowSection);
+        if (rowOpt.isEmpty()) return new ResolvedSection(null, null);
+        SectionMetrics row = rowOpt.get();
+        boolean isBuff = row == BUFF_1ST || row == BUFF_2ND;
+        boolean isSf = row == STOCKFIT_UV || row == STOCKFIT_1ST || row == STOCKFIT_2ND;
+        if (!isBuff && !isSf) return new ResolvedSection(row, null);
+
+        ArticleKey key = ArticleKey.parse(rawArticle);
+        if (isBuff) {
+            if (key.isSecondSubsection()) return new ResolvedSection(BUFF_2ND, null);
+            return (row == BUFF_2ND)
+                    ? new ResolvedSection(BUFF_2ND, BUFF_1ST)
+                    : new ResolvedSection(BUFF_1ST, null);
+        }
+        // STOCKFIT family
+        if (row == STOCKFIT_UV) return new ResolvedSection(STOCKFIT_UV, null);
+        if (key.isSecondSubsection()) return new ResolvedSection(STOCKFIT_2ND, null);
+        return (row == STOCKFIT_2ND)
+                ? new ResolvedSection(STOCKFIT_2ND, STOCKFIT_1ST)
+                : new ResolvedSection(STOCKFIT_1ST, null);
+    }
+
+    /**
+     * Resolve the SectionMetrics for a single slot, taking into account the article's
+     * "-2" suffix. Only BUFF/SF families differentiate per-slot; other sections fall
+     * back to the row-level section resolution.
+     */
+    public static Optional<SectionMetrics> fromSectionAndArticle(String rowSection, String rawArticle) {
+        Optional<SectionMetrics> rowOpt = fromSection(rowSection);
+        if (rowOpt.isEmpty()) return rowOpt;
+        SectionMetrics row = rowOpt.get();
+        boolean isBuff = row == BUFF_1ST || row == BUFF_2ND;
+        boolean isSf = row == STOCKFIT_UV || row == STOCKFIT_1ST || row == STOCKFIT_2ND;
+        if (!isBuff && !isSf) return rowOpt;
+
+        ArticleKey key = ArticleKey.parse(rawArticle);
+        if (isBuff) {
+            return Optional.of(key.isSecondSubsection() ? BUFF_2ND : BUFF_1ST);
+        }
+        // STOCKFIT: keep UV as-is; map 1ST/2ND by suffix.
+        if (row == STOCKFIT_UV) return rowOpt;
+        return Optional.of(key.isSecondSubsection() ? STOCKFIT_2ND : STOCKFIT_1ST);
+    }
+
+    /** CT with fallback to another SectionMetrics' column if this one is null/zero. */
+    public Double getCtOrFallback(MasterDb m, SectionMetrics fallback) {
+        Double v = getCt(m);
+        if (v != null && v > 0) return v;
+        return (fallback != null) ? fallback.getCt(m) : v;
+    }
+
+    public Double getMpOrFallback(MasterDb m, SectionMetrics fallback) {
+        Double v = getMp(m);
+        if (v != null && v > 0) return v;
+        return (fallback != null) ? fallback.getMp(m) : v;
+    }
+
+    public Double getQuotaOrFallback(MasterDb m, SectionMetrics fallback) {
+        Double v = getQuota(m);
+        if (v != null && v > 0) return v;
+        return (fallback != null) ? fallback.getQuota(m) : v;
+    }
+
+    public Double getPphOrFallback(MasterDb m, SectionMetrics fallback) {
+        Double v = getPph(m);
+        if (v != null && v > 0) return v;
+        return (fallback != null) ? fallback.getPph(m) : v;
+    }
+
+    /**
      * Normalize an abbreviation or alias to its canonical section name.
      * E.g. "BUFF 1" → "BUFFING 1ST", "SF UV" → "STOCKFIT UV".
      * Returns the input uppercased if no mapping is found.

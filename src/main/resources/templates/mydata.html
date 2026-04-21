@@ -108,19 +108,18 @@
                 <small style="color:#6c757d;" th:text="#{mydata.subtitle}">View and manage</small>
             </div>
             <div style="display:flex; gap:10px;">
-                <a th:href="@{/entry/}" class="btn btn-primary">➕ <span th:text="#{mydata.addnew}">Thêm Dữ Liệu
-                        Mới</span></a>
+                <a th:href="@{/entry/}" class="btn btn-primary">➕ <span th:text="#{mydata.addnew}">Add New Data</span></a>
             </div>
         </div>
 
         <!-- ── Filter bar ──────────────────────────────────────────── -->
         <form th:action="@{/entry/mydata}" method="get" class="filter-bar">
             <div>
-                <label style="font-weight:600; margin-right:6px;" th:text="#{dashboard.viewby}">Xem theo:</label>
+                <label style="font-weight:600; margin-right:6px;" th:text="#{dashboard.viewby}">View by:</label>
                 <select id="rangeSelect" name="range" class="form-control" style="width:200px; display:inline-block;"
                     onchange="handleRangeChange(this.value)">
                     <option value="TODAY" th:selected="${selectedRange == 'TODAY'}"
-                        th:text="'📅 ' + #{dashboard.oneday}">📅 Một ngày cụ thể</option>
+                        th:text="'📅 ' + #{dashboard.oneday}">📅 Specific date</option>
                     <option value="1M" th:selected="${selectedRange == '1M'}" th:text="'📆 ' + #{dashboard.onemonth}">📆
                         1 month ago</option>
                     <option value="6M" th:selected="${selectedRange == '6M'}" th:text="'🗓 ' + #{dashboard.sixmonths}">
@@ -135,15 +134,15 @@
             </div>
             <div>
                 <input type="text" name="article" th:value="${article}" class="form-control"
-                    placeholder="Tìm kiếm Article..." style="width:180px; display:inline-block;" />
+                    placeholder="Search article..." style="width:180px; display:inline-block;" />
             </div>
             <button type="submit" class="btn btn-primary" th:text="#{mydata.view}">Xem</button>
         </form>
 
         <!-- ── Range badge ─────────────────────────────────────────── -->
         <div th:if="${rangeLabel != null and !rangeLabel.isEmpty()}" class="range-badge">
-            🔍 Đang hiển thị: <span th:text="${rangeLabel}"></span>
-            &nbsp;·&nbsp; <strong th:text="${#lists.size(records)}">0</strong> bản ghi
+            🔍 Showing: <span th:text="${rangeLabel}"></span>
+            &nbsp;·&nbsp; <strong th:text="${#lists.size(records)}">0</strong> records
         </div>
 
         <!-- ── Data table ──────────────────────────────────────────── -->
@@ -152,7 +151,7 @@
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th th:text="#{table.date}">Ngày</th>
+                        <th th:text="#{table.date}">Date</th>
                         <th th:text="#{table.section}">Section</th>
                         <th th:text="#{table.line}">Line</th>
                         <th th:text="#{table.article}">Article</th>
@@ -163,13 +162,12 @@
                         <th>EFF KPI</th>
                         <th>EFF Salary</th>
                         <th th:text="#{table.pph}">PPH</th>
-                        <th th:text="#{table.actions}">Hành động</th>
+                        <th th:text="#{table.actions}">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr th:if="${records.isEmpty()}">
-                        <td colspan="11" class="empty-msg" th:text="#{mydata.nodata}">Không có dữ liệu cho khoảng thời
-                            gian này.</td>
+                        <td colspan="11" class="empty-msg" th:text="#{mydata.nodata}">No data for this time range.</td>
                     </tr>
                     <tr th:each="rec, stat : ${records}">
                         <td th:text="${stat.count}" style="color:#6c757d;"></td>

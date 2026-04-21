@@ -14,6 +14,7 @@ import thienloc.manage.service.UserService;
 
 import java.util.List;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -47,6 +48,25 @@ class AdminControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin"))
                 .andExpect(model().attributeExists("users", "logsPage"));
+    }
+
+    @Test
+    void testAdminDashboard_AdminNavbarShowsManagerHubsPlusAdmin() throws Exception {
+        when(userService.findAllUsers()).thenReturn(List.of());
+        when(systemLogService.getLogsPage(any())).thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/admin/").with(user("admin").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("href=\"/entry/\"")))
+                .andExpect(content().string(containsString("href=\"/split-entry/\"")))
+                .andExpect(content().string(containsString("href=\"/report/\"")))
+                .andExpect(content().string(containsString("href=\"/report/weekly\"")))
+                .andExpect(content().string(containsString("href=\"/masterdb/\"")))
+                .andExpect(content().string(containsString("href=\"/eff-config/\"")))
+                .andExpect(content().string(containsString("href=\"/weekly-tracking/\"")))
+                .andExpect(content().string(containsString("href=\"/new-style/\"")))
+                .andExpect(content().string(containsString("href=\"/salary/\"")))
+                .andExpect(content().string(containsString("href=\"/admin/\"")));
     }
 
     @Test

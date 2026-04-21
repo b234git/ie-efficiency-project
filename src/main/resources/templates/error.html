@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 
 <head>
-    <title th:text="${status != null ? status + ' — Lỗi' : 'Lỗi'}">Lỗi</title>
+    <title th:text="${status != null ? status + ' — Error' : 'Error'}">Error</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" th:href="@{/css/main.css}">
     <style>
@@ -48,24 +48,24 @@
         <div class="error-code" th:text="${status ?: ''}">500</div>
 
         <div class="error-title" th:switch="${status}">
-            <span th:case="'404'">Không tìm thấy trang</span>
-            <span th:case="'403'">Không có quyền truy cập</span>
-            <span th:case="'401'">Yêu cầu đăng nhập</span>
-            <span th:case="'500'">Lỗi máy chủ</span>
-            <span th:case="*">Đã xảy ra lỗi</span>
+            <span th:case="'404'">Page not found</span>
+            <span th:case="'403'">Access denied</span>
+            <span th:case="'401'">Login required</span>
+            <span th:case="'500'">Server error</span>
+            <span th:case="*">An error occurred</span>
         </div>
 
         <div class="error-msg" th:switch="${status}">
-            <span th:case="'404'">Trang bạn tìm kiếm không tồn tại hoặc đã bị di chuyển.</span>
-            <span th:case="'403'">Bạn không có quyền truy cập vào trang này.</span>
-            <span th:case="'401'">Vui lòng đăng nhập để tiếp tục.</span>
-            <span th:case="'500'">Máy chủ gặp sự cố. Vui lòng thử lại sau.</span>
-            <span th:case="*" th:text="${message ?: 'Vui lòng thử lại hoặc liên hệ quản trị viên.'}">Vui lòng thử lại hoặc liên hệ quản trị viên.</span>
+            <span th:case="'404'">The page you are looking for does not exist or has been moved.</span>
+            <span th:case="'403'">You do not have permission to access this page.</span>
+            <span th:case="'401'">Please log in to continue.</span>
+            <span th:case="'500'">The server encountered an error. Please try again later.</span>
+            <span th:case="*" th:text="${message ?: 'Please try again or contact the administrator.'}">Please try again or contact the administrator.</span>
         </div>
 
         <div class="error-actions">
-            <a href="javascript:history.back()" class="btn">← Quay lại</a>
-            <a th:href="@{/}" class="btn btn-primary">Về trang chủ</a>
+            <a href="javascript:history.back()" class="btn">← Go back</a>
+            <a th:href="@{/}" class="btn btn-primary">Home</a>
         </div>
     </div>
 </body>

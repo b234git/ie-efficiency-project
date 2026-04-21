@@ -1,15 +1,24 @@
 package thienloc.manage.controller;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import thienloc.manage.dto.DailyProductionDto;
+import thienloc.manage.service.IProductionService;
 import thienloc.manage.service.NotificationService;
-import thienloc.manage.service.ProductionService;
+import thienloc.manage.util.ProductionStatsUtil;
+import thienloc.manage.util.RecordFilterUtil;
 
 import java.security.Principal;
 import java.time.LocalDate;
@@ -22,13 +31,16 @@ public class ProductionController {
     private static final Logger log = LoggerFactory.getLogger(ProductionController.class);
 
     @Autowired
-    private ProductionService productionService;
+    private IProductionService productionService;
 
     @Autowired
     private thienloc.manage.service.SystemLogService systemLogService;
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private MeterRegistry meterRegistry;
 
     /* ── Entry Form ───────────────────────────────────────────── */
     @GetMapping({ "", "/" })
@@ -64,8 +76,8 @@ public class ProductionController {
         // ── Filtered history (current user only) ────────────────────────
         String username = principal.getName();
         LocalDate today = LocalDate.now();
-        List<DailyProductionDto> records;
 
+        // ── Resolve date range trước để truyền vào service một lần ──────
         java.time.YearMonth selectedYearMonth = java.time.YearMonth.from(today);
         if ("MONTH".equals(range) && month != null && !month.isBlank()) {
             try {
@@ -75,74 +87,33 @@ public class ProductionController {
             }
         }
 
-        switch (range) {
-            case "1M":
-                records = productionService.getMyDataRangeWithSplitEntries(username, today.minusMonths(1), today);
-                break;
-            case "6M":
-                records = productionService.getMyDataRangeWithSplitEntries(username, today.minusMonths(6), today);
-                break;
-            case "ALL":
-                records = productionService.getMyDataRangeWithSplitEntries(username, today.minusMonths(12), today);
-                break;
-            case "MONTH":
-                records = productionService.getMyDataRangeWithSplitEntries(username,
-                        selectedYearMonth.atDay(1), selectedYearMonth.atEndOfMonth());
-                break;
-            default:
-                if (date == null)
-                    date = today;
-                records = productionService.getMyDataRangeWithSplitEntries(username, date, date);
-                break;
-        }
+        if (date == null) date = today;
+        final LocalDate effectiveDate = date;
+        final java.time.YearMonth ym = selectedYearMonth;
+        LocalDate[] dateRange = switch (range) {
+            case "1M"    -> new LocalDate[]{ today.minusMonths(1),       today };
+            case "6M"    -> new LocalDate[]{ today.minusMonths(6),       today };
+            case "ALL"   -> new LocalDate[]{ today.minusMonths(12),      today };
+            case "MONTH" -> new LocalDate[]{ ym.atDay(1), ym.atEndOfMonth() };
+            default      -> new LocalDate[]{ effectiveDate, effectiveDate };
+        };
+        LocalDate from = dateRange[0];
+        LocalDate to   = dateRange[1];
 
-        if (article != null && !article.trim().isEmpty()) {
-            String lowerArticle = article.toLowerCase().trim();
-            records = records.stream()
-                    .filter(r -> (r.getArticle() != null && r.getArticle().toLowerCase().contains(lowerArticle)) ||
-                            (r.getDetails() != null && r.getDetails().stream()
-                                    .anyMatch(d -> d.getArticleNo() != null
-                                            && d.getArticleNo().toLowerCase().contains(lowerArticle))))
-                    .collect(java.util.stream.Collectors.toList());
-        }
-
-        if (errorsOnly) {
-            records = records.stream()
-                    .filter(r -> r.getEffKpi() == null)
-                    .collect(java.util.stream.Collectors.toList());
-        }
-
-        if (!section.trim().isEmpty()) {
-            records = records.stream()
-                    .filter(r -> section.equalsIgnoreCase(r.getSection()))
-                    .collect(java.util.stream.Collectors.toList());
-        }
-
-        if (!line.trim().isEmpty()) {
-            String lowerLine = line.toLowerCase().trim();
-            records = records.stream()
-                    .filter(r -> r.getLine() != null && r.getLine().toLowerCase().contains(lowerLine))
-                    .collect(java.util.stream.Collectors.toList());
-        }
-
-        if ("ENTRY".equals(source)) {
-            records = records.stream()
-                    .filter(r -> !"SPLIT".equals(r.getSource()))
-                    .collect(java.util.stream.Collectors.toList());
-        } else if ("SPLIT".equals(source)) {
-            records = records.stream()
-                    .filter(r -> "SPLIT".equals(r.getSource()))
-                    .collect(java.util.stream.Collectors.toList());
-        }
-
-        // ── Pagination ───────────────────────────────────────────────────────
+        // ── DB-level pagination: section/line lọc tại DB ─────────────────
+        // article, errorsOnly, source lọc in-memory chỉ trên 25 bản ghi của trang
         int pageSize = 25;
-        int totalRecords = records.size();
-        int totalPages = (int) Math.ceil((double) totalRecords / pageSize);
-        page = Math.max(0, totalPages > 0 ? Math.min(page, totalPages - 1) : 0);
-        int fromIndex = page * pageSize;
-        int toIndex = Math.min(fromIndex + pageSize, totalRecords);
-        List<DailyProductionDto> pagedRecords = records.subList(fromIndex, toIndex);
+        Page<DailyProductionDto> recordPage = productionService.getMyDataRangeWithSplitEntriesPaged(
+                username, from, to, section, line, page, pageSize);
+
+        List<DailyProductionDto> pagedRecords = new java.util.ArrayList<>(recordPage.getContent());
+        pagedRecords = RecordFilterUtil.filterByArticle(pagedRecords, article);
+        if (errorsOnly) pagedRecords = RecordFilterUtil.filterErrorsOnly(pagedRecords);
+        pagedRecords = RecordFilterUtil.filterBySource(pagedRecords, source);
+
+        int totalRecords = (int) recordPage.getTotalElements();
+        int totalPages   = recordPage.getTotalPages();
+        page = Math.max(0, Math.min(page, totalPages > 0 ? totalPages - 1 : 0));
 
         model.addAttribute("entries", pagedRecords);
         model.addAttribute("selectedDate", date != null ? date : today);
@@ -162,41 +133,70 @@ public class ProductionController {
         model.addAttribute("totalRecords", totalRecords);
         model.addAttribute("pageSize", pageSize);
 
-        int totalOutput = records.stream().mapToInt(r -> r.getOutput() != null ? r.getOutput() : 0).sum();
-        long effCount = records.stream().filter(r -> r.getEff() != null).count();
-        double avgEff = records.stream().filter(r -> r.getEff() != null).mapToDouble(r -> r.getEff()).average()
-                .orElse(0);
-        model.addAttribute("totalOutput", totalOutput);
-        model.addAttribute("avgEff", effCount > 0 ? avgEff : null);
+        model.addAttribute("totalOutput", ProductionStatsUtil.totalOutput(pagedRecords));
+        model.addAttribute("avgEff", ProductionStatsUtil.averageEff(pagedRecords));
 
         return "entry";
     }
 
     /* ── Save Entry ───────────────────────────────────────────── */
     @PostMapping("/save")
-    public String saveEntry(DailyProductionDto dto, Principal principal) {
+    public String saveEntry(@Valid @ModelAttribute DailyProductionDto dto,
+                            BindingResult result,
+                            RedirectAttributes redirectAttributes,
+                            Principal principal,
+                            HttpServletRequest request) {
+        if (result.hasErrors()) {
+            meterRegistry.counter("validation.errors", "form", "entry").increment();
+            String errorMsg = result.getFieldErrors().stream()
+                    .map(e -> e.getDefaultMessage())
+                    .findFirst().orElse("Dữ liệu nhập không hợp lệ.");
+            redirectAttributes.addFlashAttribute("validationError", errorMsg);
+            return "redirect:/entry/?error";
+        }
         productionService.saveDailyProduction(dto, principal.getName());
         systemLogService.logAction("ADD_ENTRY",
-                "Added production entry for Section: " + dto.getSection() + ", Article: " + dto.getArticle());
+                "Section=" + dto.getSection() + ", Article=" + dto.getArticle(), request);
         return "redirect:/entry/?success";
     }
 
     /* ── Edit Entry (MANAGER / ADMIN only) ────────────────────── */
     @PostMapping("/edit")
-    public String editEntry(@ModelAttribute DailyProductionDto dto, Principal principal) {
+    public String editEntry(@Valid @ModelAttribute DailyProductionDto dto,
+                            BindingResult result,
+                            RedirectAttributes redirectAttributes,
+                            Principal principal,
+                            HttpServletRequest request) {
+        if (result.hasErrors()) {
+            meterRegistry.counter("validation.errors", "form", "entry").increment();
+            String errorMsg = result.getFieldErrors().stream()
+                    .map(e -> e.getDefaultMessage())
+                    .findFirst().orElse("Dữ liệu nhập không hợp lệ.");
+            redirectAttributes.addFlashAttribute("validationError", errorMsg);
+            return "redirect:/entry/?error";
+        }
+        DailyProductionDto before = productionService.getById(dto.getId());
         productionService.saveDailyProduction(dto, principal.getName());
         systemLogService.logAction("EDIT_ENTRY",
-                "Edited production entry ID: " + dto.getId()
-                        + ", Section: " + dto.getSection()
-                        + ", Line: " + dto.getLine());
+                "ID=" + dto.getId()
+                        + " | before: output=" + before.getOutput() + ", article=" + before.getArticle()
+                        + " | after: output=" + dto.getOutput() + ", article=" + dto.getArticle(),
+                request);
         return "redirect:/entry/?edited";
     }
 
     /* ── Delete Entry (MANAGER / ADMIN only) ──────────────────── */
     @PostMapping("/admin-delete")
-    public String adminDeleteEntry(@RequestParam Long id) {
+    public String adminDeleteEntry(@RequestParam Long id, HttpServletRequest request) {
+        DailyProductionDto before = productionService.getById(id);
         productionService.deleteRecord(id);
-        systemLogService.logAction("DELETE_ENTRY", "Deleted production entry ID: " + id);
+        systemLogService.logAction("DELETE_ENTRY",
+                "ID=" + id + " | Section=" + before.getSection()
+                        + ", Line=" + before.getLine()
+                        + ", Date=" + before.getProductionDate()
+                        + ", Article=" + before.getArticle()
+                        + ", Output=" + before.getOutput(),
+                request);
         return "redirect:/entry/?deleted";
     }
 
@@ -219,10 +219,10 @@ public class ProductionController {
 
     /* ── Bulk Delete (MANAGER / ADMIN only) ──────────────────── */
     @PostMapping("/bulk-delete")
-    public String bulkDelete(@RequestParam List<Long> ids) {
+    public String bulkDelete(@RequestParam List<Long> ids, HttpServletRequest request) {
         ids.forEach(productionService::deleteRecord);
         systemLogService.logAction("BULK_DELETE_ENTRY",
-                "Bulk deleted " + ids.size() + " entries: " + ids);
+                "Bulk deleted " + ids.size() + " entries: " + ids, request);
         return "redirect:/entry/?deleted";
     }
 

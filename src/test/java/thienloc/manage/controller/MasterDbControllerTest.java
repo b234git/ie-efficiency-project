@@ -53,7 +53,7 @@ class MasterDbControllerTest {
                 .thenReturn(new PageImpl<>(List.of()));
         when(masterDbService.getDistinctMonths()).thenReturn(List.of());
 
-        mockMvc.perform(get("/masterdb/").with(user("user").roles("USER")))
+        mockMvc.perform(get("/masterdb/").with(user("manager").roles("MANAGER")))
                 .andExpect(status().isOk())
                 .andExpect(view().name("masterdb"))
                 .andExpect(model().attributeExists("records", "currentPage", "totalPages"));
@@ -65,7 +65,7 @@ class MasterDbControllerTest {
                 .thenReturn(new PageImpl<>(List.of()));
         when(masterDbService.getDistinctMonths()).thenReturn(List.of());
 
-        mockMvc.perform(get("/masterdb/").param("keyword", "Y123").with(user("user").roles("USER")))
+        mockMvc.perform(get("/masterdb/").param("keyword", "Y123").with(user("manager").roles("MANAGER")))
                 .andExpect(status().isOk());
 
         verify(masterDbService).search(eq("Y123"), isNull(), eq(0));
@@ -130,7 +130,7 @@ class MasterDbControllerTest {
     void testDownloadTemplate() throws Exception {
         when(masterDbTemplateService.generateTemplate()).thenReturn(new byte[]{1, 2, 3});
 
-        mockMvc.perform(get("/masterdb/template").with(user("user").roles("USER")))
+        mockMvc.perform(get("/masterdb/template").with(user("manager").roles("MANAGER")))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition",
                         "attachment; filename=MasterDb_Template.xlsx"));

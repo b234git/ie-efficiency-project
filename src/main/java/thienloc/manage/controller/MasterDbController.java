@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -70,16 +71,27 @@ public class MasterDbController {
     public String save(@ModelAttribute MasterDb entity,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
-            RedirectAttributes redirectAttributes) {
+            RedirectAttributes redirectAttributes,
+            HttpServletRequest request) {
         try {
             boolean isNew = (entity.getId() == null);
+            String details;
+            if (!isNew) {
+                MasterDb before = masterDbService.findById(entity.getId()).orElse(null);
+                details = before != null
+                        ? "ID=" + entity.getId()
+                                + " | before: ref=" + before.getRef() + ", article=" + before.getArticleNo()
+                                + " | after: ref=" + entity.getRef() + ", article=" + entity.getArticleNo()
+                        : "Ref=" + entity.getRef() + ", Article=" + entity.getArticleNo();
+            } else {
+                details = "Ref=" + entity.getRef() + ", Article=" + entity.getArticleNo();
+            }
             masterDbService.save(entity);
-            String action = isNew ? "ADD_MASTERDB" : "EDIT_MASTERDB";
-            systemLogService.logAction(action, "Ref: " + entity.getRef() + ", Article: " + entity.getArticleNo());
+            systemLogService.logAction(isNew ? "ADD_MASTERDB" : "EDIT_MASTERDB", details, request);
             redirectAttributes.addFlashAttribute("success",
-                    isNew ? "Thêm mới thành công!" : "Cập nhật thành công!");
+                    isNew ? "Record added successfully!" : "Record updated successfully!");
         } catch (RuntimeException e) {
-            redirectAttributes.addFlashAttribute("error", "Lỗi: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("error", "Error: " + e.getMessage());
         }
         return buildRedirect(keyword, page);
     }
@@ -90,13 +102,19 @@ public class MasterDbController {
     public String delete(@RequestParam Long id,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
-            RedirectAttributes redirectAttributes) {
+            RedirectAttributes redirectAttributes,
+            HttpServletRequest request) {
         try {
+            MasterDb before = masterDbService.findById(id).orElse(null);
             masterDbService.deleteById(id);
-            systemLogService.logAction("DELETE_MASTERDB", "Deleted MasterDb ID: " + id);
-            redirectAttributes.addFlashAttribute("success", "Xóa thành công!");
+            String details = before != null
+                    ? "ID=" + id + " | Ref=" + before.getRef() + ", Article=" + before.getArticleNo()
+                            + ", DataMonth=" + before.getDataMonth()
+                    : "ID=" + id;
+            systemLogService.logAction("DELETE_MASTERDB", details, request);
+            redirectAttributes.addFlashAttribute("success", "Record deleted successfully!");
         } catch (RuntimeException e) {
-            redirectAttributes.addFlashAttribute("error", "Lỗi khi xóa: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("error", "Delete error: " + e.getMessage());
         }
         return buildRedirect(keyword, page);
     }
@@ -109,7 +127,7 @@ public class MasterDbController {
             HttpSession session,
             RedirectAttributes redirectAttributes) {
         if (file.isEmpty()) {
-            redirectAttributes.addFlashAttribute("error", "Vui lòng chọn file Excel.");
+            redirectAttributes.addFlashAttribute("error", "Please select an Excel file.");
             return "redirect:/masterdb/";
         }
         try {
@@ -117,7 +135,7 @@ public class MasterDbController {
             session.setAttribute("importPreview", preview);
             return "redirect:/masterdb/import/confirm";
         } catch (IOException | IllegalArgumentException e) {
-            redirectAttributes.addFlashAttribute("error", "Lỗi import: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("error", "Import error: " + e.getMessage());
             return "redirect:/masterdb/";
         }
     }
@@ -126,7 +144,7 @@ public class MasterDbController {
     public String importConfirm(HttpSession session, Model model, RedirectAttributes redirectAttributes) {
         ImportPreviewDto preview = (ImportPreviewDto) session.getAttribute("importPreview");
         if (preview == null) {
-            redirectAttributes.addFlashAttribute("error", "Không có dữ liệu import. Vui lòng upload lại.");
+            redirectAttributes.addFlashAttribute("error", "No import data found. Please upload again.");
             return "redirect:/masterdb/";
         }
         model.addAttribute("preview", preview);
@@ -138,7 +156,7 @@ public class MasterDbController {
             RedirectAttributes redirectAttributes) {
         ImportPreviewDto preview = (ImportPreviewDto) session.getAttribute("importPreview");
         if (preview == null) {
-            redirectAttributes.addFlashAttribute("error", "Phiên import đã hết hạn. Vui lòng upload lại.");
+            redirectAttributes.addFlashAttribute("error", "Import session expired. Please upload again.");
             return "redirect:/masterdb/";
         }
         try {
@@ -149,10 +167,10 @@ public class MasterDbController {
                             + ", updated: " + preview.getUpdateCount()
                             + "). Month: " + preview.getDataMonth());
             redirectAttributes.addFlashAttribute("success",
-                    "Import thành công! " + preview.getNewCount() + " mới, "
-                            + preview.getUpdateCount() + " cập nhật.");
+                    "Import successful! " + preview.getNewCount() + " new, "
+                            + preview.getUpdateCount() + " updated.");
         } catch (RuntimeException e) {
-            redirectAttributes.addFlashAttribute("error", "Lỗi khi commit import: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("error", "Import commit error: " + e.getMessage());
         }
         return "redirect:/masterdb/";
     }
@@ -160,7 +178,7 @@ public class MasterDbController {
     @PostMapping("/import/cancel")
     public String importCancel(HttpSession session, RedirectAttributes redirectAttributes) {
         session.removeAttribute("importPreview");
-        redirectAttributes.addFlashAttribute("success", "Đã hủy import.");
+        redirectAttributes.addFlashAttribute("success", "Import cancelled.");
         return "redirect:/masterdb/";
     }
 
