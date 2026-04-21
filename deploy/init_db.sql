@@ -270,3 +270,7 @@ CREATE TABLE IF NOT EXISTS eff_incentive_rate (
     CONSTRAINT pk_eff_incentive_rate         PRIMARY KEY (id),
     CONSTRAINT uq_eff_incentive_rate_sec_pct UNIQUE (sec, eff_percent)
 );
+
+-- ─── Grant permissions to app user ───────────────────────────
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ie_app;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ie_app;

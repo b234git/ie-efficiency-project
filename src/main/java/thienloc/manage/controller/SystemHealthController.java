@@ -32,7 +32,7 @@ public class SystemHealthController {
     @Autowired
     private DataSource dataSource;
 
-    @Autowired
+    @Autowired(required = false)
     private InfoEndpoint infoEndpoint;
 
     @Value("${info.app.name:IE-Eff}")
