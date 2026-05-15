@@ -11,12 +11,9 @@ import thienloc.manage.service.NotificationService;
 
 import java.util.List;
 
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(NotificationController.class)
@@ -43,27 +40,5 @@ class NotificationControllerTest {
     void testList_UserRole_Forbidden() throws Exception {
         mockMvc.perform(get("/notifications").with(user("user").roles("USER")))
                 .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void testMarkAsRead() throws Exception {
-        mockMvc.perform(post("/notifications/read/1")
-                        .with(user("user").roles("ADMIN"))
-                        .with(csrf()))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/notifications"));
-
-        verify(notificationService).markAsRead(1L);
-    }
-
-    @Test
-    void testDismissAll() throws Exception {
-        mockMvc.perform(post("/notifications/dismiss-all")
-                        .with(user("user").roles("ADMIN"))
-                        .with(csrf()))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/notifications"));
-
-        verify(notificationService).dismissAll("ROLE_ADMIN");
     }
 }

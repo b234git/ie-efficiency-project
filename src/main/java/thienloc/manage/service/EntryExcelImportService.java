@@ -2,7 +2,6 @@ package thienloc.manage.service;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
-import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -20,39 +19,27 @@ import thienloc.manage.entity.DailyProductionDetail;
 import thienloc.manage.entity.User;
 import thienloc.manage.exception.ResourceNotFoundException;
 import thienloc.manage.repository.DailyProductionRepository;
+import thienloc.manage.util.CanonicalColumn;
 import thienloc.manage.util.ExcelCellUtil;
+import thienloc.manage.util.HeaderResolver;
+import thienloc.manage.util.SheetDetector;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static thienloc.manage.util.EntryExcelLayout.COL_ALLOWANCE;
-import static thienloc.manage.util.EntryExcelLayout.COL_ARTICLE;
-import static thienloc.manage.util.EntryExcelLayout.COL_DATE;
-import static thienloc.manage.util.EntryExcelLayout.COL_DL;
-import static thienloc.manage.util.EntryExcelLayout.COL_DLI;
-import static thienloc.manage.util.EntryExcelLayout.COL_IDL;
-import static thienloc.manage.util.EntryExcelLayout.COL_LINE;
-import static thienloc.manage.util.EntryExcelLayout.COL_OUTPUT;
-import static thienloc.manage.util.EntryExcelLayout.COL_RFT;
-import static thienloc.manage.util.EntryExcelLayout.COL_SECTION;
-import static thienloc.manage.util.EntryExcelLayout.COL_SLOTS_START;
-import static thienloc.manage.util.EntryExcelLayout.COL_SUBLINE;
-import static thienloc.manage.util.EntryExcelLayout.COL_SUBSECTION;
-import static thienloc.manage.util.EntryExcelLayout.COL_WT;
-import static thienloc.manage.util.EntryExcelLayout.DATA_START_ROW;
-import static thienloc.manage.util.EntryExcelLayout.TIME_SLOTS;
-
 /**
- * Imports the daily-production Excel template (DB sheet).
- * Provides both full import (persists records) and preview parsing (no persistence).
+ * Imports the daily-production Excel file. Accepts both:
+ *   - the project's own template (sheet "DB", project column layout), and
+ *   - the factory "EFF APR V6" production workbook (sheet "D",
+ *     REF 1 / REF 2 prefix columns, different positions).
+ * Sheet selection and column positions are resolved at parse time via
+ * {@link SheetDetector} and {@link HeaderResolver}.
  */
 @Service
 public class EntryExcelImportService {
@@ -86,46 +73,35 @@ public class EntryExcelImportService {
         List<DailyProduction> productions = new ArrayList<>();
 
         try (Workbook workbook = new XSSFWorkbook(inputStream)) {
-            Sheet sheet = workbook.getSheet("DB");
-            if (sheet == null) {
-                sheet = workbook.getSheetAt(0);
-            }
+            Sheet sheet = SheetDetector.findDailyDetailSheet(workbook);
+            HeaderResolver headers = HeaderResolver.resolve(sheet);
+            int dataStart = headers.getDataStartRow();
 
             // Iterating backwards ensures correct "Recent Entries" display order
-            for (int i = sheet.getLastRowNum(); i >= DATA_START_ROW; i--) {
+            for (int i = sheet.getLastRowNum(); i >= dataStart; i--) {
                 Row row = sheet.getRow(i);
                 if (row == null) continue;
 
-                Cell dateCell = row.getCell(COL_DATE);
+                Cell dateCell = headers.cell(row, CanonicalColumn.DATE);
                 if (dateCell == null || dateCell.getCellType() == CellType.BLANK) continue;
 
-                LocalDate productionDate;
-                if (dateCell.getCellType() == CellType.NUMERIC) {
-                    Date javaDate = DateUtil.getJavaDate(dateCell.getNumericCellValue());
-                    productionDate = javaDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-                } else {
-                    productionDate = LocalDate.parse(dateCell.getStringCellValue().trim());
-                }
+                LocalDate productionDate = ExcelCellUtil.parseDateCell(dateCell);
+                if (productionDate == null) continue;
 
-                String section = ExcelCellUtil.getString(row.getCell(COL_SECTION));
-                String subsection = ExcelCellUtil.getString(row.getCell(COL_SUBSECTION));
-                if (section != null && subsection != null && !subsection.isBlank()) {
-                    section = section + " " + subsection.trim().toUpperCase();
-                }
-                section = SectionMetrics.normalize(section);
+                String section = resolveSection(row, headers);
                 String line = combineLine(
-                        ExcelCellUtil.getString(row.getCell(COL_LINE)),
-                        ExcelCellUtil.getString(row.getCell(COL_SUBLINE)));
-                Double mp = ExcelCellUtil.getDouble(row.getCell(COL_DL));
-                Double dli = ExcelCellUtil.getDouble(row.getCell(COL_DLI));
-                Double idl = ExcelCellUtil.getDouble(row.getCell(COL_IDL));
-                Integer output = ExcelCellUtil.getInteger(row.getCell(COL_OUTPUT));
-                Double wt = ExcelCellUtil.getDouble(row.getCell(COL_WT));
-                Double rft = ExcelCellUtil.getDouble(row.getCell(COL_RFT));
+                        ExcelCellUtil.getString(headers.cell(row, CanonicalColumn.LINE)),
+                        ExcelCellUtil.getString(headers.cell(row, CanonicalColumn.SUBLINE)));
+                Double mp = ExcelCellUtil.getDouble(headers.cell(row, CanonicalColumn.DL));
+                Double dli = ExcelCellUtil.getDouble(headers.cell(row, CanonicalColumn.DLI));
+                Double idl = ExcelCellUtil.getDouble(headers.cell(row, CanonicalColumn.IDL));
+                Integer output = ExcelCellUtil.getInteger(headers.cell(row, CanonicalColumn.OUTPUT));
+                Double wt = ExcelCellUtil.getDouble(headers.cell(row, CanonicalColumn.WT));
+                Double rft = ExcelCellUtil.getDouble(headers.cell(row, CanonicalColumn.RFT));
                 if (rft != null && rft > 0 && rft <= 1.0) {
                     rft = rft * 100.0;
                 }
-                Double allowance = ExcelCellUtil.getDouble(row.getCell(COL_ALLOWANCE));
+                Double allowance = ExcelCellUtil.getDouble(headers.cell(row, CanonicalColumn.ALLOWANCE));
                 if (allowance != null && allowance > 0 && allowance <= 1.0) {
                     allowance = allowance * 100.0;
                 }
@@ -153,13 +129,14 @@ public class EntryExcelImportService {
                         .build();
 
                 List<DailyProductionDetail> details = new ArrayList<>();
-                int colIdx = COL_SLOTS_START;
-                for (String slot : TIME_SLOTS) {
-                    String article = cleanArticleNo(ExcelCellUtil.getString(row.getCell(colIdx++)));
+                List<Integer> slotCols = headers.getTimeSlotColumns();
+                for (int s = 0; s < slotCols.size(); s++) {
+                    String article = cleanArticleNo(
+                            ExcelCellUtil.getString(row.getCell(slotCols.get(s))));
                     if (article != null && !article.isEmpty()) {
                         details.add(DailyProductionDetail.builder()
                                 .dailyProduction(production)
-                                .timeSlot(slot)
+                                .timeSlot(HeaderResolver.slotLabel(s))
                                 .output(0)
                                 .articleNo(article)
                                 .build());
@@ -169,12 +146,13 @@ public class EntryExcelImportService {
                 // Fallback: if no time-slot articles but ARTICLE column has value,
                 // fill all slots with the main article
                 if (details.isEmpty()) {
-                    String mainArticle = cleanArticleNo(ExcelCellUtil.getString(row.getCell(COL_ARTICLE)));
+                    String mainArticle = cleanArticleNo(
+                            ExcelCellUtil.getString(headers.cell(row, CanonicalColumn.ARTICLE)));
                     if (mainArticle != null && !mainArticle.isEmpty()) {
-                        for (String slot : TIME_SLOTS) {
+                        for (int s = 0; s < slotCols.size(); s++) {
                             details.add(DailyProductionDetail.builder()
                                     .dailyProduction(production)
-                                    .timeSlot(slot)
+                                    .timeSlot(HeaderResolver.slotLabel(s))
                                     .output(0)
                                     .articleNo(mainArticle)
                                     .build());
@@ -195,72 +173,64 @@ public class EntryExcelImportService {
         List<EntryImportPreviewDto.RowPreview> rows = new ArrayList<>();
 
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
-            Sheet sheet = workbook.getSheet("DB");
-            if (sheet == null) {
-                sheet = workbook.getSheetAt(0);
-            }
+            Sheet sheet = SheetDetector.findDailyDetailSheet(workbook);
+            HeaderResolver headers = HeaderResolver.resolve(sheet);
+            int dataStart = headers.getDataStartRow();
+            List<Integer> slotCols = headers.getTimeSlotColumns();
 
-            for (int i = DATA_START_ROW; i <= sheet.getLastRowNum(); i++) {
+            for (int i = dataStart; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
                 if (row == null) continue;
 
-                Cell dateCell = row.getCell(COL_DATE);
+                Cell dateCell = headers.cell(row, CanonicalColumn.DATE);
                 if (dateCell == null || dateCell.getCellType() == CellType.BLANK) continue;
 
                 EntryImportPreviewDto.RowPreview preview = new EntryImportPreviewDto.RowPreview();
                 preview.setRowNum(i + 1);
                 preview.setValid(true);
 
-                try {
-                    if (dateCell.getCellType() == CellType.NUMERIC) {
-                        Date javaDate = DateUtil.getJavaDate(dateCell.getNumericCellValue());
-                        preview.setProductionDate(javaDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
-                    } else {
-                        preview.setProductionDate(LocalDate.parse(dateCell.getStringCellValue().trim()));
-                    }
-                } catch (Exception e) {
+                LocalDate parsedDate = ExcelCellUtil.parseDateCell(dateCell);
+                if (parsedDate == null) {
                     preview.setValid(false);
-                    preview.setErrorMessage("Invalid date: " + e.getMessage());
+                    preview.setErrorMessage("Invalid date");
+                } else {
+                    preview.setProductionDate(parsedDate);
                 }
 
-                String previewSection = ExcelCellUtil.getString(row.getCell(COL_SECTION));
-                String previewSubsection = ExcelCellUtil.getString(row.getCell(COL_SUBSECTION));
-                if (previewSubsection != null && !previewSubsection.isBlank()) {
-                    previewSection = previewSection + " " + previewSubsection.trim().toUpperCase();
-                }
-                preview.setSection(previewSection);
+                preview.setSection(resolveSection(row, headers));
                 preview.setLine(combineLine(
-                        ExcelCellUtil.getString(row.getCell(COL_LINE)),
-                        ExcelCellUtil.getString(row.getCell(COL_SUBLINE))));
-                preview.setMp(ExcelCellUtil.getDouble(row.getCell(COL_DL)));
-                preview.setDli(ExcelCellUtil.getDouble(row.getCell(COL_DLI)));
-                preview.setIdl(ExcelCellUtil.getDouble(row.getCell(COL_IDL)));
-                preview.setTotalOutput(ExcelCellUtil.getInteger(row.getCell(COL_OUTPUT)));
-                preview.setWt(ExcelCellUtil.getDouble(row.getCell(COL_WT)));
-                Double rft = ExcelCellUtil.getDouble(row.getCell(COL_RFT));
+                        ExcelCellUtil.getString(headers.cell(row, CanonicalColumn.LINE)),
+                        ExcelCellUtil.getString(headers.cell(row, CanonicalColumn.SUBLINE))));
+                preview.setMp(ExcelCellUtil.getDouble(headers.cell(row, CanonicalColumn.DL)));
+                preview.setDli(ExcelCellUtil.getDouble(headers.cell(row, CanonicalColumn.DLI)));
+                preview.setIdl(ExcelCellUtil.getDouble(headers.cell(row, CanonicalColumn.IDL)));
+                preview.setTotalOutput(ExcelCellUtil.getInteger(headers.cell(row, CanonicalColumn.OUTPUT)));
+                preview.setWt(ExcelCellUtil.getDouble(headers.cell(row, CanonicalColumn.WT)));
+                Double rft = ExcelCellUtil.getDouble(headers.cell(row, CanonicalColumn.RFT));
                 if (rft != null && rft > 0 && rft <= 1.0) {
                     rft = rft * 100.0;
                 }
                 preview.setRft(rft);
-                Double allowance = ExcelCellUtil.getDouble(row.getCell(COL_ALLOWANCE));
+                Double allowance = ExcelCellUtil.getDouble(headers.cell(row, CanonicalColumn.ALLOWANCE));
                 if (allowance != null && allowance > 0 && allowance <= 1.0) {
                     allowance = allowance * 100.0;
                 }
                 preview.setAllowance(allowance != null ? allowance : 100.0);
 
                 Map<String, String> articles = new LinkedHashMap<>();
-                int colIdx = COL_SLOTS_START;
-                for (String slot : TIME_SLOTS) {
-                    String article = cleanArticleNo(ExcelCellUtil.getString(row.getCell(colIdx++)));
+                for (int s = 0; s < slotCols.size(); s++) {
+                    String article = cleanArticleNo(
+                            ExcelCellUtil.getString(row.getCell(slotCols.get(s))));
                     if (article != null && !article.isEmpty()) {
-                        articles.put(slot, article);
+                        articles.put(HeaderResolver.slotLabel(s), article);
                     }
                 }
 
-                String mainArticle = cleanArticleNo(ExcelCellUtil.getString(row.getCell(COL_ARTICLE)));
+                String mainArticle = cleanArticleNo(
+                        ExcelCellUtil.getString(headers.cell(row, CanonicalColumn.ARTICLE)));
                 if (articles.isEmpty() && mainArticle != null && !mainArticle.isEmpty()) {
-                    for (String slot : TIME_SLOTS) {
-                        articles.put(slot, mainArticle);
+                    for (int s = 0; s < slotCols.size(); s++) {
+                        articles.put(HeaderResolver.slotLabel(s), mainArticle);
                     }
                 }
                 preview.setMainArticle(mainArticle);
@@ -293,6 +263,30 @@ public class EntryExcelImportService {
                 .build();
         meterRegistry.timer("excel.entry.parse").record(System.nanoTime() - t0, TimeUnit.NANOSECONDS);
         return result;
+    }
+
+    /**
+     * Combine row-level Section and Subsection columns into the canonical
+     * section name. The factory xlsx omits Subsection (the 1ST/2ND distinction
+     * comes from the article's "-2" suffix instead), so an empty Subsection
+     * leaves the short-form section to {@link SectionMetrics#normalize} for
+     * alias resolution.
+     */
+    private static String resolveSection(Row row, HeaderResolver headers) {
+        String section = ExcelCellUtil.getString(headers.cell(row, CanonicalColumn.SECTION));
+        String subsection = ExcelCellUtil.getString(headers.cell(row, CanonicalColumn.SUBSECTION));
+        if (section != null && subsection != null && !subsection.isBlank()) {
+            section = section + " " + subsection.trim().toUpperCase();
+        } else if (section != null && "SF".equalsIgnoreCase(section.trim())) {
+            // Factory layout: when a STOCKFIT row's line code is "UV" (e.g. line "UV",
+            // sub-line blank), promote section to "STOCKFIT UV" so downstream lookups
+            // hit the right MasterDb columns. Subsection isn't used in this layout.
+            String line = ExcelCellUtil.getString(headers.cell(row, CanonicalColumn.LINE));
+            if (line != null && "UV".equalsIgnoreCase(line.trim())) {
+                section = "STOCKFIT UV";
+            }
+        }
+        return SectionMetrics.normalize(section);
     }
 
     private static String combineLine(String lineNumber, String subLine) {

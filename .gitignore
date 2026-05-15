@@ -34,8 +34,6 @@ build/
 
 /.claude
 
-*.md
-
 *.py
 
 *.txt

@@ -4,6 +4,8 @@
 <head>
     <title th:text="#{entry.title}">Data Entry</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <link rel="stylesheet" th:href="@{/css/main.css}">
     <style>
         .eff-hi { color: #28a745; }
@@ -121,7 +123,7 @@
                 </div>
                 <div class="form-group">
                     <label title="Right First Time - % of products passing on first attempt" th:text="#{entry.label.rft}">RFT (%)</label>
-                    <input type="number" step="0.1" th:field="*{rft}" class="form-control" min="0" max="100"
+                    <input type="number" step="0.01" th:field="*{rft}" class="form-control" min="0" max="100"
                         placeholder="e.g. 95" />
                 </div>
                 <div class="form-group">
@@ -156,8 +158,11 @@
                 </div>
             </div>
 
-            <div class="form-group" style="margin-top:20px;">
-                <button type="submit" id="submitBtn" class="btn btn-primary" style="width:100%;" th:text="#{entry.save.btn}">💾 Save Entry</button>
+            <div class="form-group" style="margin-top:20px; display:flex; gap:10px;">
+                <button type="submit" id="submitBtn" class="btn btn-primary" style="flex:1;" th:text="#{entry.save.btn}">💾 Save Entry</button>
+                <button type="button" onclick="cancelEdit()"
+                        style="background:#6c757d;color:white;border:none;padding:8px 20px;border-radius:4px;cursor:pointer;white-space:nowrap;"
+                        th:text="#{entry.clear.btn}">✕ Clear</button>
             </div>
         </form>
 
@@ -222,6 +227,15 @@
                 <label for="errorsOnly" style="cursor:pointer; font-weight:600; color:#dc3545; margin:0;"
                        th:text="#{entry.filter.errorsonly}">Errors only</label>
             </div>
+            <div>
+                <select name="pageSize" class="form-control" style="width:110px; display:inline-block;">
+                    <option value="25"  th:selected="${pageSize == 25}">25 / page</option>
+                    <option value="50"  th:selected="${pageSize == 50}">50 / page</option>
+                    <option value="100" th:selected="${pageSize == 100}">100 / page</option>
+                    <option value="150"  th:selected="${pageSize == 150}">150 / page</option>
+                    <option value="1000" th:selected="${pageSize == 1000}">1000 / page</option>
+                </select>
+            </div>
             <button type="submit" class="btn btn-primary" th:text="#{mydata.view}">View</button>
         </form>
 
@@ -233,18 +247,62 @@
              style="display:none; position:fixed; top:16px; left:50%; transform:translateX(-50%);
                     background:#343a40; color:white; padding:10px 22px; border-radius:8px;
                     box-shadow:0 4px 16px rgba(0,0,0,0.35); z-index:2000;
-                    align-items:center; gap:14px; white-space:nowrap;">
-            <span id="bulkCountLabel" style="font-weight:600;"></span>
-            <button type="button" onclick="clearSelection()"
-                    style="background:#6c757d;color:white;border:none;padding:5px 14px;border-radius:4px;cursor:pointer;">
-                ✕ Deselect all
-            </button>
-            <span sec:authorize="hasAnyRole('ADMIN','MANAGER')">
-                <button type="button" onclick="bulkDelete()"
-                        style="background:#dc3545;color:white;border:none;padding:5px 14px;border-radius:4px;cursor:pointer;">
-                    🗑️ Delete selected
+                    align-items:center; gap:14px; white-space:nowrap; flex-direction:column;">
+            <div style="display:flex; align-items:center; gap:14px;">
+                <span id="bulkCountLabel" style="font-weight:600;"></span>
+                <button type="button" onclick="clearSelection()"
+                        style="background:#6c757d;color:white;border:none;padding:5px 14px;border-radius:4px;cursor:pointer;">
+                    ✕ Deselect all
                 </button>
-            </span>
+                <span sec:authorize="hasAnyRole('ADMIN','MANAGER')">
+                    <button type="button" onclick="bulkDelete()"
+                            style="background:#dc3545;color:white;border:none;padding:5px 14px;border-radius:4px;cursor:pointer;">
+                        🗑️ Delete selected
+                    </button>
+                </span>
+            </div>
+            <!-- "Select all matching" sub-row -->
+            <div id="selectAllMatchingRow" style="display:none; font-size:0.88em; color:#adb5bd;">
+                All <strong id="pageCountInBar"></strong> rows on this page selected. &nbsp;
+                <button type="button" onclick="selectAllMatching()"
+                        style="background:transparent; border:1px solid #adb5bd; color:white; padding:2px 10px; border-radius:4px; cursor:pointer; font-size:0.95em;">
+                    Select all <span id="totalMatchingCount" th:text="${totalRecords}">0</span> matching records
+                </button>
+            </div>
+        </div>
+
+        <!-- Bulk delete confirmation modal -->
+        <div id="bulkDeleteModal"
+             style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9001;
+                    justify-content:center; align-items:center;">
+            <div style="background:white; border-radius:8px; padding:24px; width:540px; max-width:95vw;">
+                <h4 style="margin:0 0 6px;">Delete <span id="bdmCount"></span> record(s)?</h4>
+                <p style="color:#dc3545; font-size:0.85em; margin:0 0 14px;">This action cannot be undone (you will have 8 seconds to undo after confirming).</p>
+                <div style="max-height:260px; overflow-y:auto; border:1px solid #dee2e6; border-radius:4px; margin-bottom:14px;">
+                    <table style="width:100%; font-size:0.85em; border-collapse:collapse;">
+                        <thead>
+                            <tr style="background:#f8f9fa; position:sticky; top:0;">
+                                <th style="padding:7px 10px; text-align:left; border-bottom:1px solid #dee2e6;">Date</th>
+                                <th style="padding:7px 10px; text-align:left; border-bottom:1px solid #dee2e6;">Section</th>
+                                <th style="padding:7px 10px; text-align:left; border-bottom:1px solid #dee2e6;">Line</th>
+                                <th style="padding:7px 10px; text-align:left; border-bottom:1px solid #dee2e6;">Article</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bdmRows"></tbody>
+                    </table>
+                </div>
+                <p id="bdmOffpage" style="display:none; color:#6c757d; font-size:0.83em; margin:0 0 14px;"></p>
+                <div style="display:flex; gap:10px; justify-content:flex-end;">
+                    <button type="button" onclick="closeBulkDeleteModal()"
+                            style="padding:7px 18px; border:1px solid #ccc; border-radius:4px; cursor:pointer; background:white;">
+                        Cancel
+                    </button>
+                    <button type="button" onclick="confirmBulkDelete()"
+                            style="padding:7px 18px; background:#dc3545; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:600;">
+                        🗑️ Delete
+                    </button>
+                </div>
+            </div>
         </div>
 
         <div style="overflow-x:auto;">
@@ -275,10 +333,11 @@
                     <td colspan="13" style="text-align:center; color:#888; padding:30px;"
                         th:text="#{mydata.nodata}">No data for this period.</td>
                 </tr>
-                <tr th:each="record, stat : ${entries}">
+                <tr th:each="record, stat : ${entries}" th:attr="data-source=${record.source}">
                     <td style="text-align:center;">
                         <input type="checkbox" class="row-checkbox"
                                th:value="${record.id}"
+                               th:attr="data-source=${record.source}"
                                style="width:16px;height:16px;cursor:pointer;"
                                onchange="onCheckboxChange(this)" />
                     </td>
@@ -316,6 +375,17 @@
                         <th:block th:if="${record.source == 'SPLIT'}">
                             <a th:href="@{/split-entry/(date=${record.productionDate})}"
                                style="background:#6c757d;color:white;padding:4px 8px;border:none;border-radius:3px;text-decoration:none;font-size:0.9em;">View Split</a>
+                            <!-- ADMIN: delete split-entry directly from entry view -->
+                            <form sec:authorize="hasRole('ADMIN')"
+                                  th:action="@{'/split-entry/delete.json/' + ${record.id}}" method="post"
+                                  style="display:inline; margin-left:4px;"
+                                  onsubmit="return ajaxDeleteSplit(event, this)"
+                                  th:data-confirm="#{entry.delete.split.confirm}">
+                                <button type="submit"
+                                    style="background:#dc3545;color:white;padding:4px 8px;border:none;border-radius:3px;cursor:pointer;font-size:0.9em;">
+                                    🗑️ <span th:text="#{entry.delete.btn}">Delete</span>
+                                </button>
+                            </form>
                         </th:block>
                         <!-- Normal entry rows -->
                         <th:block th:unless="${record.source == 'SPLIT'}">
@@ -339,7 +409,7 @@
                                     style="background:#ffc107;color:#000;padding:4px 8px;border:none;border-radius:3px;cursor:pointer;margin-right:4px;">
                                     ✏️ <span th:text="#{entry.edit.btn}">Edit</span>
                                 </button>
-                                <form th:action="@{/entry/admin-delete}" method="post" style="display:inline;"
+                                <form th:action="@{/entry/admin-delete.json}" method="post" style="display:inline;"
                                       onsubmit="return ajaxDelete(event, this)"
                                       th:data-confirm="#{entry.delete.confirm}">
                                     <input type="hidden" name="id" th:value="${record.id}" />
@@ -370,7 +440,7 @@
              style="display:flex; justify-content:center; align-items:center; gap:6px; margin-top:20px; flex-wrap:wrap;">
             <!-- First -->
             <a th:if="${currentPage > 0}"
-               th:href="@{/entry/(range=${selectedRange}, date=${selectedDate}, month=${selectedMonth}, article=${article}, errorsOnly=${errorsOnly}, section=${selectedSection}, line=${selectedLine}, source=${selectedSource}, page=0)}"
+               th:href="@{/entry/(range=${selectedRange}, date=${selectedDate}, month=${selectedMonth}, article=${article}, errorsOnly=${errorsOnly}, section=${selectedSection}, line=${selectedLine}, source=${selectedSource}, pageSize=${pageSize}, page=0)}"
                style="padding:6px 12px; border:1px solid #dee2e6; border-radius:4px; text-decoration:none; color:#007bff; background:white;"
                title="First page">&laquo;&laquo;</a>
             <span th:unless="${currentPage > 0}"
@@ -378,7 +448,7 @@
                >&laquo;&laquo;</span>
             <!-- Prev -->
             <a th:if="${currentPage > 0}"
-               th:href="@{/entry/(range=${selectedRange}, date=${selectedDate}, month=${selectedMonth}, article=${article}, errorsOnly=${errorsOnly}, section=${selectedSection}, line=${selectedLine}, source=${selectedSource}, page=${currentPage - 1})}"
+               th:href="@{/entry/(range=${selectedRange}, date=${selectedDate}, month=${selectedMonth}, article=${article}, errorsOnly=${errorsOnly}, section=${selectedSection}, line=${selectedLine}, source=${selectedSource}, pageSize=${pageSize}, page=${currentPage - 1})}"
                style="padding:6px 12px; border:1px solid #dee2e6; border-radius:4px; text-decoration:none; color:#007bff; background:white;"
                title="Previous page">&laquo;</a>
             <span th:unless="${currentPage > 0}"
@@ -391,7 +461,7 @@
             </span>
             <!-- Next -->
             <a th:if="${currentPage < totalPages - 1}"
-               th:href="@{/entry/(range=${selectedRange}, date=${selectedDate}, month=${selectedMonth}, article=${article}, errorsOnly=${errorsOnly}, section=${selectedSection}, line=${selectedLine}, source=${selectedSource}, page=${currentPage + 1})}"
+               th:href="@{/entry/(range=${selectedRange}, date=${selectedDate}, month=${selectedMonth}, article=${article}, errorsOnly=${errorsOnly}, section=${selectedSection}, line=${selectedLine}, source=${selectedSource}, pageSize=${pageSize}, page=${currentPage + 1})}"
                style="padding:6px 12px; border:1px solid #dee2e6; border-radius:4px; text-decoration:none; color:#007bff; background:white;"
                title="Next page">&raquo;</a>
             <span th:unless="${currentPage < totalPages - 1}"
@@ -399,7 +469,7 @@
                >&raquo;</span>
             <!-- Last -->
             <a th:if="${currentPage < totalPages - 1}"
-               th:href="@{/entry/(range=${selectedRange}, date=${selectedDate}, month=${selectedMonth}, article=${article}, errorsOnly=${errorsOnly}, section=${selectedSection}, line=${selectedLine}, source=${selectedSource}, page=${totalPages - 1})}"
+               th:href="@{/entry/(range=${selectedRange}, date=${selectedDate}, month=${selectedMonth}, article=${article}, errorsOnly=${errorsOnly}, section=${selectedSection}, line=${selectedLine}, source=${selectedSource}, pageSize=${pageSize}, page=${totalPages - 1})}"
                style="padding:6px 12px; border:1px solid #dee2e6; border-radius:4px; text-decoration:none; color:#007bff; background:white;"
                title="Last page">&raquo;&raquo;</a>
             <span th:unless="${currentPage < totalPages - 1}"
@@ -439,6 +509,15 @@
     </div>
 
     <script>
+        // ── Filter state (for select-all-matching API call) ──────────────────
+        var FILTER_RANGE   = /*[[${selectedRange}]]*/ 'TODAY';
+        var FILTER_DATE    = /*[[${selectedDate}]]*/ '';
+        var FILTER_MONTH   = /*[[${selectedMonth}]]*/ '';
+        var FILTER_SECTION = /*[[${selectedSection}]]*/ '';
+        var FILTER_LINE    = /*[[${selectedLine}]]*/ '';
+        var TOTAL_RECORDS  = /*[[${totalRecords}]]*/ 0;
+        var TOTAL_PAGES    = /*[[${totalPages}]]*/ 1;
+
         // ── All available time slots (in order) ─────────────────────────────
         var ALL_SLOTS = ['07:00-08:00','08:00-09:00','09:00-10:00','10:00-11:00','11:00-12:00',
                          '12:00-13:00','13:00-14:00','14:00-15:00','15:00-16:00','16:00-17:00',
@@ -776,6 +855,8 @@
             updateBulkBar();
         }
 
+        var _selectAllMatchingActive = false;
+
         function updateBulkBar() {
             var all = document.querySelectorAll('.row-checkbox');
             var checkedOnPage = document.querySelectorAll('.row-checkbox:checked');
@@ -794,10 +875,40 @@
             var bar = document.getElementById('bulkActionBar');
             if (totalSelected > 0) {
                 bar.style.display = 'flex';
-                document.getElementById('bulkCountLabel').textContent = totalSelected + ' selected';
+                var label = _selectAllMatchingActive
+                    ? 'All ' + totalSelected + ' matching records selected'
+                    : totalSelected + ' selected';
+                document.getElementById('bulkCountLabel').textContent = label;
+                // Show "select all matching" hint when all on page are checked and more exist
+                var samRow = document.getElementById('selectAllMatchingRow');
+                var allOnPageChecked = all.length > 0 && checkedOnPage.length === all.length;
+                if (allOnPageChecked && TOTAL_PAGES > 1 && !_selectAllMatchingActive) {
+                    document.getElementById('pageCountInBar').textContent = all.length;
+                    document.getElementById('totalMatchingCount').textContent = TOTAL_RECORDS;
+                    samRow.style.display = 'block';
+                } else {
+                    samRow.style.display = 'none';
+                }
             } else {
                 bar.style.display = 'none';
+                _selectAllMatchingActive = false;
             }
+        }
+
+        function selectAllMatching() {
+            var params = new URLSearchParams({
+                range: FILTER_RANGE, date: FILTER_DATE,
+                month: FILTER_MONTH, section: FILTER_SECTION, line: FILTER_LINE
+            });
+            fetch('/entry/api/filtered-ids?' + params)
+                .then(function(r) { return r.json(); })
+                .then(function(ids) {
+                    var sel = loadSelectedIds();
+                    ids.forEach(function(id) { sel.add(String(id)); });
+                    saveSelectedIds(sel);
+                    _selectAllMatchingActive = true;
+                    updateBulkBar();
+                });
         }
 
         function clearSelection() {
@@ -806,10 +917,19 @@
             sa.checked = false;
             sa.indeterminate = false;
             saveSelectedIds(new Set());
+            _selectAllMatchingActive = false;
             document.getElementById('bulkActionBar').style.display = 'none';
         }
 
         function ajaxDelete(event, form) {
+            return _ajaxDeleteJson(event, form, 'entry');
+        }
+
+        function ajaxDeleteSplit(event, form) {
+            return _ajaxDeleteJson(event, form, 'split');
+        }
+
+        function _ajaxDeleteJson(event, form, kind) {
             event.preventDefault();
             if (!confirm(form.dataset.confirm)) return false;
             var row = form.closest('tr');
@@ -818,24 +938,38 @@
             var params = new URLSearchParams(new FormData(form));
             fetch(form.action, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                headers: {'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json'},
                 body: params
             }).then(function(resp) {
-                if (resp.ok) {
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                return resp.json();
+            }).then(function(data) {
+                var deleted = (data.deleted || []).length;
+                var missing = (data.missing || []).length;
+                var failed  = (data.failed  || []).length;
+                if (deleted === 1) {
                     row.style.transition = 'opacity 0.2s';
                     row.style.opacity = '0';
                     setTimeout(function() {
                         row.remove();
                         refreshTable();
-                        showFlash('Entry deleted.', '#dc3545');
+                        showFlash(kind === 'split' ? 'Split entry deleted.' : 'Entry deleted.', '#dc3545');
                     }, 200);
-                } else {
-                    alert('Delete failed.');
+                } else if (missing === 1) {
                     btn.disabled = false;
+                    showFlash('Record no longer exists (already deleted). Refreshing…', '#ffc107');
+                    refreshTable();
+                } else if (failed === 1) {
+                    btn.disabled = false;
+                    var reason = (data.failed[0] && data.failed[0].reason) || 'unknown error';
+                    alert('Delete failed: ' + reason);
+                } else {
+                    btn.disabled = false;
+                    alert('Delete failed (no row affected).');
                 }
-            }).catch(function() {
-                alert('Delete failed.');
+            }).catch(function(err) {
                 btn.disabled = false;
+                alert('Delete failed: ' + (err && err.message ? err.message : 'network error'));
             });
             return false;
         }
@@ -843,33 +977,189 @@
         function bulkDelete() {
             var ids = Array.from(loadSelectedIds());
             if (ids.length === 0) return;
-            if (!confirm('Delete ' + ids.length + ' selected record(s)?')) return;
-            var form = document.getElementById('bulkDeleteForm');
-            form.querySelectorAll('input[name="ids"]').forEach(el => el.remove());
-            ids.forEach(function(id) {
-                var inp = document.createElement('input');
-                inp.type = 'hidden';
-                inp.name = 'ids';
-                inp.value = id;
-                form.appendChild(inp);
+            // Build summary rows from visible checked rows on current page
+            var summaryRows = [];
+            document.querySelectorAll('.row-checkbox:checked').forEach(function(cb) {
+                var tr = cb.closest('tr');
+                var cells = tr.querySelectorAll('td');
+                summaryRows.push({
+                    date:    cells[2] ? cells[2].textContent.trim() : '-',
+                    section: cells[3] ? (cells[3].querySelector('strong') || cells[3]).textContent.trim() : '-',
+                    line:    cells[4] ? cells[4].textContent.trim() : '-',
+                    article: cells[5] ? cells[5].textContent.trim() : '-'
+                });
             });
-            var params = new URLSearchParams(new FormData(form));
-            fetch(form.action, {
+            openBulkDeleteModal(ids, summaryRows);
+        }
+
+        function openBulkDeleteModal(ids, summaryRows) {
+            document.getElementById('bdmCount').textContent = ids.length;
+            var tbody = document.getElementById('bdmRows');
+            tbody.innerHTML = '';
+            summaryRows.forEach(function(r) {
+                var tr = document.createElement('tr');
+                tr.innerHTML =
+                    '<td style="padding:5px 10px; border-bottom:1px solid #f0f0f0;">' + _esc(r.date) + '</td>' +
+                    '<td style="padding:5px 10px; border-bottom:1px solid #f0f0f0;">' + _esc(r.section) + '</td>' +
+                    '<td style="padding:5px 10px; border-bottom:1px solid #f0f0f0;">' + _esc(r.line) + '</td>' +
+                    '<td style="padding:5px 10px; border-bottom:1px solid #f0f0f0;">' + _esc(r.article) + '</td>';
+                tbody.appendChild(tr);
+            });
+            var offpageCount = ids.length - summaryRows.length;
+            var offpage = document.getElementById('bdmOffpage');
+            if (offpageCount > 0) {
+                offpage.style.display = '';
+                offpage.textContent = '+ ' + offpageCount + ' more record(s) selected on other pages (not shown above).';
+            } else {
+                offpage.style.display = 'none';
+            }
+            window._pendingBulkIds = ids;
+            document.getElementById('bulkDeleteModal').style.display = 'flex';
+        }
+
+        function closeBulkDeleteModal() {
+            document.getElementById('bulkDeleteModal').style.display = 'none';
+            window._pendingBulkIds = null;
+        }
+
+        function confirmBulkDelete() {
+            var ids = window._pendingBulkIds;
+            if (!ids || ids.length === 0) return;
+            closeBulkDeleteModal();
+            _executeBulkDelete(ids);
+        }
+
+        var _undoTimer = null;
+        var _undoRows  = [];
+
+        function _executeBulkDelete(ids) {
+            // Capture source per id BEFORE rows are removed (off-page ids default to ENTRY).
+            var entryIds = [];
+            var splitIds = [];
+            ids.forEach(function(id) {
+                var cb = document.querySelector('.row-checkbox[value="' + id + '"]');
+                var src = cb ? cb.getAttribute('data-source') : null;
+                if (src === 'SPLIT') splitIds.push(id); else entryIds.push(id);
+            });
+
+            // Optimistically fade rows on current page
+            _undoRows = [];
+            ids.forEach(function(id) {
+                var cb = document.querySelector('.row-checkbox[value="' + id + '"]');
+                if (cb) {
+                    var tr = cb.closest('tr');
+                    tr.style.transition = 'opacity 0.2s';
+                    tr.style.opacity = '0.25';
+                    _undoRows.push(tr);
+                }
+            });
+            clearSelection();
+
+            // Show undo toast
+            _showUndoToast(ids.length, function() {
+                _undoRows.forEach(function(tr) { tr.style.opacity = '1'; });
+                _undoRows = [];
+            });
+
+            // Delayed commit
+            if (_undoTimer) clearTimeout(_undoTimer);
+            _undoTimer = setTimeout(function() {
+                _undoRows.forEach(function(tr) { tr.remove(); });
+                _undoRows = [];
+                _sendBulkDelete(entryIds, splitIds);
+            }, 8000);
+        }
+
+        function _sendBulkDelete(entryIds, splitIds) {
+            var jobs = [];
+            if (entryIds.length > 0) jobs.push(_postBulkIds('/entry/bulk-delete.json', entryIds));
+            if (splitIds.length > 0) jobs.push(_postBulkIds('/split-entry/delete-bulk.json', splitIds));
+            if (jobs.length === 0) return;
+
+            Promise.all(jobs).then(function(results) {
+                var deleted = 0, missing = 0, failed = 0;
+                var failureMsgs = [];
+                results.forEach(function(r) {
+                    deleted += (r.deleted || []).length;
+                    missing += (r.missing || []).length;
+                    failed  += (r.failed  || []).length;
+                    (r.failed || []).forEach(function(f) {
+                        failureMsgs.push('#' + f.id + ': ' + (f.reason || 'unknown'));
+                    });
+                });
+                refreshTable();
+                var parts = [];
+                parts.push('Deleted ' + deleted);
+                if (entryIds.length > 0 && splitIds.length > 0) {
+                    parts[parts.length - 1] += ' (' + entryIds.length + ' entry, ' + splitIds.length + ' split)';
+                }
+                if (missing > 0) parts.push(missing + ' not found');
+                if (failed  > 0) parts.push(failed  + ' failed');
+                showFlash(parts.join(', ') + '.', failed > 0 ? '#dc3545' : '#28a745');
+                if (failureMsgs.length > 0) alert('Bulk delete had failures:\n' + failureMsgs.join('\n'));
+            }).catch(function(err) {
+                _undoRows.forEach(function(tr) { tr.style.opacity = '1'; });
+                showFlash('Bulk delete failed: ' + (err && err.message ? err.message : 'network error'), '#dc3545');
+            });
+        }
+
+        function _postBulkIds(url, ids) {
+            var params = new URLSearchParams();
+            ids.forEach(function(id) { params.append('ids', id); });
+            var csrfToken  = document.querySelector('meta[name="_csrf"]');
+            var csrfHeader = document.querySelector('meta[name="_csrf_header"]');
+            var headers = {'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json'};
+            if (csrfToken && csrfHeader) {
+                headers[csrfHeader.getAttribute('content')] = csrfToken.getAttribute('content');
+            }
+            return fetch(url, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                headers: headers,
                 body: params
             }).then(function(resp) {
-                if (resp.ok) {
-                    saveSelectedIds(new Set());
-                    clearSelection();
-                    refreshTable();
-                    showFlash(ids.length + ' record(s) deleted.', '#dc3545');
-                } else {
-                    alert('Bulk delete failed.');
-                }
-            }).catch(function() {
-                alert('Bulk delete failed.');
+                if (!resp.ok) throw new Error(url + ' → HTTP ' + resp.status);
+                return resp.json();
             });
+        }
+
+        function _showUndoToast(count, undoCallback) {
+            var existing = document.getElementById('undo-toast');
+            if (existing) existing.remove();
+            var div = document.createElement('div');
+            div.id = 'undo-toast';
+            div.style.cssText = 'position:fixed; bottom:28px; left:50%; transform:translateX(-50%);' +
+                'background:#343a40; color:white; padding:14px 24px 18px; border-radius:8px;' +
+                'box-shadow:0 4px 18px rgba(0,0,0,0.3); z-index:3000; min-width:280px; overflow:hidden;';
+            var row = document.createElement('div');
+            row.style.cssText = 'display:flex; align-items:center; gap:18px;';
+            var label = document.createElement('span');
+            label.textContent = count + ' record(s) will be deleted…';
+            var undoBtn = document.createElement('button');
+            undoBtn.textContent = 'Undo';
+            undoBtn.style.cssText = 'background:#ffc107; color:#000; border:none; padding:4px 14px;' +
+                'border-radius:4px; cursor:pointer; font-weight:700; white-space:nowrap;';
+            undoBtn.onclick = function() {
+                if (_undoTimer) { clearTimeout(_undoTimer); _undoTimer = null; }
+                undoCallback();
+                div.remove();
+            };
+            row.appendChild(label);
+            row.appendChild(undoBtn);
+            div.appendChild(row);
+            // Progress bar
+            var bar = document.createElement('div');
+            bar.style.cssText = 'position:absolute; bottom:0; left:0; height:4px;' +
+                'background:#ffc107; border-radius:0 0 8px 8px; width:100%; transition:width 8s linear;';
+            div.appendChild(bar);
+            document.body.appendChild(div);
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() { bar.style.width = '0%'; });
+            });
+            setTimeout(function() { if (div.parentNode) div.remove(); }, 8200);
+        }
+
+        function _esc(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
         }
 
         function refreshTable() {

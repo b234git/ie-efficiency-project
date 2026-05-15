@@ -22,7 +22,10 @@ import thienloc.manage.util.RecordFilterUtil;
 
 import java.security.Principal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/entry")
@@ -54,6 +57,7 @@ public class ProductionController {
             @RequestParam(required = false, defaultValue = "") String line,
             @RequestParam(required = false, defaultValue = "ALL") String source,
             @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int pageSize,
             Model model,
             Principal principal) {
 
@@ -101,8 +105,11 @@ public class ProductionController {
         LocalDate to   = dateRange[1];
 
         // ── DB-level pagination: section/line lọc tại DB ─────────────────
-        // article, errorsOnly, source lọc in-memory chỉ trên 25 bản ghi của trang
-        int pageSize = 25;
+        // article, errorsOnly, source lọc in-memory chỉ trên bản ghi của trang
+        int[] allowed = {25, 50, 100, 150, 1000};
+        boolean valid = false;
+        for (int v : allowed) if (v == pageSize) { valid = true; break; }
+        if (!valid) pageSize = 25;
         Page<DailyProductionDto> recordPage = productionService.getMyDataRangeWithSplitEntriesPaged(
                 username, from, to, section, line, page, pageSize);
 
@@ -224,6 +231,104 @@ public class ProductionController {
         systemLogService.logAction("BULK_DELETE_ENTRY",
                 "Bulk deleted " + ids.size() + " entries: " + ids, request);
         return "redirect:/entry/?deleted";
+    }
+
+    /* ── JSON sibling: single delete with diagnostic response ─ */
+    // @Deprecated — use DELETE /api/v1/entries/{id}
+    @PostMapping("/admin-delete.json")
+    @ResponseBody
+    public Map<String, Object> adminDeleteEntryJson(@RequestParam Long id, HttpServletRequest request) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        List<Long> deleted = new ArrayList<>();
+        List<Long> missing = new ArrayList<>();
+        List<Map<String, Object>> failed = new ArrayList<>();
+        try {
+            DailyProductionDto before = null;
+            try { before = productionService.getById(id); } catch (Exception ignore) { /* missing → handled below */ }
+            boolean removed = productionService.deleteIfPresent(id);
+            if (removed) {
+                deleted.add(id);
+                String detail = before == null ? ("ID=" + id)
+                        : "ID=" + id + " | Section=" + before.getSection()
+                          + ", Line=" + before.getLine()
+                          + ", Date=" + before.getProductionDate()
+                          + ", Article=" + before.getArticle()
+                          + ", Output=" + before.getOutput();
+                systemLogService.logAction("DELETE_ENTRY", detail, request);
+            } else {
+                missing.add(id);
+            }
+        } catch (Exception ex) {
+            Map<String, Object> f = new LinkedHashMap<>();
+            f.put("id", id);
+            f.put("reason", ex.getMessage());
+            failed.add(f);
+        }
+        result.put("deleted", deleted);
+        result.put("missing", missing);
+        result.put("failed", failed);
+        return result;
+    }
+
+    /* ── JSON sibling: bulk delete with per-id status ────────── */
+    // @Deprecated — use POST /api/v1/entries/bulk-delete
+    @PostMapping("/bulk-delete.json")
+    @ResponseBody
+    public Map<String, Object> bulkDeleteJson(@RequestParam("ids") List<Long> ids, HttpServletRequest request) {
+        List<Long> deleted = new ArrayList<>();
+        List<Long> missing = new ArrayList<>();
+        List<Map<String, Object>> failed = new ArrayList<>();
+        if (ids != null) {
+            for (Long id : ids) {
+                try {
+                    if (productionService.deleteIfPresent(id)) deleted.add(id);
+                    else missing.add(id);
+                } catch (Exception ex) {
+                    Map<String, Object> f = new LinkedHashMap<>();
+                    f.put("id", id);
+                    f.put("reason", ex.getMessage());
+                    failed.add(f);
+                }
+            }
+        }
+        systemLogService.logAction("BULK_DELETE_ENTRY",
+                "Bulk delete: deleted=" + deleted + ", missing=" + missing + ", failed=" + failed.size(),
+                request);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("deleted", deleted);
+        result.put("missing", missing);
+        result.put("failed", failed);
+        return result;
+    }
+
+    /* ── Filtered IDs for "select all matching" ───────────────── */
+    // @Deprecated — use GET /api/v1/entries/admin-deletable-ids
+    @GetMapping("/api/filtered-ids")
+    @ResponseBody
+    public List<Long> getFilteredIds(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false, defaultValue = "TODAY") String range,
+            @RequestParam(required = false) String month,
+            @RequestParam(required = false, defaultValue = "") String section,
+            @RequestParam(required = false, defaultValue = "") String line,
+            Principal principal) {
+        String username = principal.getName();
+        LocalDate today = LocalDate.now();
+        java.time.YearMonth ym = java.time.YearMonth.from(today);
+        if ("MONTH".equals(range) && month != null && !month.isBlank()) {
+            try { ym = java.time.YearMonth.parse(month); } catch (Exception ignored) {}
+        }
+        if (date == null) date = today;
+        final LocalDate effectiveDate = date;
+        final java.time.YearMonth finalYm = ym;
+        LocalDate[] dr = switch (range) {
+            case "1M"    -> new LocalDate[]{ today.minusMonths(1),  today };
+            case "6M"    -> new LocalDate[]{ today.minusMonths(6),  today };
+            case "ALL"   -> new LocalDate[]{ today.minusMonths(12), today };
+            case "MONTH" -> new LocalDate[]{ finalYm.atDay(1), finalYm.atEndOfMonth() };
+            default      -> new LocalDate[]{ effectiveDate, effectiveDate };
+        };
+        return productionService.getFilteredIds(username, dr[0], dr[1], section, line);
     }
 
     /* ── Delete own entry ─────────────────────────────────────── */
