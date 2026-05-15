@@ -208,6 +208,7 @@ public class SplitEntryService implements ISplitEntryService {
 
     // ─── Delete ───────────────────────────────────────────────────────────────────
 
+    @Transactional
     public void deleteEntry(Long id) {
         splitEntryRepository.deleteById(id);
     }
@@ -217,6 +218,15 @@ public class SplitEntryService implements ISplitEntryService {
         if (ids != null && !ids.isEmpty()) {
             splitEntryRepository.deleteAllById(ids);
         }
+    }
+
+    /** Returns true if a row was deleted, false if no row with that id exists. Never throws on missing. */
+    @Transactional
+    public boolean deleteIfPresent(Long id) {
+        if (id == null) return false;
+        if (!splitEntryRepository.existsById(id)) return false;
+        splitEntryRepository.deleteById(id);
+        return true;
     }
 
     // ─── Query methods ────────────────────────────────────────────────────────────

@@ -17,6 +17,9 @@ public class UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private SystemLogService systemLogService;
+
     public User registerUser(User user) {
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         // Default role is USER unless otherwise specified
@@ -37,7 +40,9 @@ public class UserService {
     public User updateRole(Long id, String newRole) {
         User user = userRepository.findById(id).orElseThrow(() -> new thienloc.manage.exception.ResourceNotFoundException("User not found"));
         user.setRole(newRole);
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+        systemLogService.logAction("UPDATE_ROLE", "User ID " + id + " changed to role: " + newRole);
+        return saved;
     }
 
     public boolean changePassword(String username, String currentPassword, String newPassword) {

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title th:text="#{admin.forceDelete.title}">Force Delete by IDs</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+
+<body>
+    <div th:replace="~{fragments/layout :: navbar}"></div>
+
+    <div class="container">
+        <h2 th:text="#{admin.forceDelete.title}">Force Delete by IDs</h2>
+        <p style="color:#6c757d;" th:text="#{admin.forceDelete.subtitle}">
+            Paste IDs (comma- or newline-separated). Choose the source table and submit.
+        </p>
+
+        <form id="forceDeleteForm" style="max-width:640px;" onsubmit="return false;">
+            <div style="margin-bottom:12px;">
+                <label style="display:block; font-weight:600; margin-bottom:4px;"
+                       th:text="#{admin.forceDelete.idsLabel}">IDs</label>
+                <textarea name="ids" id="idsInput" rows="6" required
+                          style="width:100%; font-family:monospace; padding:8px; border:1px solid #ced4da; border-radius:4px;"
+                          placeholder="123, 124&#10;125&#10;126"></textarea>
+            </div>
+
+            <div style="margin-bottom:12px;">
+                <label style="display:block; font-weight:600; margin-bottom:4px;"
+                       th:text="#{admin.forceDelete.sourceLabel}">Source</label>
+                <label style="margin-right:16px;">
+                    <input type="radio" name="source" value="ENTRY" checked>
+                    daily_production (ENTRY)
+                </label>
+                <label>
+                    <input type="radio" name="source" value="SPLIT">
+                    split_entry (SPLIT)
+                </label>
+            </div>
+
+            <button type="button" id="forceDeleteSubmit" class="btn btn-primary"
+                    th:text="#{admin.forceDelete.submit}">Delete</button>
+            <a th:href="@{/admin/}" style="margin-left:12px;">&larr; Back to Admin</a>
+        </form>
+
+        <div id="forceDeleteResult" style="margin-top:24px; display:none;">
+            <h3>Result (source: <span id="resSource"></span>)</h3>
+            <p>
+                <strong th:text="#{admin.forceDelete.result.deleted}">Deleted</strong>:
+                <span id="resDeletedCount">0</span>
+                <span id="resDeletedList" style="color:#6c757d;"></span>
+            </p>
+            <p>
+                <strong th:text="#{admin.forceDelete.result.missing}">Not found</strong>:
+                <span id="resMissingCount">0</span>
+                <span id="resMissingList" style="color:#6c757d;"></span>
+            </p>
+            <p>
+                <strong th:text="#{admin.forceDelete.result.failed}">Failed</strong>:
+                <span id="resFailedCount">0</span>
+            </p>
+            <ul id="resFailedList"></ul>
+            <p id="resInvalid" style="color:#dc3545; display:none;">
+                Invalid (non-numeric) tokens ignored: <span id="resInvalidList"></span>
+            </p>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        (function () {
+            const ERROR_MSG = /*[[#{notification.toast.error}]]*/ 'Action failed.';
+
+            function parseIds(raw) {
+                const parsed = [];
+                const invalid = [];
+                if (!raw) return { parsed, invalid };
+                raw.split(/[\s,]+/).forEach(function (tok) {
+                    const t = tok.trim();
+                    if (!t) return;
+                    const n = Number(t);
+                    if (Number.isInteger(n) && /^\d+$/.test(t)) parsed.push(n);
+                    else invalid.push(t);
+                });
+                return { parsed, invalid };
+            }
+
+            document.getElementById('forceDeleteSubmit').addEventListener('click', async function () {
+                if (!confirm('Force delete the listed IDs? This cannot be undone.')) return;
+                const raw = document.getElementById('idsInput').value;
+                const sourceEl = document.querySelector('input[name="source"]:checked');
+                const source = sourceEl ? sourceEl.value : 'ENTRY';
+                const { parsed, invalid } = parseIds(raw);
+
+                const btn = this;
+                btn.disabled = true;
+                try {
+                    const result = await window.api.fetchJson('/api/v1/admin/force-delete', {
+                        method: 'POST',
+                        body: JSON.stringify({ source: source, ids: parsed })
+                    });
+                    renderResult(result, invalid);
+                } catch (err) {
+                    window.api.toast('error', (err && err.message) || ERROR_MSG);
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+
+            function renderResult(result, invalid) {
+                document.getElementById('forceDeleteResult').style.display = '';
+                document.getElementById('resSource').textContent = result.source;
+                document.getElementById('resDeletedCount').textContent = result.deleted.length;
+                document.getElementById('resDeletedList').textContent =
+                    result.deleted.length ? ' — [' + result.deleted.join(', ') + ']' : '';
+                document.getElementById('resMissingCount').textContent = result.missing.length;
+                document.getElementById('resMissingList').textContent =
+                    result.missing.length ? ' — [' + result.missing.join(', ') + ']' : '';
+                document.getElementById('resFailedCount').textContent = result.failed.length;
+                const ul = document.getElementById('resFailedList');
+                ul.innerHTML = '';
+                result.failed.forEach(function (f) {
+                    const li = document.createElement('li');
+                    li.textContent = f;
+                    ul.appendChild(li);
+                });
+                const invalidEl = document.getElementById('resInvalid');
+                if (invalid.length) {
+                    invalidEl.style.display = '';
+                    document.getElementById('resInvalidList').textContent = '[' + invalid.join(', ') + ']';
+                } else {
+                    invalidEl.style.display = 'none';
+                }
+            }
+        })();
+    </script>
+</body>
+</html>

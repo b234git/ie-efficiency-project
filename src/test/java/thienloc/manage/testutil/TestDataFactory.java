@@ -173,14 +173,27 @@ public final class TestDataFactory {
         int[] colMap = {0, 1, 2, 5, 6, 7, 9, 8, 10, 27};
         try (Workbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = wb.createSheet("DB");
-            // Row 0: main headers (simplified)
+            // Row 0: full project-template headers — required by HeaderResolver.
             Row header = sheet.createRow(0);
             header.createCell(0).setCellValue("Date");
             header.createCell(1).setCellValue("Section");
             header.createCell(2).setCellValue("Line");
+            header.createCell(3).setCellValue("sub-line");
+            header.createCell(4).setCellValue("sub-section");
             header.createCell(5).setCellValue("DL");
-            header.createCell(11).setCellValue("Article");
-            // Row 1: blank sub-header row (ExcelService skips rows 0-1)
+            header.createCell(6).setCellValue("DLI");
+            header.createCell(7).setCellValue("IDL");
+            header.createCell(8).setCellValue("Output");
+            header.createCell(9).setCellValue("WT");
+            header.createCell(10).setCellValue("RFT");
+            // Time-slot labels at cols 11..25 so HeaderResolver detects 15 slots.
+            for (int i = 0; i < 15; i++) {
+                header.createCell(11 + i)
+                        .setCellValue(String.format("%02d:00-%02d:00", 7 + i, 8 + i));
+            }
+            header.createCell(26).setCellValue("Article");
+            header.createCell(27).setCellValue("Allowance");
+            // Row 1: blank sub-header row (data starts at row 2)
             sheet.createRow(1);
             // Data rows start at row 2
             for (int r = 0; r < dataRows.size(); r++) {

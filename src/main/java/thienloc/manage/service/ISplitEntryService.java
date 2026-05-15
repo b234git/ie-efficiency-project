@@ -24,6 +24,8 @@ public interface ISplitEntryService {
 
     void deleteMultiple(List<Long> ids);
 
+    boolean deleteIfPresent(Long id);
+
     Optional<SplitEntryDto> getByDateSectionLine(LocalDate date, String section, String line);
 
     List<SplitEntryDto> getEntriesForDate(LocalDate date);

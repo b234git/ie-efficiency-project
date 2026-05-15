@@ -29,8 +29,11 @@ import java.io.IOException;
 import java.security.Principal;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Controller
@@ -273,6 +276,64 @@ public class SplitEntryController {
         String redirect = "/split-entry/";
         if (date != null) redirect += "?date=" + date;
         return "redirect:" + redirect;
+    }
+
+    /* ── JSON sibling: single split-entry delete with diagnostics ───── */
+    // @Deprecated — use DELETE /api/v1/split-entries/{id}
+    @PostMapping("/delete.json/{id}")
+    @ResponseBody
+    public Map<String, Object> deleteEntryJson(@PathVariable Long id) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        List<Long> deleted = new ArrayList<>();
+        List<Long> missing = new ArrayList<>();
+        List<Map<String, Object>> failed = new ArrayList<>();
+        try {
+            if (splitEntryService.deleteIfPresent(id)) {
+                deleted.add(id);
+                systemLogService.logAction("SPLIT_DELETE", "Deleted split entry id=" + id);
+            } else {
+                missing.add(id);
+            }
+        } catch (Exception ex) {
+            Map<String, Object> f = new LinkedHashMap<>();
+            f.put("id", id);
+            f.put("reason", ex.getMessage());
+            failed.add(f);
+        }
+        result.put("deleted", deleted);
+        result.put("missing", missing);
+        result.put("failed", failed);
+        return result;
+    }
+
+    /* ── JSON sibling: bulk split-entry delete with per-id status ──── */
+    // @Deprecated — use POST /api/v1/split-entries/bulk-delete
+    @PostMapping("/delete-bulk.json")
+    @ResponseBody
+    public Map<String, Object> deleteBulkJson(@RequestParam("ids") List<Long> ids) {
+        List<Long> deleted = new ArrayList<>();
+        List<Long> missing = new ArrayList<>();
+        List<Map<String, Object>> failed = new ArrayList<>();
+        if (ids != null) {
+            for (Long id : ids) {
+                try {
+                    if (splitEntryService.deleteIfPresent(id)) deleted.add(id);
+                    else missing.add(id);
+                } catch (Exception ex) {
+                    Map<String, Object> f = new LinkedHashMap<>();
+                    f.put("id", id);
+                    f.put("reason", ex.getMessage());
+                    failed.add(f);
+                }
+            }
+        }
+        systemLogService.logAction("SPLIT_DELETE_BULK",
+                "Bulk delete: deleted=" + deleted + ", missing=" + missing + ", failed=" + failed.size());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("deleted", deleted);
+        result.put("missing", missing);
+        result.put("failed", failed);
+        return result;
     }
 
     // ─── Import LineSummaryReport (.xls) ─────────────────────────────────────────

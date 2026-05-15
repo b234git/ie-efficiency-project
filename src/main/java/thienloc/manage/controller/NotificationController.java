@@ -5,8 +5,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import thienloc.manage.service.NotificationService;
 
 @Controller
@@ -21,20 +21,6 @@ public class NotificationController {
         String role = getPrimaryRole(auth);
         model.addAttribute("notifications", notificationService.getAll(role));
         return "notifications";
-    }
-
-    @PostMapping("/read/{id}")
-    public String markAsRead(@PathVariable Long id) {
-        notificationService.markAsRead(id);
-        return "redirect:/notifications";
-    }
-
-    @PostMapping("/dismiss-all")
-    public String dismissAll(Authentication auth, RedirectAttributes redirectAttributes) {
-        String role = getPrimaryRole(auth);
-        notificationService.dismissAll(role);
-        redirectAttributes.addFlashAttribute("success", "All notifications marked as read.");
-        return "redirect:/notifications";
     }
 
     private String getPrimaryRole(Authentication auth) {

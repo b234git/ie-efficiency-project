@@ -2,13 +2,13 @@ package thienloc.manage.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.RequestParam;
+
 import thienloc.manage.service.UserService;
 
 @Controller
@@ -30,11 +30,9 @@ public class AdminController {
         return "admin";
     }
 
-    @PostMapping("/update-role")
-    public String updateRole(@RequestParam Long userId, @RequestParam String newRole,
-                             HttpServletRequest request) {
-        userService.updateRole(userId, newRole);
-        systemLogService.logAction("UPDATE_ROLE", "User ID " + userId + " changed to role: " + newRole, request);
-        return "redirect:/admin/?success";
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/force-delete")
+    public String forceDeleteForm() {
+        return "admin/force-delete";
     }
 }

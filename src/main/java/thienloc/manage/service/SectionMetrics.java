@@ -69,14 +69,22 @@ public enum SectionMetrics {
         LOOKUP.put("ASSY BIG", ASSEMBLY_BIG);
         LOOKUP.put("ASSY SMALL", ASSEMBLY_SMALL);
 
-        // Buffing aliases
+        // Buffing aliases. The factory's "EFF APR V6" workbook uses bare "BUFF"
+        // (the 1ST/2ND distinction comes from the article's "-2" suffix), so map it
+        // to BUFFING 1ST by default; resolveSlot() upgrades to 2ND when a slot
+        // article ends with "-2". Line codes BF / SA / 7B fall back to 1ST until
+        // dedicated MasterDb columns exist for them.
+        LOOKUP.put("BUFF", BUFF_1ST);
         LOOKUP.put("BUFF 1", BUFF_1ST);
         LOOKUP.put("BUFF 1ST", BUFF_1ST);
         LOOKUP.put("BUFF 2", BUFF_2ND);
         LOOKUP.put("BUFF 2ND", BUFF_2ND);
 
-        // Stockfit aliases
+        // Stockfit aliases. Bare "SF" defaults to STOCKFIT 1ST (same -2 mechanism).
+        LOOKUP.put("SF", STOCKFIT_1ST);
         LOOKUP.put("SF UV", STOCKFIT_UV);
+        LOOKUP.put("SFUV", STOCKFIT_UV);
+        LOOKUP.put("STOCKFIT", STOCKFIT_1ST);
         LOOKUP.put("SF 1", STOCKFIT_1ST);
         LOOKUP.put("SF 1ST", STOCKFIT_1ST);
         LOOKUP.put("SF1", STOCKFIT_1ST);

@@ -263,14 +263,25 @@ public class ProductionService implements IProductionService {
 
     // ─── Delete ──────────────────────────────────────────────────────────────────
 
+    @Transactional
     public void deleteRecord(Long id) {
         productionRepository.deleteById(id);
     }
 
+    @Transactional
     public void deleteMultipleRecords(List<Long> ids) {
         if (ids != null && !ids.isEmpty()) {
             productionRepository.deleteAllById(ids);
         }
+    }
+
+    /** Returns true if a row was deleted, false if no row with that id exists. Never throws on missing. */
+    @Transactional
+    public boolean deleteIfPresent(Long id) {
+        if (id == null) return false;
+        if (!productionRepository.existsById(id)) return false;
+        productionRepository.deleteById(id);
+        return true;
     }
 
     /**
@@ -417,5 +428,11 @@ public class ProductionService implements IProductionService {
 
     public List<String> getDistinctMonths() {
         return productionRepository.findDistinctMonths();
+    }
+
+    public List<Long> getFilteredIds(String username, LocalDate from, LocalDate to, String section, String line) {
+        String s = (section == null) ? "" : section;
+        String l = (line == null) ? "" : line;
+        return productionRepository.findAllIdsByUsernameAndDateRange(username, from, to, s, l);
     }
 }
