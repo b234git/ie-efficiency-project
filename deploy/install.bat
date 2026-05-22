@@ -98,7 +98,7 @@ if not defined PSQL_EXE (
 echo       OK  (%PSQL_EXE%)
 
 :: ---- [3/6] Setup database ----
-echo [3/6] Tao database va user PostgreSQL...
+echo [3/6] Tao database, user va bang du lieu...
 set PGPASSWORD=%POSTGRES_PASSWORD%
 
 "%PSQL_EXE%" -U postgres -h localhost -c "DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='%DB_USER%') THEN CREATE USER %DB_USER% WITH PASSWORD '%DB_PASSWORD%'; ELSE ALTER USER %DB_USER% WITH PASSWORD '%DB_PASSWORD%'; END IF; END; $$;" > nul 2>&1
@@ -114,6 +114,23 @@ if %errorlevel% neq 0 (
 "%PSQL_EXE%" -U postgres -h localhost -c "GRANT ALL PRIVILEGES ON DATABASE %DB_NAME% TO %DB_USER%;" > nul 2>&1
 "%PSQL_EXE%" -U postgres -h localhost -d %DB_NAME% -c "GRANT ALL ON SCHEMA public TO %DB_USER%;" > nul 2>&1
 echo       OK  (database: %DB_NAME%, user: %DB_USER%)
+
+if not exist "%~dp0init_db.sql" (
+    echo [LOI] Khong tim thay init_db.sql trong thu muc deploy\
+    pause
+    exit /b 1
+)
+echo       Tao 14 bang du lieu...
+set PGPASSWORD=%DB_PASSWORD%
+"%PSQL_EXE%" -U %DB_USER% -h localhost -d %DB_NAME% -v ON_ERROR_STOP=1 -f "%~dp0init_db.sql" > nul
+if %errorlevel% neq 0 (
+    echo [LOI] Khong the tao bang du lieu — xem loi PostgreSQL o tren.
+    set PGPASSWORD=
+    pause
+    exit /b 1
+)
+set PGPASSWORD=%POSTGRES_PASSWORD%
+echo       OK  (schema da san sang)
 
 :: ---- [4/6] Create install directory ----
 echo [4/6] Tao thu muc cai dat...
@@ -134,7 +151,7 @@ if %errorlevel% equ 0 (
 )
 
 "%NSSM_EXE%" install IE-Eff "%JAVA_EXE%"
-"%NSSM_EXE%" set IE-Eff AppParameters "-Xmx2g -Xms512m -jar %INSTALL_DIR%\app.jar --spring.profiles.active=prod"
+"%NSSM_EXE%" set IE-Eff AppParameters "-Xmx%APP_XMX% -Xms%APP_XMS% -jar %INSTALL_DIR%\app.jar --spring.profiles.active=prod"
 "%NSSM_EXE%" set IE-Eff AppDirectory "%INSTALL_DIR%"
 "%NSSM_EXE%" set IE-Eff DisplayName "IE-Eff Production"
 "%NSSM_EXE%" set IE-Eff Description "IE Efficiency Management"
@@ -143,7 +160,7 @@ if %errorlevel% equ 0 (
 "%NSSM_EXE%" set IE-Eff AppStderr "%INSTALL_DIR%\logs\app.log"
 "%NSSM_EXE%" set IE-Eff AppRotateFiles 1
 "%NSSM_EXE%" set IE-Eff AppRotateBytes 10485760
-"%NSSM_EXE%" set IE-Eff AppEnvironmentExtra "DB_URL=jdbc:postgresql://localhost:5432/%DB_NAME%" "DB_USERNAME=%DB_USER%" "DB_PASSWORD=%DB_PASSWORD%" "PORT=%APP_PORT%"
+"%NSSM_EXE%" set IE-Eff AppEnvironmentExtra "DB_URL=jdbc:postgresql://localhost:5432/%DB_NAME%" "DB_USERNAME=%DB_USER%" "DB_PASSWORD=%DB_PASSWORD%" "PORT=%APP_PORT%" "APP_DEFAULT_ADMIN_PASSWORD=%APP_ADMIN_PASSWORD%" "APP_DEFAULT_MANAGER_PASSWORD=%APP_MANAGER_PASSWORD%"
 
 netsh advfirewall firewall delete rule name="IE-Eff App" > nul 2>&1
 netsh advfirewall firewall add rule name="IE-Eff App" dir=in action=allow protocol=TCP localport=%APP_PORT% > nul
