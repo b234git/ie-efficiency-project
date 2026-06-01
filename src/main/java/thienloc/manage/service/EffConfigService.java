@@ -22,6 +22,9 @@ public class EffConfigService {
     @Autowired
     private EffIncentiveRateRepository rateRepo;
 
+    @Autowired
+    private SystemLogService systemLogService;
+
     // ── Multiplier ────────────────────────────────────────────────────────────
 
     @Cacheable(CacheConfig.EFF_MULTIPLIERS)
@@ -35,12 +38,18 @@ public class EffConfigService {
 
     @CacheEvict(cacheNames = CacheConfig.EFF_MULTIPLIERS, allEntries = true)
     public EffMultiplier saveMultiplier(EffMultiplier entity) {
-        return multiplierRepo.save(entity);
+        boolean isNew = entity.getId() == null;
+        EffMultiplier saved = multiplierRepo.save(entity);
+        systemLogService.logAction(
+                isNew ? "ADD_EFF_MULTIPLIER" : "EDIT_EFF_MULTIPLIER",
+                "SEC: " + saved.getSec());
+        return saved;
     }
 
     @CacheEvict(cacheNames = CacheConfig.EFF_MULTIPLIERS, allEntries = true)
     public void deleteMultiplierById(Long id) {
         multiplierRepo.deleteById(id);
+        systemLogService.logAction("DELETE_EFF_MULTIPLIER", "Deleted Multiplier ID: " + id);
     }
 
     // ── Incentive Rate ────────────────────────────────────────────────────────
@@ -61,11 +70,17 @@ public class EffConfigService {
 
     @CacheEvict(cacheNames = {CacheConfig.EFF_RATES, CacheConfig.EFF_RATE_SECS}, allEntries = true)
     public EffIncentiveRate saveRate(EffIncentiveRate entity) {
-        return rateRepo.save(entity);
+        boolean isNew = entity.getId() == null;
+        EffIncentiveRate saved = rateRepo.save(entity);
+        systemLogService.logAction(
+                isNew ? "ADD_EFF_RATE" : "EDIT_EFF_RATE",
+                "SEC: " + saved.getSec() + ", EFF%: " + saved.getEffPercent());
+        return saved;
     }
 
     @CacheEvict(cacheNames = {CacheConfig.EFF_RATES, CacheConfig.EFF_RATE_SECS}, allEntries = true)
     public void deleteRateById(Long id) {
         rateRepo.deleteById(id);
+        systemLogService.logAction("DELETE_EFF_RATE", "Deleted Rate ID: " + id);
     }
 }

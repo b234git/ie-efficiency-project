@@ -30,8 +30,8 @@ public class NewStyleService {
         return repo.findById(id);
     }
 
-    public void save(NewStyleEntry entry) {
-        repo.save(entry);
+    public NewStyleEntry save(NewStyleEntry entry) {
+        return repo.save(entry);
     }
 
     public void deleteById(Long id) {

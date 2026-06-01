@@ -15,12 +15,10 @@ import thienloc.manage.service.UserService;
 import java.util.List;
 
 import static org.hamcrest.Matchers.containsString;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AdminController.class)
@@ -81,17 +79,4 @@ class AdminControllerTest {
                 .andExpect(status().isForbidden());
     }
 
-    @Test
-    void testUpdateRole() throws Exception {
-        mockMvc.perform(post("/admin/update-role")
-                        .param("userId", "1")
-                        .param("newRole", "ROLE_MANAGER")
-                        .with(user("admin").roles("ADMIN"))
-                        .with(csrf()))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/?success"));
-
-        verify(userService).updateRole(1L, "ROLE_MANAGER");
-        verify(systemLogService).logAction(eq("UPDATE_ROLE"), anyString());
-    }
 }

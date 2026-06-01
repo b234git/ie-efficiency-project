@@ -71,6 +71,19 @@ public interface DailyProductionRepository extends JpaRepository<DailyProduction
                 @Param("line") String line,
                 Pageable pageable);
 
+        @Query("SELECT p.id FROM DailyProduction p " +
+               "WHERE p.createdBy.username = :username " +
+               "AND p.productionDate BETWEEN :from AND :to " +
+               "AND (:section = '' OR p.section = :section) " +
+               "AND (:line = '' OR LOWER(p.line) LIKE LOWER(CONCAT('%', :line, '%'))) " +
+               "ORDER BY p.productionDate DESC, p.section ASC, p.line ASC")
+        List<Long> findAllIdsByUsernameAndDateRange(
+                @Param("username") String username,
+                @Param("from") LocalDate from,
+                @Param("to") LocalDate to,
+                @Param("section") String section,
+                @Param("line") String line);
+
         // Pass 2: load đúng các entity theo IDs với JOIN FETCH details (no N+1)
         @Query("SELECT DISTINCT p FROM DailyProduction p LEFT JOIN FETCH p.details " +
                "WHERE p.id IN :ids " +

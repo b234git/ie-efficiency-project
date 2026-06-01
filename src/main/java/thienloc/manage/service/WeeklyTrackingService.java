@@ -27,6 +27,9 @@ public class WeeklyTrackingService {
     @Autowired
     private ReprocessRecordRepository reproRepo;
 
+    @Autowired
+    private SystemLogService systemLogService;
+
     // ── Section normalization ─────────────────────────────────────────────────
 
     public static String normalizeSection(String section) {
@@ -54,18 +57,28 @@ public class WeeklyTrackingService {
         return sixsRepo.findById(id);
     }
 
-    public void saveSixS(SixSRecord record) {
+    public SixSRecord saveSixS(SixSRecord record) {
+        boolean isNew = (record.getId() == null);
         record.setSection(normalizeSection(record.getSection()));
-        sixsRepo.save(record);
+        SixSRecord saved = sixsRepo.save(record);
+        systemLogService.logAction(
+                isNew ? "ADD_SIXS_RECORD" : "EDIT_SIXS_RECORD",
+                saved.getDataMonth() + " | " + saved.getSection() + " " + saved.getLine());
+        return saved;
     }
 
     public void deleteSixS(Long id) {
-        sixsRepo.deleteById(id);
+        sixsRepo.findById(id).ifPresent(r -> {
+            sixsRepo.deleteById(id);
+            systemLogService.logAction("DELETE_SIXS_RECORD",
+                    r.getDataMonth() + " | " + r.getSection() + " " + r.getLine());
+        });
     }
 
     @Transactional
     public void deleteSixSByIds(List<Long> ids) {
         sixsRepo.deleteAllById(ids);
+        systemLogService.logAction("DELETE_MASS_SIXS", ids.size() + " 6S records deleted");
     }
 
     public List<SixSRecord> getAllSixS() {
@@ -92,18 +105,28 @@ public class WeeklyTrackingService {
         return reproRepo.findById(id);
     }
 
-    public void saveReprocess(ReprocessRecord record) {
+    public ReprocessRecord saveReprocess(ReprocessRecord record) {
+        boolean isNew = (record.getId() == null);
         record.setSection(normalizeSection(record.getSection()));
-        reproRepo.save(record);
+        ReprocessRecord saved = reproRepo.save(record);
+        systemLogService.logAction(
+                isNew ? "ADD_REPROCESS_RECORD" : "EDIT_REPROCESS_RECORD",
+                saved.getDataMonth() + " | " + saved.getSection() + " " + saved.getLine());
+        return saved;
     }
 
     public void deleteReprocess(Long id) {
-        reproRepo.deleteById(id);
+        reproRepo.findById(id).ifPresent(r -> {
+            reproRepo.deleteById(id);
+            systemLogService.logAction("DELETE_REPROCESS_RECORD",
+                    r.getDataMonth() + " | " + r.getSection() + " " + r.getLine());
+        });
     }
 
     @Transactional
     public void deleteReprocessByIds(List<Long> ids) {
         reproRepo.deleteAllById(ids);
+        systemLogService.logAction("DELETE_MASS_REPROCESS", ids.size() + " reprocess records deleted");
     }
 
     public List<ReprocessRecord> getAllReprocess() {

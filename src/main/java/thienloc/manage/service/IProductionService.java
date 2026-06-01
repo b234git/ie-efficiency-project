@@ -42,9 +42,13 @@ public interface IProductionService {
 
     void deleteMultipleRecords(List<Long> ids);
 
+    boolean deleteIfPresent(Long id);
+
     void deleteOwnRecord(Long id, String username);
 
     List<WeeklyReportDto> getWeeklyReport(LocalDate weekStart);
 
     List<String> getDistinctMonths();
+
+    List<Long> getFilteredIds(String username, LocalDate from, LocalDate to, String section, String line);
 }

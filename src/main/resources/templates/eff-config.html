@@ -5,6 +5,8 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <title th:text="#{effconfig.title}">EFF Config</title>
     <link rel="stylesheet" th:href="@{/css/main.css}"/>
     <style>
@@ -48,10 +50,6 @@
             Admin and Manager only.
         </p>
     </div>
-
-    <!-- Flash messages -->
-    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
-    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
     <!-- Tab buttons -->
     <div class="tab-buttons">
@@ -148,12 +146,9 @@
                                              data-g8=${m.grade8 ?: ''},
                                              data-g9=${m.grade9 ?: ''}"
                                     th:text="#{effconfig.btn.edit}">✏ Edit</button>
-                            <form th:action="@{/eff-config/multiplier/delete}" method="post"
-                                  style="display:inline;"
-                                  onsubmit="return confirm(I18N.confirmDelMultiplier)">
-                                <input type="hidden" name="id" th:value="${m.id}"/>
-                                <button type="submit" class="btn btn-danger btn-sm" th:text="#{effconfig.btn.delete}">🗑 Delete</button>
-                            </form>
+                            <button type="button" class="btn btn-danger btn-sm"
+                                    th:attr="data-delete-multiplier=${m.id}"
+                                    th:text="#{effconfig.btn.delete}">🗑 Delete</button>
                         </td>
                     </tr>
                 </th:block>
@@ -210,12 +205,9 @@
                                          data-eff=${r.effPercent},
                                          data-rate=${r.rate}"
                                 th:text="#{effconfig.btn.edit}">✏ Edit</button>
-                        <form th:action="@{/eff-config/rate/delete}" method="post"
-                              style="display:inline;"
-                              onsubmit="return confirm(I18N.confirmDelRate)">
-                            <input type="hidden" name="id" th:value="${r.id}"/>
-                            <button type="submit" class="btn btn-danger btn-sm" th:text="#{effconfig.btn.delete}">🗑 Delete</button>
-                        </form>
+                        <button type="button" class="btn btn-danger btn-sm"
+                                th:attr="data-delete-rate=${r.id}"
+                                th:text="#{effconfig.btn.delete}">🗑 Delete</button>
                     </td>
                 </tr>
                 <tr th:if="${allRates.isEmpty()}">
@@ -238,7 +230,7 @@
         <button class="modal-close" onclick="closeMultiplierModal()">×</button>
         <h3 id="mModalTitle" class="modal-title" th:text="#{effconfig.modal.add.multiplier}">Add Multiplier</h3>
 
-        <form th:action="@{/eff-config/multiplier/save}" method="post" id="multiplierForm">
+        <form id="multiplierForm" onsubmit="return false;">
             <input type="hidden" id="m-id" name="id"/>
 
             <div class="form-grid" style="grid-template-columns: repeat(2, 1fr);">
@@ -342,7 +334,7 @@
         <button class="modal-close" onclick="closeRateModal()">×</button>
         <h3 id="rModalTitle" class="modal-title" th:text="#{effconfig.modal.add.rate}">Add Incentive Rate</h3>
 
-        <form th:action="@{/eff-config/rate/save}" method="post">
+        <form id="rateForm" onsubmit="return false;">
             <input type="hidden" id="r-id" name="id"/>
 
             <div class="form-grid" style="grid-template-columns: repeat(2, 1fr);">
@@ -419,9 +411,99 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        if (ACTIVE_TAB && ACTIVE_TAB !== 'null') {
+        var hashTab = (window.location.hash || '').replace('#tab=', '');
+        if (hashTab === 'multiplier' || hashTab === 'rate') {
+            showTab(hashTab);
+        } else if (ACTIVE_TAB && ACTIVE_TAB !== 'null') {
             showTab(ACTIVE_TAB);
         }
+    });
+
+    function reloadWithTab(tab) {
+        window.location.hash = '#tab=' + tab;
+        window.location.reload();
+    }
+
+    function toNullableNumber(v) {
+        if (v === '' || v === null || v === undefined) return null;
+        var n = Number(v);
+        return isNaN(n) ? null : n;
+    }
+
+    function collectMultiplierBody() {
+        return {
+            sec: document.getElementById('m-sec').value.trim(),
+            section: document.getElementById('m-section').value,
+            wt: toNullableNumber(document.getElementById('m-wt').value),
+            rateAlias: document.getElementById('m-rateAlias').value.trim() || null,
+            grade1: toNullableNumber(document.getElementById('m-g1').value),
+            grade2: toNullableNumber(document.getElementById('m-g2').value),
+            grade3: toNullableNumber(document.getElementById('m-g3').value),
+            grade4: toNullableNumber(document.getElementById('m-g4').value),
+            grade5: toNullableNumber(document.getElementById('m-g5').value),
+            grade6: toNullableNumber(document.getElementById('m-g6').value),
+            grade7: toNullableNumber(document.getElementById('m-g7').value),
+            grade8: toNullableNumber(document.getElementById('m-g8').value),
+            grade9: toNullableNumber(document.getElementById('m-g9').value)
+        };
+    }
+
+    function collectRateBody() {
+        return {
+            sec: document.getElementById('r-sec').value,
+            section: document.getElementById('r-section').value.trim(),
+            wt: toNullableNumber(document.getElementById('r-wt').value),
+            effPercent: toNullableNumber(document.getElementById('r-eff').value),
+            rate: toNullableNumber(document.getElementById('r-rate').value)
+        };
+    }
+
+    function submitMultiplier() {
+        var id = document.getElementById('m-id').value;
+        var body = collectMultiplierBody();
+        var url = id ? '/api/v1/eff-config/multipliers/' + encodeURIComponent(id) : '/api/v1/eff-config/multipliers';
+        var method = id ? 'PUT' : 'POST';
+        window.api.fetchJson(url, { method: method, body: body })
+            .then(function () { reloadWithTab('multiplier'); })
+            .catch(function (err) { window.api.toast('error', (err && err.message) || 'Save failed.'); });
+    }
+
+    function submitRate() {
+        var id = document.getElementById('r-id').value;
+        var body = collectRateBody();
+        var url = id ? '/api/v1/eff-config/rates/' + encodeURIComponent(id) : '/api/v1/eff-config/rates';
+        var method = id ? 'PUT' : 'POST';
+        window.api.fetchJson(url, { method: method, body: body })
+            .then(function () { reloadWithTab('rate'); })
+            .catch(function (err) { window.api.toast('error', (err && err.message) || 'Save failed.'); });
+    }
+
+    function deleteMultiplier(id) {
+        if (!confirm(I18N.confirmDelMultiplier)) return;
+        window.api.fetchJson('/api/v1/eff-config/multipliers/' + encodeURIComponent(id), { method: 'DELETE' })
+            .then(function () { reloadWithTab('multiplier'); })
+            .catch(function (err) { window.api.toast('error', (err && err.message) || 'Delete failed.'); });
+    }
+
+    function deleteRate(id) {
+        if (!confirm(I18N.confirmDelRate)) return;
+        window.api.fetchJson('/api/v1/eff-config/rates/' + encodeURIComponent(id), { method: 'DELETE' })
+            .then(function () { reloadWithTab('rate'); })
+            .catch(function (err) { window.api.toast('error', (err && err.message) || 'Delete failed.'); });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var mForm = document.getElementById('multiplierForm');
+        if (mForm) mForm.addEventListener('submit', function (e) { e.preventDefault(); submitMultiplier(); });
+        var rForm = document.getElementById('rateForm');
+        if (rForm) rForm.addEventListener('submit', function (e) { e.preventDefault(); submitRate(); });
+
+        document.addEventListener('click', function (event) {
+            var delM = event.target.closest('[data-delete-multiplier]');
+            if (delM) { deleteMultiplier(delM.getAttribute('data-delete-multiplier')); return; }
+            var delR = event.target.closest('[data-delete-rate]');
+            if (delR) { deleteRate(delR.getAttribute('data-delete-rate')); }
+        });
     });
 
     // ── Grade label updater ──────────────────────────────────────────────────

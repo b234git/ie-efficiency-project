@@ -12,7 +12,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.io.IOException;
 
-@ControllerAdvice
+@ControllerAdvice(basePackages = "thienloc.manage.controller")
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);

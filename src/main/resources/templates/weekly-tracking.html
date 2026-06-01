@@ -5,6 +5,8 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <title th:text="#{weeklytracking.title}">Weekly Tracking</title>
     <link rel="stylesheet" th:href="@{/css/main.css}"/>
     <style>
@@ -178,14 +180,9 @@
                                          data-w4=${r.week4 ?: ''},
                                          data-w5=${r.week5 ?: ''}"
                                 th:text="#{weeklytracking.btn.edit}">✏ Edit</button>
-                        <form th:action="@{/weekly-tracking/sixs/delete}" method="post"
-                              style="display:inline;"
-                              th:onsubmit="'return confirm(' + '\'' + I18N.confirmDelete + '\'' + ')'">
-                            <input type="hidden" name="id" th:value="${r.id}"/>
-                            <input type="hidden" name="selectedMonth" th:value="${selectedMonth}"/>
-                            <button type="submit" class="btn btn-danger btn-sm"
-                                    th:text="#{weeklytracking.btn.delete}">🗑 Delete</button>
-                        </form>
+                        <button type="button" class="btn btn-danger btn-sm"
+                                th:data-delete-sixs="${r.id}"
+                                th:text="#{weeklytracking.btn.delete}">🗑 Delete</button>
                     </td>
                 </tr>
                 <tr th:if="${sixsList.isEmpty()}">
@@ -306,14 +303,9 @@
                                          data-w5=${r.week5 ?: ''},
                                          data-output=${r.output ?: ''}"
                                 th:text="#{weeklytracking.btn.edit}">✏ Edit</button>
-                        <form th:action="@{/weekly-tracking/reprocess/delete}" method="post"
-                              style="display:inline;"
-                              th:onsubmit="'return confirm(' + '\'' + I18N.confirmDelete + '\'' + ')'">
-                            <input type="hidden" name="id" th:value="${r.id}"/>
-                            <input type="hidden" name="selectedMonth" th:value="${selectedMonth}"/>
-                            <button type="submit" class="btn btn-danger btn-sm"
-                                    th:text="#{weeklytracking.btn.delete}">🗑 Delete</button>
-                        </form>
+                        <button type="button" class="btn btn-danger btn-sm"
+                                th:data-delete-repro="${r.id}"
+                                th:text="#{weeklytracking.btn.delete}">🗑 Delete</button>
                     </td>
                 </tr>
                 <tr th:if="${reproList.isEmpty()}">
@@ -349,7 +341,7 @@
         <button class="modal-close" onclick="closeSixsModal()">×</button>
         <h3 id="sixsModalTitle" class="modal-title" th:text="#{weeklytracking.addSixs}">Add 6S Record</h3>
 
-        <form th:action="@{/weekly-tracking/sixs/save}" method="post" id="sixsForm">
+        <form id="sixsForm" onsubmit="return false;">
             <input type="hidden" id="sixs-id"    name="id"/>
             <input type="hidden" id="sixs-month-hidden" name="selectedMonth"/>
 
@@ -401,7 +393,7 @@
                 <button type="button" class="btn" onclick="closeSixsModal()"
                         style="border:1px solid #ccc; background:#fff; color:#000;"
                         th:text="#{weeklytracking.btn.cancel}">Cancel</button>
-                <button type="submit" class="btn btn-primary"
+                <button type="button" class="btn btn-primary" id="sixsSaveBtn"
                         th:text="#{weeklytracking.btn.save}">Save</button>
             </div>
         </form>
@@ -470,7 +462,7 @@
         <button class="modal-close" onclick="closeReproModal()">×</button>
         <h3 id="reproModalTitle" class="modal-title" th:text="#{weeklytracking.addReprocess}">Add Reprocess Record</h3>
 
-        <form th:action="@{/weekly-tracking/reprocess/save}" method="post" id="reproForm">
+        <form id="reproForm" onsubmit="return false;">
             <input type="hidden" id="repro-id"           name="id"/>
             <input type="hidden" id="repro-month-hidden" name="selectedMonth"/>
 
@@ -530,24 +522,12 @@
                 <button type="button" class="btn" onclick="closeReproModal()"
                         style="border:1px solid #ccc; background:#fff; color:#000;"
                         th:text="#{weeklytracking.btn.cancel}">Cancel</button>
-                <button type="submit" class="btn btn-primary"
+                <button type="button" class="btn btn-primary" id="reproSaveBtn"
                         th:text="#{weeklytracking.btn.save}">Save</button>
             </div>
         </form>
     </div>
 </div>
-
-<!-- ═══════════════════════════════════════════════════════════════════════ -->
-<!-- Hidden forms for mass delete                                            -->
-<!-- ═══════════════════════════════════════════════════════════════════════ -->
-<form id="sixs-mass-delete-form" method="post" th:action="@{/weekly-tracking/sixs/delete-mass}">
-    <input type="hidden" name="selectedMonth" th:value="${selectedMonth}"/>
-    <div id="sixs-mass-delete-ids"></div>
-</form>
-<form id="repro-mass-delete-form" method="post" th:action="@{/weekly-tracking/reprocess/delete-mass}">
-    <input type="hidden" name="selectedMonth" th:value="${selectedMonth}"/>
-    <div id="repro-mass-delete-ids"></div>
-</form>
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <!-- JavaScript                                                              -->
@@ -769,20 +749,97 @@
         }
     }
 
-    function submitMassDeletion(type) {
+    async function submitMassDeletion(type) {
         const cbs = [...document.querySelectorAll('.' + type + '-row-cb:checked')];
         if (cbs.length === 0) return;
         if (!confirm('Delete ' + cbs.length + ' record(s)? This cannot be undone.')) return;
 
-        const container = document.getElementById(type + '-mass-delete-ids');
-        container.innerHTML = '';
-        cbs.forEach(cb => {
-            const inp = document.createElement('input');
-            inp.type = 'hidden'; inp.name = 'ids'; inp.value = cb.value;
-            container.appendChild(inp);
-        });
-        document.getElementById(type + '-mass-delete-form').submit();
+        const ids = cbs.map(cb => Number(cb.value));
+        const resource = type === 'repro' ? 'reprocess' : 'sixs';
+        const activeTab = type === 'repro' ? 'reprocess' : 'sixs';
+        try {
+            await window.api.fetchJson('/api/v1/weekly-tracking/' + resource + '/bulk-delete', {
+                method: 'POST',
+                body: JSON.stringify({ ids: ids })
+            });
+            reloadPage(activeTab, SELECTED_MONTH);
+        } catch (err) {
+            window.api.toast('error', (err && err.message) || 'Delete failed.');
+        }
     }
+
+    function reloadPage(activeTab, month) {
+        const url = new URL('/weekly-tracking/', window.location.origin);
+        if (month) url.searchParams.set('month', month);
+        if (activeTab) url.searchParams.set('activeTab', activeTab);
+        window.location.assign(url.toString());
+    }
+
+    function intOrNull(v) {
+        if (v === '' || v === null || v === undefined) return null;
+        const n = Number(v);
+        return Number.isFinite(n) ? n : null;
+    }
+
+    async function submitWeeklyRecord(type) {
+        const isSixs = type === 'sixs';
+        const idEl = document.getElementById(isSixs ? 'sixs-id' : 'repro-id');
+        const id = idEl.value;
+        const pfx = isSixs ? 'sixs' : 'repro';
+        const body = {
+            dataMonth: document.getElementById(pfx + '-month').value,
+            section:   document.getElementById(pfx + '-section').value,
+            line:      document.getElementById(pfx + '-line').value,
+            week1: intOrNull(document.getElementById(pfx + '-w1').value),
+            week2: intOrNull(document.getElementById(pfx + '-w2').value),
+            week3: intOrNull(document.getElementById(pfx + '-w3').value),
+            week4: intOrNull(document.getElementById(pfx + '-w4').value),
+            week5: intOrNull(document.getElementById(pfx + '-w5').value)
+        };
+        if (!isSixs) {
+            body.output = intOrNull(document.getElementById('repro-output').value);
+        }
+        const resource = isSixs ? 'sixs' : 'reprocess';
+        const activeTab = isSixs ? 'sixs' : 'reprocess';
+        const url = id
+            ? '/api/v1/weekly-tracking/' + resource + '/' + encodeURIComponent(id)
+            : '/api/v1/weekly-tracking/' + resource;
+        const method = id ? 'PUT' : 'POST';
+        try {
+            await window.api.fetchJson(url, { method: method, body: JSON.stringify(body) });
+            reloadPage(activeTab, body.dataMonth);
+        } catch (err) {
+            window.api.toast('error', (err && err.message) || 'Save failed.');
+        }
+    }
+
+    async function deleteWeeklyRecord(type, id) {
+        if (!confirm(I18N.confirmDelete)) return;
+        const resource = type === 'repro' ? 'reprocess' : 'sixs';
+        const activeTab = type === 'repro' ? 'reprocess' : 'sixs';
+        try {
+            await window.api.fetchJson('/api/v1/weekly-tracking/' + resource + '/' + encodeURIComponent(id), {
+                method: 'DELETE'
+            });
+            reloadPage(activeTab, SELECTED_MONTH);
+        } catch (err) {
+            window.api.toast('error', (err && err.message) || 'Delete failed.');
+        }
+    }
+
+    document.addEventListener('click', function (e) {
+        const sBtn = e.target.closest('[data-delete-sixs]');
+        if (sBtn) { deleteWeeklyRecord('sixs', sBtn.getAttribute('data-delete-sixs')); return; }
+        const rBtn = e.target.closest('[data-delete-repro]');
+        if (rBtn) { deleteWeeklyRecord('repro', rBtn.getAttribute('data-delete-repro')); return; }
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const sSave = document.getElementById('sixsSaveBtn');
+        if (sSave) sSave.addEventListener('click', () => submitWeeklyRecord('sixs'));
+        const rSave = document.getElementById('reproSaveBtn');
+        if (rSave) rSave.addEventListener('click', () => submitWeeklyRecord('repro'));
+    });
 
     // ── 6S Modal ──────────────────────────────────────────────────────────────
     function openAddSixsModal() {

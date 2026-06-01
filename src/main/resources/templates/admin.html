@@ -1,9 +1,11 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 
 <head>
     <title th:text="#{admin.title}">Admin Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <link rel="stylesheet" th:href="@{/css/main.css}">
 </head>
 
@@ -13,8 +15,11 @@
     <div class="container">
         <h2 th:text="#{admin.title}">User Management</h2>
 
-        <div th:if="${param.success}" style="color: green; margin-bottom: 10px;" th:text="#{admin.role.updated}">Role
-            updated successfully!</div>
+        <div sec:authorize="hasRole('ADMIN')" style="margin-bottom: 16px;">
+            <a th:href="@{/admin/force-delete}" class="btn btn-danger"
+               style="background:#dc3545;color:white;padding:6px 12px;border-radius:4px;text-decoration:none;"
+               th:text="#{admin.forceDelete.title}">Force Delete by IDs</a>
+        </div>
 
         <table>
             <thead>
@@ -26,21 +31,22 @@
                 </tr>
             </thead>
             <tbody>
-                <tr th:each="user : ${users}">
+                <tr th:each="user : ${users}" th:data-user-row="${user.id}">
                     <td th:text="${user.id}"></td>
                     <td th:text="${user.username}"></td>
-                    <td th:text="${user.role}"></td>
+                    <td data-current-role th:text="${user.role}"></td>
                     <td>
-                        <form th:action="@{/admin/update-role}" method="post" style="display: flex; gap: 10px;">
-                            <input type="hidden" name="userId" th:value="${user.id}" />
-                            <select name="newRole" class="form-control" style="width: auto;">
+                        <div style="display: flex; gap: 10px;">
+                            <select class="form-control" data-role-select style="width: auto;">
                                 <option value="ROLE_USER" th:selected="${user.role == 'ROLE_USER'}">USER</option>
                                 <option value="ROLE_MANAGER" th:selected="${user.role == 'ROLE_MANAGER'}">MANAGER
                                 </option>
                                 <option value="ROLE_ADMIN" th:selected="${user.role == 'ROLE_ADMIN'}">ADMIN</option>
                             </select>
-                            <button type="submit" class="btn btn-primary" th:text="#{admin.update}">Update</button>
-                        </form>
+                            <button type="button" class="btn btn-primary"
+                                    th:data-update-role="${user.id}"
+                                    th:text="#{admin.update}">Update</button>
+                        </div>
                     </td>
                 </tr>
             </tbody>
@@ -111,6 +117,36 @@
             </ul>
         </div>
     </div>
+
+    <script th:inline="javascript">
+        (function () {
+            const ROLE_UPDATED_MSG = /*[[#{admin.role.updated}]]*/ 'Role updated successfully!';
+            const ERROR_MSG = /*[[#{notification.toast.error}]]*/ 'Action failed.';
+
+            document.addEventListener('click', async function (e) {
+                const btn = e.target.closest('[data-update-role]');
+                if (!btn) return;
+                const userId = btn.getAttribute('data-update-role');
+                const row = btn.closest('[data-user-row]');
+                const select = row.querySelector('[data-role-select]');
+                const newRole = select.value;
+                btn.disabled = true;
+                try {
+                    await window.api.fetchJson('/api/v1/admin/users/' + encodeURIComponent(userId) + '/role', {
+                        method: 'PUT',
+                        body: JSON.stringify({ role: newRole })
+                    });
+                    const cur = row.querySelector('[data-current-role]');
+                    if (cur) cur.textContent = newRole;
+                    window.api.toast('success', ROLE_UPDATED_MSG);
+                } catch (err) {
+                    window.api.toast('error', (err && err.message) || ERROR_MSG);
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+        })();
+    </script>
 </body>
 
 </html>
