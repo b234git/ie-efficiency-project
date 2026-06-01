@@ -132,18 +132,20 @@ public class EfficiencyCalculatorService implements IEfficiencyCalculatorService
             Double dbQuota = avgMetric(masterList, m -> effPrimary.getQuotaOrFallback(m, fb));
             Double displayPph = avgMetric(masterList, m -> effPrimary.getPphOrFallback(m, fb));
 
-            // Weighted CT across all articles (proportional to time slots) — per-slot resolution.
-            Double weightedCt = calculateWeightedCt(section, singleCt, validDetails, masterDbMap);
+            // Single resolution pass over distinct articles, reused by all metrics below.
+            List<ArticleAgg> aggs = buildArticleAggregates(section, validDetails, masterDbMap);
+
+            // Weighted CT across all articles (proportional to time slots).
+            Double weightedCt = calculateWeightedCt(aggs, singleCt);
 
             // 1) EFF KPI (use weighted CT for multi-article accuracy)
             calculateEffKpi(dto, entity, weightedCt, allowance);
 
-            // 2) EFF Salary (per-slot resolution internally)
-            calculateEffSalary(dto, entity, section, dbQuota, dbMp, allowance, validDetails, masterDbMap);
+            // 2) EFF Salary
+            calculateEffSalary(dto, entity, dbQuota, dbMp, allowance, aggs);
 
-            // 3) Target + EFF% + Gap (per-slot resolution internally)
-            calculateTarget(dto, entity, masterData != null, section, displayPph,
-                    weightedCt, allowance, validDetails, masterDbMap);
+            // 3) Target + EFF% + Gap
+            calculateTarget(dto, entity, masterData != null, displayPph, weightedCt, allowance, aggs);
 
             // ── Set reasons when EFF values could not be calculated ──
             if (dto.getEffKpi() == null) {
@@ -291,12 +293,13 @@ public class EfficiencyCalculatorService implements IEfficiencyCalculatorService
             Double dbMp = avgMetric(masterList, m -> effPrimary.getMpOrFallback(m, fb));
             Double dbQuota = avgMetric(masterList, m -> effPrimary.getQuotaOrFallback(m, fb));
             Double displayPph = avgMetric(masterList, m -> effPrimary.getPphOrFallback(m, fb));
-            Double weightedCt = calculateWeightedCt(section, singleCt, validDetails, masterDbMap);
+
+            List<ArticleAgg> aggs = buildArticleAggregates(section, validDetails, masterDbMap);
+            Double weightedCt = calculateWeightedCt(aggs, singleCt);
 
             calculateEffKpi(dto, entity, weightedCt, allowance);
-            calculateEffSalary(dto, entity, section, dbQuota, dbMp, allowance, validDetails, masterDbMap);
-            calculateTarget(dto, entity, masterData != null, section, displayPph,
-                    weightedCt, allowance, validDetails, masterDbMap);
+            calculateEffSalary(dto, entity, dbQuota, dbMp, allowance, aggs);
+            calculateTarget(dto, entity, masterData != null, displayPph, weightedCt, allowance, aggs);
 
             if (dto.getEffKpi() == null) {
                 if (masterData == null && !"N/A".equals(lookupArticle)) {
@@ -383,40 +386,25 @@ public class EfficiencyCalculatorService implements IEfficiencyCalculatorService
     }
 
     /**
-     * EFF Salary = Output / (SUM(PPH*MP) / AVG(MP) * DLI * Allowance).
-     * Uses pre-loaded masterDbMap and resolves the 1ST/2ND column per slot
-     * based on each article's "-2" suffix.
+     * EFF Salary = Output / (SUM(Quota/10 · slots) adjusted / AVG(MP) · DLI · Allowance).
+     * Consumes the pre-built per-article aggregate; a slot counts only when both Quota
+     * and MP resolved (mirrors the original per-detail summation, one resolution pass).
      */
     private void calculateEffSalary(DailyProductionDto dto, DailyProduction entity,
-                                    String rowSection, Double dbQuota, Double dbMp,
-                                    double allowance,
-                                    List<DailyProductionDetail> salaryDetails,
-                                    Map<String, List<MasterDb>> masterDbMap) {
+                                    Double dbQuota, Double dbMp, double allowance,
+                                    List<ArticleAgg> aggs) {
         if (entity.getTotalOutput() == null || entity.getDli() == null || entity.getDli() <= 0) {
             return;
         }
 
         double sumQuota = 0.0;
         double sumMp = 0.0;
-        int slotCount = 0;
-
-        if (!salaryDetails.isEmpty()) {
-            for (DailyProductionDetail detail : salaryDetails) {
-                String raw = detail.getArticleNo();
-                SectionMetrics.ArticleKey key = SectionMetrics.ArticleKey.parse(raw);
-                List<MasterDb> list = masterDbMap.get(key.cleanedArticle());
-                if (list == null || list.isEmpty()) continue;
-                SectionMetrics.ResolvedSection res = SectionMetrics.resolveSlot(rowSection, raw);
-                if (res.primary() == null) continue;
-                final SectionMetrics pSm = res.primary();
-                final SectionMetrics fbSm = res.fallback();
-                Double slotQuotaDb = avgMetric(list, m -> pSm.getQuotaOrFallback(m, fbSm));
-                Double slotMp = avgMetric(list, m -> pSm.getMpOrFallback(m, fbSm));
-                if (slotQuotaDb != null && slotMp != null && slotMp > 0) {
-                    sumQuota += slotQuotaDb / 10.0;
-                    sumMp += slotMp;
-                    slotCount++;
-                }
+        long slotCount = 0;
+        for (ArticleAgg a : aggs) {
+            if (a.quota() != null && a.mp() != null && a.mp() > 0) {
+                sumQuota += (a.quota() / 10.0) * a.slots();
+                sumMp += a.mp() * a.slots();
+                slotCount += a.slots();
             }
         }
 
@@ -438,48 +426,31 @@ public class EfficiencyCalculatorService implements IEfficiencyCalculatorService
     }
 
     /**
-     * Calculate Target (multi-article weighted), EFF%, and Gap.
-     * Uses pre-loaded masterDbMap to avoid N+1 queries.
+     * Calculate Target (multi-article weighted), EFF%, and Gap from the pre-built aggregate.
+     * Weighted PPH renormalizes over slots whose article resolved a PPH, so a partial
+     * Master-DB miss does not deflate the target (consistent with weighted CT / EFF Salary).
+     * For a fully-resolved row this is identical to the old SUM-over-totalSlots form.
      */
     private void calculateTarget(DailyProductionDto dto, DailyProduction entity,
-                                 boolean hasMasterData, String rowSection,
-                                 Double displayPph,
-                                 Double ct, double allowance,
-                                 List<DailyProductionDetail> validDetails,
-                                 Map<String, List<MasterDb>> masterDbMap) {
-        if (validDetails.isEmpty() || entity.getMp() == null || entity.getWt() == null
+                                 boolean hasMasterData, Double displayPph,
+                                 Double ct, double allowance, List<ArticleAgg> aggs) {
+        if (aggs.isEmpty() || entity.getMp() == null || entity.getWt() == null
                 || entity.getMp() <= 0 || entity.getWt() <= 0) {
             return;
         }
 
-        int totalSlots = validDetails.size();
-        // Group by raw article (keep "-2" so slot-level resolution works)
-        Map<String, Long> countByArticle = validDetails.stream()
-                .collect(Collectors.groupingBy(d -> d.getArticleNo().trim(), Collectors.counting()));
-
-        double totalTarget = 0.0;
-        boolean hasValidPph = false;
-
-        for (Map.Entry<String, Long> entry : countByArticle.entrySet()) {
-            String rawArt = entry.getKey();
-            long slotCount = entry.getValue();
-
-            SectionMetrics.ArticleKey key = SectionMetrics.ArticleKey.parse(rawArt);
-            List<MasterDb> list = masterDbMap.get(key.cleanedArticle());
-            if (list == null || list.isEmpty()) continue;
-            SectionMetrics.ResolvedSection res = SectionMetrics.resolveSlot(rowSection, rawArt);
-            if (res.primary() == null) continue;
-            final SectionMetrics pSm = res.primary();
-            final SectionMetrics fbSm = res.fallback();
-            Double artPph = avgMetric(list, m -> pSm.getPphOrFallback(m, fbSm));
-            if (artPph != null && artPph > 0) {
-                hasValidPph = true;
-                double fractionWt = entity.getWt() * ((double) slotCount / totalSlots);
-                totalTarget += (entity.getMp() * fractionWt * artPph * allowance);
+        double pphNumer = 0.0;
+        long slotsWithPph = 0;
+        for (ArticleAgg a : aggs) {
+            if (a.pph() != null && a.pph() > 0) {
+                pphNumer += a.pph() * a.slots();
+                slotsWithPph += a.slots();
             }
         }
 
-        if (hasValidPph && totalTarget > 0) {
+        if (slotsWithPph > 0 && pphNumer > 0) {
+            double weightedPph = pphNumer / slotsWithPph;
+            double totalTarget = entity.getMp() * entity.getWt() * weightedPph * allowance;
             dto.setTarget(totalTarget);
             if (hasMasterData) {
                 dto.setTct(ct);
@@ -502,46 +473,60 @@ public class EfficiencyCalculatorService implements IEfficiencyCalculatorService
     }
 
     /**
-     * Calculate weighted-average CT based on time-slot proportions.
-     * weightedCt = SUM(CT_i * slots_i) / totalSlots
-     * Falls back to single-article CT if no valid details.
+     * Weighted-average CT across time slots: SUM(CT_i · slots_i) / SUM(slots_i with CT).
+     * Falls back to the single-article CT when no slot resolved a CT.
      */
-    private Double calculateWeightedCt(String rowSection, Double singleArticleCt,
-                                        List<DailyProductionDetail> validDetails,
-                                        Map<String, List<MasterDb>> masterDbMap) {
-        if (validDetails.isEmpty()) {
-            return singleArticleCt;
-        }
-
-        Map<String, Long> countByArticle = validDetails.stream()
-                .collect(Collectors.groupingBy(d -> d.getArticleNo().trim(), Collectors.counting()));
-
+    private Double calculateWeightedCt(List<ArticleAgg> aggs, Double singleArticleCt) {
         double weightedCtSum = 0.0;
         long slotsWithValidCt = 0;
-
-        for (Map.Entry<String, Long> entry : countByArticle.entrySet()) {
-            String rawArt = entry.getKey();
-            long slotCount = entry.getValue();
-
-            SectionMetrics.ArticleKey key = SectionMetrics.ArticleKey.parse(rawArt);
-            List<MasterDb> list = masterDbMap.get(key.cleanedArticle());
-            if (list == null || list.isEmpty()) continue;
-            SectionMetrics.ResolvedSection res = SectionMetrics.resolveSlot(rowSection, rawArt);
-            if (res.primary() == null) continue;
-            final SectionMetrics pSm = res.primary();
-            final SectionMetrics fbSm = res.fallback();
-            Double artCt = avgMetric(list, m -> pSm.getCtOrFallback(m, fbSm));
-            if (artCt != null && artCt > 0) {
-                weightedCtSum += artCt * slotCount;
-                slotsWithValidCt += slotCount;
+        for (ArticleAgg a : aggs) {
+            if (a.ct() != null && a.ct() > 0) {
+                weightedCtSum += a.ct() * a.slots();
+                slotsWithValidCt += a.slots();
             }
         }
-
         if (slotsWithValidCt > 0) {
             return weightedCtSum / slotsWithValidCt;
         }
         return singleArticleCt;
     }
+
+    /**
+     * One resolution pass over distinct articles in the row. Groups valid details by raw
+     * article (keeping the "-2" suffix so slot-level 1ST/2ND resolution works), then resolves
+     * the MasterDb metrics (PPH/CT/Quota/MP) once per distinct article. The resulting list is
+     * shared by the weighted CT, target and salary calculations to avoid 3× redundant work.
+     */
+    private List<ArticleAgg> buildArticleAggregates(String section,
+                                                    List<DailyProductionDetail> validDetails,
+                                                    Map<String, List<MasterDb>> masterDbMap) {
+        if (validDetails.isEmpty()) return Collections.emptyList();
+        Map<String, Long> countByArticle = validDetails.stream()
+                .collect(Collectors.groupingBy(d -> d.getArticleNo().trim(), Collectors.counting()));
+
+        List<ArticleAgg> aggs = new ArrayList<>(countByArticle.size());
+        for (Map.Entry<String, Long> e : countByArticle.entrySet()) {
+            String rawArt = e.getKey();
+            long slots = e.getValue();
+            List<MasterDb> list = masterDbMap.get(SectionMetrics.ArticleKey.parse(rawArt).cleanedArticle());
+            SectionMetrics.ResolvedSection res = SectionMetrics.resolveSlot(section, rawArt);
+            if (list == null || list.isEmpty() || res.primary() == null) {
+                aggs.add(new ArticleAgg(slots, null, null, null, null));
+                continue;
+            }
+            final SectionMetrics p = res.primary();
+            final SectionMetrics fb = res.fallback();
+            aggs.add(new ArticleAgg(slots,
+                    avgMetric(list, m -> p.getPphOrFallback(m, fb)),
+                    avgMetric(list, m -> p.getCtOrFallback(m, fb)),
+                    avgMetric(list, m -> p.getQuotaOrFallback(m, fb)),
+                    avgMetric(list, m -> p.getMpOrFallback(m, fb))));
+        }
+        return aggs;
+    }
+
+    /** Per-distinct-article aggregate: slot count + resolved MasterDb metrics. */
+    private record ArticleAgg(long slots, Double pph, Double ct, Double quota, Double mp) {}
 
     /**
      * Batch load MasterDb for a list of articleNos — one query instead of N queries.

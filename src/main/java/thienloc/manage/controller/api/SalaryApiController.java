@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/salary")
+@RequestMapping("/api/v1/incentive")
 public class SalaryApiController {
 
     private final ISalaryService salaryService;

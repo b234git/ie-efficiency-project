@@ -62,6 +62,7 @@ public class DailyProduction {
 
     @Builder.Default
     @OneToMany(mappedBy = "dailyProduction", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("timeSlot ASC")
     private java.util.List<DailyProductionDetail> details = new java.util.ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)

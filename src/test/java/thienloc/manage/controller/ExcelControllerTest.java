@@ -9,18 +9,18 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import thienloc.manage.dto.EntryImportPreviewDto;
 import thienloc.manage.security.SecurityConfig;
+import thienloc.manage.entity.ImportJob;
 import thienloc.manage.service.ExcelService;
+import thienloc.manage.service.ImportJobService;
 import thienloc.manage.service.NotificationService;
 
 import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ExcelController.class)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, thienloc.manage.security.TestRbacSecurityConfig.class})
 class ExcelControllerTest {
 
     @Autowired
@@ -36,6 +36,9 @@ class ExcelControllerTest {
 
     @MockitoBean
     private ExcelService excelService;
+
+    @MockitoBean
+    private ImportJobService importJobService;
 
     @MockitoBean
     private NotificationService notificationService;
@@ -60,9 +63,11 @@ class ExcelControllerTest {
         preview.setRows(List.of());
         when(excelService.parseForPreview(any())).thenReturn(preview);
 
+        // Header must carry the real XLSX (PK\x03\x04) magic bytes — ExcelFileValidator
+        // now rejects files that are not genuine Excel before parsing.
         MockMultipartFile file = new MockMultipartFile("file", "test.xlsx",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                new byte[]{1, 2, 3});
+                new byte[]{0x50, 0x4B, 0x03, 0x04, 0, 0, 0, 0});
 
         mockMvc.perform(multipart("/excel/preview").file(file)
                         .with(user("user").roles("USER"))
@@ -92,16 +97,18 @@ class ExcelControllerTest {
     void testConfirmImport() throws Exception {
         Path tempFile = Files.createTempFile("test-import-", ".xlsx");
         Files.write(tempFile, new byte[]{1, 2, 3});
+        when(importJobService.createJob("ENTRY_IMPORT", "user"))
+                .thenReturn(ImportJob.builder().id(5L).build());
 
+        // Confirm now kicks off an async import job and redirects to its status page.
         mockMvc.perform(post("/excel/import/confirm")
                         .sessionAttr("entryImportFile", tempFile.toString())
                         .with(user("user").roles("USER"))
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/entry"))
-                .andExpect(flash().attributeExists("success"));
+                .andExpect(redirectedUrl("/excel/import/status/5"));
 
-        verify(excelService).importExcel(any(InputStream.class), eq("user"));
+        verify(importJobService).runEntryImport(5L, tempFile.toString(), "user");
     }
 
     @Test

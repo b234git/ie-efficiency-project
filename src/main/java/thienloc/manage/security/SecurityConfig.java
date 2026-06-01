@@ -2,9 +2,9 @@ package thienloc.manage.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -28,6 +28,9 @@ public class SecurityConfig {
 
         private static final ObjectMapper ERROR_MAPPER = new ObjectMapper();
 
+        @Autowired
+        private FeatureBasedAuthorizationManager featureBasedAuthorizationManager;
+
         @Bean
         public static PasswordEncoder passwordEncoder() {
                 return new BCryptPasswordEncoder();
@@ -38,43 +41,11 @@ public class SecurityConfig {
                 RequestMatcher apiMatcher = PathPatternRequestMatcher.withDefaults().matcher("/api/**");
                 CsrfTokenRequestAttributeHandler csrfHandler = new CsrfTokenRequestAttributeHandler();
 
-                http.authorizeHttpRequests((authorize) -> authorize.requestMatchers("/register/**")
-                                .permitAll()
+                http.authorizeHttpRequests(authorize -> authorize
+                                .requestMatchers("/register/**").permitAll()
                                 .requestMatchers("/login").permitAll()
                                 .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()
-                                .requestMatchers("/actuator/**").hasRole("ADMIN")
-                                .requestMatchers("/api/v1/system-health/**").hasRole("ADMIN")
-                                .requestMatchers("/admin/**", "/api/v1/admin/**").hasRole("ADMIN")
-                                .requestMatchers("/masterdb/**", "/api/v1/masterdb/**").hasAnyRole("ADMIN", "MANAGER")
-                                .requestMatchers("/dashboard/**", "/api/v1/dashboard/**").hasAnyRole("ADMIN", "MANAGER")
-                                .requestMatchers("/report/**", "/api/v1/reports/**").hasAnyRole("ADMIN", "MANAGER")
-                                .requestMatchers("/entry/edit", "/entry/admin-delete", "/entry/delete")
-                                .hasAnyRole("ADMIN", "MANAGER")
-                                .requestMatchers("/split-entry/delete/**").hasAnyRole("ADMIN", "MANAGER")
-                                .requestMatchers(HttpMethod.DELETE, "/api/v1/split-entries/**")
-                                .hasAnyRole("ADMIN", "MANAGER")
-                                .requestMatchers(HttpMethod.POST, "/api/v1/split-entries/bulk-delete")
-                                .hasAnyRole("ADMIN", "MANAGER")
-                                .requestMatchers("/split-entry/output", "/split-entry/output/**")
-                                .hasAnyRole("ADMIN", "MANAGER")
-                                .requestMatchers("/split-entry/articles", "/split-entry/articles/**")
-                                .hasAnyRole("ADMIN", "MANAGER")
-                                .requestMatchers("/split-entry/**", "/api/v1/split-entries/**")
-                                .hasAnyRole("ADMIN", "MANAGER", "USER")
-                                .requestMatchers("/entry/**", "/api/v1/entries/**").hasAnyRole("ADMIN", "MANAGER")
-                                .requestMatchers("/notifications/**", "/api/v1/notifications/**")
-                                .hasAnyRole("ADMIN", "MANAGER")
-                                .requestMatchers("/eff-config/**", "/api/v1/eff-config/**")
-                                .hasAnyRole("ADMIN", "MANAGER")
-                                .requestMatchers("/weekly-tracking/sixs/**", "/weekly-tracking/reprocess/**")
-                                .hasAnyRole("ADMIN", "MANAGER")
-                                .requestMatchers("/weekly-tracking/**", "/api/v1/weekly-tracking/**")
-                                .hasAnyRole("ADMIN", "MANAGER")
-                                .requestMatchers("/new-style/**", "/api/v1/new-styles/**")
-                                .hasAnyRole("ADMIN", "MANAGER")
-                                .requestMatchers("/salary/**", "/api/v1/salary/**").hasAnyRole("ADMIN", "MANAGER")
-                                .requestMatchers("/api/v1/imports/**").hasAnyRole("ADMIN", "MANAGER")
-                                .anyRequest().authenticated())
+                                .anyRequest().access(featureBasedAuthorizationManager))
                                 .csrf(csrf -> csrf.csrfTokenRequestHandler(csrfHandler))
                                 .formLogin(
                                                 form -> form

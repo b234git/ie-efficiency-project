@@ -75,18 +75,6 @@ class SystemLogServiceTest {
     }
 
     @Test
-    void testGetAllLogs() {
-        List<SystemLog> logs = List.of(
-                SystemLog.builder().action("A").build(),
-                SystemLog.builder().action("B").build());
-        when(systemLogRepository.findAllByOrderByTimestampDesc()).thenReturn(logs);
-
-        List<SystemLog> result = systemLogService.getAllLogs();
-
-        assertEquals(2, result.size());
-    }
-
-    @Test
     void testGetLogsPage() {
         Pageable pageable = PageRequest.of(0, 20);
         Page<SystemLog> page = new PageImpl<>(List.of(SystemLog.builder().action("A").build()));

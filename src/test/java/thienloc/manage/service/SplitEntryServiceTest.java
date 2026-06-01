@@ -6,13 +6,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import thienloc.manage.dto.DailyProductionDetailDto;
 import thienloc.manage.dto.DailyProductionDto;
 import thienloc.manage.dto.SplitEntryDto;
 import thienloc.manage.entity.SplitEntry;
 import thienloc.manage.entity.SplitEntryDetail;
+import thienloc.manage.entity.SplitEntryStatus;
 import thienloc.manage.entity.User;
+import thienloc.manage.mapper.SplitEntryMapper;
 import thienloc.manage.repository.DailyProductionRepository;
 import thienloc.manage.repository.SplitEntryRepository;
 import thienloc.manage.testutil.TestDataFactory;
@@ -40,6 +43,11 @@ class SplitEntryServiceTest {
 
     @Mock
     private DailyProductionRepository dailyProductionRepository;
+
+    // Real mapper (dependency-free, field-mapping only) so convertToDto tests
+    // exercise actual mapping logic instead of a null mock.
+    @Spy
+    private SplitEntryMapper splitEntryMapper = new SplitEntryMapper();
 
     @InjectMocks
     private SplitEntryService splitEntryService;
@@ -210,7 +218,7 @@ class SplitEntryServiceTest {
 
         SplitEntry result = splitEntryService.saveOutput(dto, "admin");
 
-        assertEquals("SYNCED", result.getStatus());
+        assertEquals(SplitEntryStatus.SYNCED, result.getStatus());
         assertEquals(99L, result.getLinkedDailyProductionId());
         verify(productionService).saveDailyProduction(any(DailyProductionDto.class), eq("admin"));
     }
@@ -227,7 +235,7 @@ class SplitEntryServiceTest {
 
         SplitEntry result = splitEntryService.saveManpower(dto, "admin");
 
-        assertEquals("PARTIAL", result.getStatus());
+        assertEquals(SplitEntryStatus.PARTIAL, result.getStatus());
         verify(productionService, never()).saveDailyProduction(any(), anyString());
     }
 

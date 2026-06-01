@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <title th:text="#{admin.syslogs}">System Logs</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+
+<body>
+    <div th:replace="~{fragments/layout :: navbar}"></div>
+
+    <div class="container">
+        <div style="margin-bottom:8px;">
+            <a th:href="@{/admin/}" style="color:#1a6bbf; text-decoration:none;">&larr;
+                <span th:text="#{admin.user.edit.back}">Back to Admin</span></a>
+        </div>
+
+        <h2 th:text="#{admin.syslogs}">System Logs</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th th:text="#{admin.log.time}">Time</th>
+                    <th th:text="#{admin.log.user}">User</th>
+                    <th th:text="#{admin.log.action}">Action</th>
+                    <th th:text="#{admin.log.details}">Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="log : ${logsPage.content}">
+                    <td th:text="${#temporals.format(log.timestamp, 'dd/MM/yyyy HH:mm:ss')}"></td>
+                    <td th:text="${log.username}"></td>
+                    <td th:text="${log.action}"></td>
+                    <td th:text="${log.details}"></td>
+                </tr>
+                <tr th:if="${logsPage.content.isEmpty()}">
+                    <td colspan="4" style="text-align: center; color: #888;" th:text="#{admin.log.empty}">No system logs available.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Logs Pagination -->
+        <div th:if="${logsPage.totalPages > 1}" style="margin-top: 15px;">
+            <ul style="display: flex; list-style: none; padding: 0; gap: 5px; flex-wrap: wrap;">
+                <li>
+                    <a th:if="${!logsPage.first}" th:href="@{/admin/logs(logPage=0)}" class="btn"
+                        style="padding:5px 10px; border:1px solid #ccc; text-decoration:none; color:black;"
+                        th:text="#{pagination.first}">« First</a>
+                    <span th:if="${logsPage.first}" class="btn"
+                        style="padding:5px 10px; border:1px solid #ccc; background:#eee; color:#aaa;"
+                        th:text="#{pagination.first}">« First</span>
+                </li>
+                <li>
+                    <a th:if="${!logsPage.first}" th:href="@{/admin/logs(logPage=${logsPage.number - 1})}" class="btn"
+                        style="padding:5px 10px; border:1px solid #ccc; text-decoration:none; color:black;"
+                        th:text="#{pagination.prev}">‹ Prev</a>
+                    <span th:if="${logsPage.first}" class="btn"
+                        style="padding:5px 10px; border:1px solid #ccc; background:#eee; color:#aaa;"
+                        th:text="#{pagination.prev}">‹ Prev</span>
+                </li>
+                <li style="padding:5px 10px;"
+                    th:text="#{entry.pagination.page.of(${logsPage.number + 1}, ${logsPage.totalPages})}">
+                    Page 1 of 1
+                </li>
+                <li>
+                    <a th:if="${!logsPage.last}" th:href="@{/admin/logs(logPage=${logsPage.number + 1})}" class="btn"
+                        style="padding:5px 10px; border:1px solid #ccc; text-decoration:none; color:black;"
+                        th:text="#{pagination.next}">Next ›</a>
+                    <span th:if="${logsPage.last}" class="btn"
+                        style="padding:5px 10px; border:1px solid #ccc; background:#eee; color:#aaa;"
+                        th:text="#{pagination.next}">Next ›</span>
+                </li>
+                <li>
+                    <a th:if="${!logsPage.last}" th:href="@{/admin/logs(logPage=${logsPage.totalPages - 1})}" class="btn"
+                        style="padding:5px 10px; border:1px solid #ccc; text-decoration:none; color:black;"
+                        th:text="#{pagination.last}">Last »</a>
+                    <span th:if="${logsPage.last}" class="btn"
+                        style="padding:5px 10px; border:1px solid #ccc; background:#eee; color:#aaa;"
+                        th:text="#{pagination.last}">Last »</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</body>
+
+</html>

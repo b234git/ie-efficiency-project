@@ -58,6 +58,9 @@ public class SplitEntryController {
     @Autowired
     private SplitEntryTemplateService splitEntryTemplateService;
 
+    @Autowired
+    private thienloc.manage.service.LineAssignmentService lineAssignmentService;
+
     private static final List<String> SECTIONS = Arrays.asList(
             "SEW",
             "BUFFING", "BUFFING 1ST", "BUFFING 2ND",
@@ -76,18 +79,22 @@ public class SplitEntryController {
     public String showLanding(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) String month,
+            Principal principal,
             Model model) {
+
+        thienloc.manage.service.LineAssignmentService.LineScope scope =
+                lineAssignmentService.scopeFor(principal.getName());
 
         if (month != null && !month.isEmpty()) {
             YearMonth ym = YearMonth.parse(month);
-            List<SplitEntryDto> entries = splitEntryService.getEntriesForMonth(ym);
+            List<SplitEntryDto> entries = filterByScope(splitEntryService.getEntriesForMonth(ym), scope);
             model.addAttribute("entries", entries);
             model.addAttribute("selectedMonth", month);
             model.addAttribute("selectedDate", LocalDate.now());
             model.addAttribute("viewMode", "month");
         } else {
             if (date == null) date = LocalDate.now();
-            List<SplitEntryDto> entries = splitEntryService.getEntriesForDate(date);
+            List<SplitEntryDto> entries = filterByScope(splitEntryService.getEntriesForDate(date), scope);
             model.addAttribute("entries", entries);
             model.addAttribute("selectedDate", date);
             model.addAttribute("selectedMonth", LocalDate.now().toString().substring(0, 7));
@@ -96,6 +103,15 @@ public class SplitEntryController {
 
         model.addAttribute("sections", SECTIONS);
         return "split-entry";
+    }
+
+    /** Hide rows outside the caller's assigned section/line scope. */
+    private List<SplitEntryDto> filterByScope(List<SplitEntryDto> entries,
+            thienloc.manage.service.LineAssignmentService.LineScope scope) {
+        if (!scope.isRestricted()) return entries;
+        return entries.stream()
+                .filter(e -> scope.allows(e.getSection(), e.getLine()))
+                .collect(java.util.stream.Collectors.toList());
     }
 
     // ─── Page 1: Manpower ─────────────────────────────────────────────────────────
@@ -138,7 +154,12 @@ public class SplitEntryController {
                           .orElse("Dữ liệu nhập không hợp lệ."));
             return "redirect:/split-entry/manpower";
         }
-        splitEntryService.saveManpower(dto, principal.getName());
+        try {
+            splitEntryService.saveManpower(dto, principal.getName());
+        } catch (org.springframework.security.access.AccessDeniedException ex) {
+            redirectAttributes.addFlashAttribute("validationError", ex.getMessage());
+            return "redirect:/split-entry/manpower";
+        }
         systemLogService.logAction("SPLIT_MANPOWER",
                 "Saved manpower: Section=" + dto.getSection() + ", Line=" + dto.getLine());
         redirectAttributes.addFlashAttribute("success", true);
@@ -185,7 +206,12 @@ public class SplitEntryController {
                           .orElse("Dữ liệu nhập không hợp lệ."));
             return "redirect:/split-entry/output";
         }
-        splitEntryService.saveOutput(dto, principal.getName());
+        try {
+            splitEntryService.saveOutput(dto, principal.getName());
+        } catch (org.springframework.security.access.AccessDeniedException ex) {
+            redirectAttributes.addFlashAttribute("validationError", ex.getMessage());
+            return "redirect:/split-entry/output";
+        }
         systemLogService.logAction("SPLIT_OUTPUT",
                 "Saved output: Section=" + dto.getSection() + ", Line=" + dto.getLine());
         redirectAttributes.addFlashAttribute("success", true);
@@ -242,7 +268,12 @@ public class SplitEntryController {
                           .orElse("Dữ liệu nhập không hợp lệ."));
             return "redirect:/split-entry/articles";
         }
-        splitEntryService.saveArticles(dto, principal.getName());
+        try {
+            splitEntryService.saveArticles(dto, principal.getName());
+        } catch (org.springframework.security.access.AccessDeniedException ex) {
+            redirectAttributes.addFlashAttribute("validationError", ex.getMessage());
+            return "redirect:/split-entry/articles";
+        }
         systemLogService.logAction("SPLIT_ARTICLES",
                 "Saved articles: Section=" + dto.getSection() + ", Line=" + dto.getLine());
         redirectAttributes.addFlashAttribute("success", true);

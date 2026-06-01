@@ -49,4 +49,9 @@ public interface SplitEntryRepository extends JpaRepository<SplitEntry, Long> {
     @Query("SELECT s.linkedDailyProductionId FROM SplitEntry s " +
            "WHERE s.productionDate BETWEEN :from AND :to AND s.linkedDailyProductionId IS NOT NULL")
     List<Long> findLinkedProductionIdsByDateRange(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    // ─── Distinct (section, line) pairs — feeds the line-assignment picker ───────
+    @Query("SELECT DISTINCT s.section, s.line FROM SplitEntry s " +
+           "WHERE s.section IS NOT NULL AND s.section <> '' AND s.line IS NOT NULL AND s.line <> ''")
+    List<Object[]> findDistinctSectionLinePairs();
 }

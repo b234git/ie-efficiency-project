@@ -10,6 +10,19 @@
     <style>
         .eff-hi { color: #28a745; }
         .eff-low { color: #dc3545; }
+        /* Filled/empty indicators for the manual entry form */
+        .form-control.is-filled  {
+            border:2px solid #28a745 !important;
+            background:#eafaf0;
+            box-shadow:0 0 0 3px rgba(40,167,69,0.30);
+        }
+        .form-control.is-invalid {
+            border:2px solid #dc3545 !important;
+            background:#fdecec;
+            box-shadow:0 0 0 3px rgba(220,53,69,0.30);
+        }
+        #formError { display:none; color:#dc3545; background:#f8d7da; border:1px solid #f5c2c7;
+                     border-radius:4px; padding:10px 12px; margin-bottom:14px; font-size:0.9em; }
     </style>
 </head>
 
@@ -24,6 +37,9 @@
         <div th:if="${param.edited}" style="color:green; margin-bottom:10px;" th:text="#{entry.edit.success}">Entry updated successfully!</div>
         <div th:if="${param.deleted}" style="color:#dc3545; margin-bottom:10px;" th:text="#{entry.delete.success}">Entry deleted.</div>
         <div th:if="${param.requestSent}" style="color:#17a2b8; margin-bottom:10px;" th:text="#{entry.request.sent}">Edit request sent to manager/admin!</div>
+        <div th:if="${validationError}" style="color:#dc3545; margin-bottom:10px; padding:10px; background:#f8d7da; border:1px solid #f5c2c7; border-radius:4px;">
+            ⚠ <span th:text="${validationError}"></span>
+        </div>
 
         <!-- EXCEL IMPORT SECTION -->
         <div style="margin-bottom: 20px; padding: 15px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;">
@@ -65,6 +81,9 @@
                     ✕ <span th:text="#{masterdb.modal.cancel}">Cancel</span>
                 </button>
             </div>
+
+            <!-- Client-side validation summary (hidden until a failed submit) -->
+            <div id="formError"></div>
 
             <!-- ROW 1: Date / Section / Subsection / Line -->
             <input type="hidden" th:field="*{section}" id="sectionHidden" />
@@ -323,7 +342,7 @@
                     <th th:text="#{table.mp}">MP</th>
                     <th th:text="#{table.wt}">WT (h)</th>
                     <th th:text="#{entry.label.effkpi}">EFF KPI</th>
-                    <th th:text="#{entry.label.effsalary}">EFF Salary</th>
+                    <th th:text="#{entry.label.effsalary}">EFF Incentive</th>
                     <th sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:text="#{table.pph}">PPH</th>
                     <th th:text="#{table.actions}">Actions</th>
                 </tr>
@@ -597,6 +616,7 @@
             var num = document.querySelector('#entryForm [name="allowance"]');
             if (slider) slider.value = v;
             if (num) num.value = v;
+            markAllowance(false);
         }
 
         // ── Section / Subsection split logic ─────────────────────────────────
@@ -690,12 +710,122 @@
                     if (sel && !sel.disabled) { sel.value = 'SMALL'; updateHiddenSection(); }
                 }
             });
+
+            // ── Live filled/empty indicators ─────────────────────────────────
+            REQUIRED_FIELDS.forEach(function(spec) {
+                var el = reqEl(spec);
+                if (!el) return;
+                el.addEventListener('input', function() {
+                    el.dataset.touched = '1';
+                    markRequired(spec);
+                    hideFormError();
+                });
+            });
+            document.getElementById('sectionBase').addEventListener('change', function() {
+                this.dataset.touched = '1';
+                markSection();
+                hideFormError();
+            });
+
+            // ── Block submit when required fields are empty/invalid ──────────
+            document.getElementById('entryForm').addEventListener('submit', function(e) {
+                var firstInvalid = validateEntryForm();
+                if (firstInvalid) {
+                    e.preventDefault();
+                    var box = document.getElementById('formError');
+                    box.textContent = '⚠ Vui lòng nhập đầy đủ và đúng các trường bắt buộc (ô được tô đỏ). Allowance phải trong khoảng 80–100%.';
+                    box.style.display = 'block';
+                    firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    firstInvalid.focus();
+                }
+            });
+
+            refreshIndicators();
         });
 
         // Helper: set a form field value by its name attribute (works regardless of id)
         function setField(name, value) {
             var el = document.querySelector('#entryForm [name="' + name + '"]');
             if (el) el.value = value;
+        }
+
+        // ── Required-field validation + filled/empty indicators ──────────────
+        // positive   → value must parse to a number > 0
+        // nonNegative→ value must parse to a number >= 0
+        var REQUIRED_FIELDS = [
+            { name: 'productionDate' },
+            { name: 'line' },
+            { name: 'mp',     positive: true },
+            { name: 'wt',     positive: true },
+            { name: 'output', nonNegative: true }
+        ];
+
+        function reqEl(spec) {
+            return document.querySelector('#entryForm [name="' + spec.name + '"]');
+        }
+
+        function reqValid(spec, el) {
+            var raw = (el.value || '').trim();
+            if (raw === '') return false;
+            if (spec.positive)    return parseFloat(raw) > 0;
+            if (spec.nonNegative) return parseFloat(raw) >= 0;
+            return true;
+        }
+
+        function markRequired(spec) {
+            var el = reqEl(spec);
+            if (!el) return true;
+            var ok = reqValid(spec, el);
+            el.classList.toggle('is-filled', ok);
+            el.classList.toggle('is-invalid', !ok && el.dataset.touched === '1');
+            return ok;
+        }
+
+        function markSection() {
+            var base = document.getElementById('sectionBase');
+            var ok = !!base.value;
+            base.classList.toggle('is-filled', ok);
+            base.classList.toggle('is-invalid', !ok && base.dataset.touched === '1');
+            return ok;
+        }
+
+        function markAllowance(force) {
+            var el = document.querySelector('#entryForm [name="allowance"]');
+            if (!el) return true;
+            var v = parseFloat(el.value);
+            var ok = !isNaN(v) && v >= 80 && v <= 100;
+            el.classList.toggle('is-filled', ok);
+            el.classList.toggle('is-invalid', !ok && (force || el.dataset.touched === '1'));
+            return ok;
+        }
+
+        function refreshIndicators() {
+            REQUIRED_FIELDS.forEach(markRequired);
+            markSection();
+            markAllowance(false);
+        }
+
+        function hideFormError() {
+            var box = document.getElementById('formError');
+            if (box) box.style.display = 'none';
+        }
+
+        // Returns the first invalid element (or null) after marking every field.
+        function validateEntryForm() {
+            var firstInvalid = null;
+            REQUIRED_FIELDS.forEach(function(spec) {
+                var el = reqEl(spec);
+                if (!el) return;
+                el.dataset.touched = '1';
+                if (!markRequired(spec) && !firstInvalid) firstInvalid = el;
+            });
+            var base = document.getElementById('sectionBase');
+            base.dataset.touched = '1';
+            if (!markSection() && !firstInvalid) firstInvalid = base;
+            var allow = document.querySelector('#entryForm [name="allowance"]');
+            if (allow) allow.dataset.touched = '1';
+            if (!markAllowance(true) && !firstInvalid) firstInvalid = allow;
+            return firstInvalid;
         }
 
         // ── Load edit data into main form & scroll up ────────────────────────
@@ -760,6 +890,9 @@
 
             // Scroll to top of form smoothly
             form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            // Repaint filled/empty indicators for the populated fields
+            refreshIndicators();
         }
 
         function cancelEdit() {
@@ -790,6 +923,14 @@
             syncAllowance(100);
             // Re-enable all slots (WT is now empty)
             updateActiveSlots();
+
+            // Clear validation state so the fresh form starts neutral
+            hideFormError();
+            document.querySelectorAll('#entryForm .is-invalid, #entryForm .is-filled').forEach(function(el) {
+                el.classList.remove('is-invalid', 'is-filled');
+                delete el.dataset.touched;
+            });
+            refreshIndicators();
         }
 
         // ── Request Edit Modal ───────────────────────────────────────────────

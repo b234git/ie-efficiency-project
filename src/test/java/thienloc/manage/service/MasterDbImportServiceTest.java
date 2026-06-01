@@ -2,9 +2,12 @@ package thienloc.manage.service;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import thienloc.manage.dto.ImportPreviewDto;
@@ -25,6 +28,15 @@ class MasterDbImportServiceTest {
     @Mock
     private MasterDbRepository masterDbRepository;
 
+    // Persistence was extracted to MasterDbService.saveAll(); the import service
+    // still reads existing rows via the repository but delegates the save here.
+    @Mock
+    private MasterDbService masterDbService;
+
+    // Real registry so the import path's timing instrumentation works.
+    @Spy
+    private MeterRegistry meterRegistry = new SimpleMeterRegistry();
+
     @InjectMocks
     private MasterDbImportService importService;
 
@@ -40,7 +52,7 @@ class MasterDbImportServiceTest {
         int count = importService.importFromExcel(file);
 
         assertEquals(1, count);
-        verify(masterDbRepository).saveAll(anyList());
+        verify(masterDbService).saveAll(anyList());
     }
 
     @Test
@@ -141,7 +153,7 @@ class MasterDbImportServiceTest {
         assertEquals(2, count);
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<MasterDb>> captor = ArgumentCaptor.forClass(List.class);
-        verify(masterDbRepository).saveAll(captor.capture());
+        verify(masterDbService).saveAll(captor.capture());
         assertEquals(2, captor.getValue().size());
     }
 
@@ -170,7 +182,7 @@ class MasterDbImportServiceTest {
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<MasterDb>> captor = ArgumentCaptor.forClass(List.class);
-        verify(masterDbRepository).saveAll(captor.capture());
+        verify(masterDbService).saveAll(captor.capture());
         MasterDb saved = captor.getValue().get(0);
         assertEquals(1681.0, saved.getSewCt(), 0.001);
         assertEquals(30.0, saved.getSewMp(), 0.001);

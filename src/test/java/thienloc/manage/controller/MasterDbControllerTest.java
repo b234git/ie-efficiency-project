@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(MasterDbController.class)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, thienloc.manage.security.TestRbacSecurityConfig.class})
 class MasterDbControllerTest {
 
     @Autowired
@@ -84,7 +84,7 @@ class MasterDbControllerTest {
                 .andExpect(flash().attributeExists("success"));
 
         verify(masterDbService).save(any(MasterDb.class));
-        verify(systemLogService).logAction(eq("ADD_MASTERDB"), anyString());
+        verify(systemLogService).logAction(eq("ADD_MASTERDB"), anyString(), any());
     }
 
     @Test

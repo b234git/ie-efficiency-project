@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <title th:text="#{admin.roles.title}">Role Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <style>
+        .role-card { background:#fff; border:1px solid #dee2e6; border-radius:6px; padding:16px 20px; }
+        .role-create { background:#f8f9fa; border:1px solid #dee2e6; border-radius:6px; padding:16px 20px; margin-bottom:20px; }
+        .system-badge { background:#6c757d; color:#fff; font-size:0.7rem; padding:2px 8px; border-radius:10px; margin-left:8px; }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/layout :: navbar}"></div>
+
+    <div class="container">
+        <div style="display:flex; align-items:center; gap:14px; margin-bottom:16px;">
+            <a th:href="@{/admin/}" style="color:#1a6bbf; text-decoration:none;">&larr; <span th:text="#{admin.roles.back}">Back to Admin</span></a>
+        </div>
+        <h2 th:text="#{admin.roles.title}">Role Management</h2>
+        <p style="color:#6c757d;" th:text="#{admin.roles.subtitle}">Create new roles and edit which features each role can access.</p>
+
+        <div class="role-create">
+            <h3 style="margin-top:0;" th:text="#{admin.roles.create}">Create new role</h3>
+            <form id="createRoleForm" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;" onsubmit="return false;">
+                <div>
+                    <label style="display:block; font-weight:600; margin-bottom:4px;" th:text="#{admin.roles.name}">Name</label>
+                    <input type="text" id="newRoleName" required class="form-control" placeholder="SUPERVISOR" style="width:200px;"/>
+                    <small style="color:#6c757d;" th:text="#{admin.roles.name.hint}">Prefix ROLE_ will be added automatically.</small>
+                </div>
+                <div>
+                    <label style="display:block; font-weight:600; margin-bottom:4px;" th:text="#{admin.roles.displayName}">Display name</label>
+                    <input type="text" id="newRoleDisplay" class="form-control" placeholder="Supervisor" style="width:240px;"/>
+                </div>
+                <button type="button" id="createRoleBtn" class="btn btn-primary" th:text="#{admin.roles.create.button}">Create</button>
+            </form>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th th:text="#{admin.id}">ID</th>
+                    <th th:text="#{admin.roles.name}">Name</th>
+                    <th th:text="#{admin.roles.displayName}">Display name</th>
+                    <th th:text="#{admin.roles.featureCount}">Features</th>
+                    <th th:text="#{admin.action}">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="r : ${roles}" th:data-role-row="${r.id}">
+                    <td th:text="${r.id}"></td>
+                    <td>
+                        <span th:text="${r.name}"></span>
+                        <span th:if="${r.system}" class="system-badge" th:text="#{admin.roles.system}">SYSTEM</span>
+                    </td>
+                    <td th:text="${r.displayName}"></td>
+                    <td th:text="${r.features.size()}">0</td>
+                    <td>
+                        <div style="display:flex; gap:8px;">
+                            <a th:href="@{'/admin/roles/' + ${r.id} + '/permissions'}" class="btn btn-primary"
+                               style="text-decoration:none;" th:text="#{admin.roles.editPermissions}">Edit permissions</a>
+                            <button type="button" class="btn btn-danger"
+                                    th:if="${!r.system}"
+                                    th:data-delete-role="${r.id}"
+                                    th:data-role-name="${r.name}"
+                                    style="background:#dc3545; color:#fff;"
+                                    th:text="#{admin.roles.delete}">Delete</button>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script th:inline="javascript">
+        (function () {
+            const CREATED_MSG = /*[[#{admin.roles.created}]]*/ 'Role created.';
+            const DELETED_MSG = /*[[#{admin.roles.deleted}]]*/ 'Role deleted.';
+            const CONFIRM_MSG = /*[[#{admin.roles.delete.confirm}]]*/ 'Delete this role?';
+            const ERROR_MSG   = /*[[#{notification.toast.error}]]*/ 'Action failed.';
+
+            document.getElementById('createRoleBtn').addEventListener('click', async function () {
+                const name = document.getElementById('newRoleName').value.trim();
+                const displayName = document.getElementById('newRoleDisplay').value.trim();
+                if (!name) return;
+                try {
+                    await window.api.fetchJson('/api/v1/admin/roles', {
+                        method: 'POST',
+                        body: JSON.stringify({ name: name, displayName: displayName })
+                    });
+                    window.api.toast('success', CREATED_MSG);
+                    setTimeout(() => location.reload(), 400);
+                } catch (err) {
+                    window.api.toast('error', (err && err.message) || ERROR_MSG);
+                }
+            });
+
+            document.addEventListener('click', async function (e) {
+                const btn = e.target.closest('[data-delete-role]');
+                if (!btn) return;
+                const id = btn.getAttribute('data-delete-role');
+                const name = btn.getAttribute('data-role-name') || '';
+                if (!confirm(CONFIRM_MSG + ' (' + name + ')')) return;
+                btn.disabled = true;
+                try {
+                    await window.api.fetchJson('/api/v1/admin/roles/' + encodeURIComponent(id), { method: 'DELETE' });
+                    window.api.toast('success', DELETED_MSG);
+                    const row = btn.closest('[data-role-row]');
+                    if (row) row.remove();
+                } catch (err) {
+                    window.api.toast('error', (err && err.message) || ERROR_MSG);
+                    btn.disabled = false;
+                }
+            });
+        })();
+    </script>
+</body>
+
+</html>

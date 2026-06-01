@@ -4,14 +4,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import thienloc.manage.dto.DailyProductionDto;
 import thienloc.manage.security.SecurityConfig;
 import thienloc.manage.service.NotificationService;
 import thienloc.manage.service.ProductionService;
 import thienloc.manage.service.SystemLogService;
-
-import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ProductionController.class)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, thienloc.manage.security.TestRbacSecurityConfig.class})
 class ProductionControllerTest {
 
     @Autowired
@@ -39,7 +39,9 @@ class ProductionControllerTest {
 
     @Test
     void testShowEntryForm_ManagerRole() throws Exception {
-        when(productionService.getMyDataRange(eq("manager"), any(), any())).thenReturn(List.of());
+        when(productionService.getMyDataRangeWithSplitEntriesPaged(
+                eq("manager"), any(), any(), any(), any(), anyInt(), anyInt()))
+                .thenReturn(Page.empty());
 
         mockMvc.perform(get("/entry/").with(user("manager").roles("MANAGER")))
                 .andExpect(status().isOk())
@@ -49,12 +51,15 @@ class ProductionControllerTest {
 
     @Test
     void testShowEntryForm_RangeFilter() throws Exception {
-        when(productionService.getMyDataRangeWithSplitEntries(eq("manager"), any(), any())).thenReturn(List.of());
+        when(productionService.getMyDataRangeWithSplitEntriesPaged(
+                eq("manager"), any(), any(), any(), any(), anyInt(), anyInt()))
+                .thenReturn(Page.empty());
 
         mockMvc.perform(get("/entry/").param("range", "1M").with(user("manager").roles("MANAGER")))
                 .andExpect(status().isOk());
 
-        verify(productionService).getMyDataRangeWithSplitEntries(eq("manager"), any(), any());
+        verify(productionService).getMyDataRangeWithSplitEntriesPaged(
+                eq("manager"), any(), any(), any(), any(), anyInt(), anyInt());
     }
 
     @Test
@@ -77,6 +82,7 @@ class ProductionControllerTest {
 
     @Test
     void testEditEntry_ManagerRole() throws Exception {
+        when(productionService.getById(1L)).thenReturn(new DailyProductionDto());
         when(productionService.saveDailyProduction(any(), eq("manager"))).thenReturn(1L);
 
         mockMvc.perform(post("/entry/edit")
@@ -104,6 +110,8 @@ class ProductionControllerTest {
 
     @Test
     void testAdminDeleteEntry_AdminRole() throws Exception {
+        when(productionService.getById(1L)).thenReturn(new DailyProductionDto());
+
         mockMvc.perform(post("/entry/admin-delete")
                 .param("id", "1")
                 .with(user("admin").roles("ADMIN"))

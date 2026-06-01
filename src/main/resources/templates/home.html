@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="#{home.title}">Home</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}"/>
+    <style>
+        .home-wrap {
+            max-width: 760px;
+            margin: 60px auto;
+            padding: 0 20px;
+        }
+        .home-card {
+            background: #fff;
+            border: 1px solid #e3e6ea;
+            border-radius: 12px;
+            padding: 48px 40px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+        .home-card h1 {
+            margin: 0 0 14px;
+            font-size: 2rem;
+            color: #0d3a6b;
+        }
+        .home-card .home-subtitle {
+            margin: 0 0 28px;
+            color: #6c757d;
+            font-size: 1.05rem;
+            line-height: 1.55;
+        }
+        .home-greeting {
+            display: inline-block;
+            background: #eef4ff;
+            color: #0d3a6b;
+            padding: 8px 18px;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+
+<body>
+
+<div th:replace="~{fragments/layout :: navbar}"></div>
+
+<div class="home-wrap">
+    <div class="home-card">
+        <h1 th:text="#{home.welcome}">Welcome</h1>
+        <p class="home-subtitle" th:text="#{home.subtitle}">Production efficiency management system.</p>
+        <span class="home-greeting"
+              th:text="#{home.greeting(${username})}">Hello, user</span>
+    </div>
+</div>
+
+</body>
+</html>

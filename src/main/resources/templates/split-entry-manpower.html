@@ -19,6 +19,7 @@
 
         <!-- Flash messages -->
         <div th:if="${success}" style="color:green; margin-bottom:10px;" th:text="#{splitentry.save.success}">Saved!</div>
+        <div th:if="${validationError}" style="color:#dc3545; margin-bottom:10px; padding:10px; background:#f8d7da; border-radius:4px;" th:text="${validationError}"></div>
         <div th:if="${importError}" style="color:#dc3545; margin-bottom:10px; padding:10px; background:#f8d7da; border-radius:4px;">
             Import error: <span th:text="${importError}"></span>
         </div>

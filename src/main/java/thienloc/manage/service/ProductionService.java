@@ -55,6 +55,9 @@ public class ProductionService implements IProductionService {
     @Autowired
     private ProductionMapper productionMapper;
 
+    @Autowired
+    private LineAssignmentService lineAssignmentService;
+
     // ─── Save ────────────────────────────────────────────────────────────────────
 
     @Transactional
@@ -76,6 +79,9 @@ public class ProductionService implements IProductionService {
             section = SectionMetrics.normalize(section);
         }
         dto.setSection(section);
+
+        // Row-level scope: block users who aren't assigned this section/line.
+        lineAssignmentService.assertCanWrite(username, section, dto.getLine());
 
         double allowanceVal = NormalizationUtil.normalizeAllowance(dto.getAllowance());
 

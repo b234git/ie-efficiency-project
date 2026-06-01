@@ -51,9 +51,11 @@ public class DailyProductionDto {
     private Double effKpi;
     private Double effSalary;
 
-    // Allowance = allowed output percentage (1.0 = 100%, 0.8 = 80%)
-    @DecimalMin(value = "0.1", message = "Allowance phải từ 0.1 đến 1.0")
-    @DecimalMax(value = "1.0", message = "Allowance phải từ 0.1 đến 1.0")
+    // Allowance = allowed output percentage. Form gửi thang phần trăm (80–100);
+    // NormalizationUtil.normalizeAllowance quy đổi >1 về thang 0–1 khi lưu, nên
+    // ràng buộc phải chấp nhận cả hai thang đo (decimal 0.1–1.0 và percent 1–100).
+    @DecimalMin(value = "0.1", message = "Allowance phải từ 10% trở lên")
+    @DecimalMax(value = "100.0", message = "Allowance không được vượt quá 100%")
     private Double allowance;
     private String createdAt;
     private String createdBy; // username of creator

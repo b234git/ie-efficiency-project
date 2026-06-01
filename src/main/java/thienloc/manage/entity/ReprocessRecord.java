@@ -60,4 +60,11 @@ public class ReprocessRecord {
         if (output == null || output == 0) return 0.0;
         return getTotalReprocess() / (double) output * 100.0;
     }
+
+    /** Pass/quality rate shown in Weekly Tracking: 100% minus the reprocess rate.
+     *  No output yet → 100% (nothing reprocessed); each reprocessed unit lowers it. */
+    @Transient
+    public double getPassPercent() {
+        return 100.0 - getTotalPercent();
+    }
 }

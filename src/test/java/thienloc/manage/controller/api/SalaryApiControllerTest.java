@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(SalaryApiController.class)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, thienloc.manage.security.TestRbacSecurityConfig.class})
 class SalaryApiControllerTest {
 
     @Autowired
@@ -57,7 +57,7 @@ class SalaryApiControllerTest {
         report.setBlocks(new ArrayList<>(List.of(blockSew, blockBuff)));
         when(salaryService.buildReport("2026-04")).thenReturn(report);
 
-        mockMvc.perform(get("/api/v1/salary")
+        mockMvc.perform(get("/api/v1/incentive")
                         .param("month", "2026-04")
                         .with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
@@ -83,7 +83,7 @@ class SalaryApiControllerTest {
         report.setBlocks(new ArrayList<>(List.of(keep, drop)));
         when(salaryService.buildReport("2026-04")).thenReturn(report);
 
-        mockMvc.perform(get("/api/v1/salary")
+        mockMvc.perform(get("/api/v1/incentive")
                         .param("month", "2026-04")
                         .param("section", "SEW")
                         .param("line", "1A")
@@ -95,14 +95,14 @@ class SalaryApiControllerTest {
 
     @Test
     void get_userRole_returns403() throws Exception {
-        mockMvc.perform(get("/api/v1/salary")
+        mockMvc.perform(get("/api/v1/incentive")
                         .with(user("u").roles("USER")))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void get_unauthenticated_returns401() throws Exception {
-        mockMvc.perform(get("/api/v1/salary"))
+        mockMvc.perform(get("/api/v1/incentive"))
                 .andExpect(status().isUnauthorized());
     }
 }

@@ -1,5 +1,6 @@
 package thienloc.manage.controller;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -8,6 +9,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import thienloc.manage.dto.SplitEntryDto;
 import thienloc.manage.security.SecurityConfig;
+import thienloc.manage.service.LineAssignmentService;
 import thienloc.manage.service.LineSummaryImportService;
 import thienloc.manage.service.NotificationService;
 import thienloc.manage.service.SplitEntryImportService;
@@ -28,7 +30,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(SplitEntryController.class)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, thienloc.manage.security.TestRbacSecurityConfig.class})
 class SplitEntryControllerTest {
 
     @Autowired
@@ -51,6 +53,17 @@ class SplitEntryControllerTest {
 
     @MockitoBean
     private NotificationService notificationService;
+
+    @MockitoBean
+    private LineAssignmentService lineAssignmentService;
+
+    @BeforeEach
+    void stubUnrestrictedScope() {
+        // Mock returns null by default; showLanding would NPE in filterByScope.
+        // An unrestricted scope (isRestricted() == false) leaves entries untouched.
+        lenient().when(lineAssignmentService.scopeFor(anyString()))
+                .thenReturn(mock(LineAssignmentService.LineScope.class));
+    }
 
     @Test
     void testShowLanding_UserRole() throws Exception {
@@ -75,7 +88,7 @@ class SplitEntryControllerTest {
                 .andExpect(content().string(not(containsString("href=\"/report/weekly\""))))
                 .andExpect(content().string(not(containsString("href=\"/masterdb/\""))))
                 .andExpect(content().string(not(containsString("href=\"/weekly-tracking/\""))))
-                .andExpect(content().string(not(containsString("href=\"/salary/\""))))
+                .andExpect(content().string(not(containsString("href=\"/incentive/\""))))
                 .andExpect(content().string(not(containsString("href=\"/admin/\""))));
     }
 
@@ -94,7 +107,7 @@ class SplitEntryControllerTest {
                 .andExpect(content().string(containsString("href=\"/eff-config/\"")))
                 .andExpect(content().string(containsString("href=\"/weekly-tracking/\"")))
                 .andExpect(content().string(containsString("href=\"/new-style/\"")))
-                .andExpect(content().string(containsString("href=\"/salary/\"")))
+                .andExpect(content().string(containsString("href=\"/incentive/\"")))
                 .andExpect(content().string(not(containsString("href=\"/admin/\""))));
     }
 

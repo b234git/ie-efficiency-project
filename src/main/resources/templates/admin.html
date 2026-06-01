@@ -15,13 +15,48 @@
     <div class="container">
         <h2 th:text="#{admin.title}">User Management</h2>
 
-        <div sec:authorize="hasRole('ADMIN')" style="margin-bottom: 16px;">
+        <div sec:authorize="hasRole('ADMIN')" style="margin-bottom: 16px; display:flex; gap:10px; flex-wrap:wrap;">
             <a th:href="@{/admin/force-delete}" class="btn btn-danger"
                style="background:#dc3545;color:white;padding:6px 12px;border-radius:4px;text-decoration:none;"
                th:text="#{admin.forceDelete.title}">Force Delete by IDs</a>
+            <a th:href="@{/admin/roles/}" class="btn btn-primary"
+               style="background:#1a6bbf;color:white;padding:6px 12px;border-radius:4px;text-decoration:none;"
+               th:text="#{admin.roles.manage}">Manage Roles &amp; Permissions</a>
         </div>
 
-        <table>
+        <!-- Search & filter bar -->
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:12px; padding:12px; background:#f8f9fa; border:1px solid #dee2e6; border-radius:6px;">
+            <div>
+                <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.85rem;"
+                       th:text="#{admin.filter.search}">Search</label>
+                <input type="text" id="userSearch" class="form-control"
+                       th:placeholder="#{admin.filter.search.placeholder}" style="width:240px;"/>
+            </div>
+            <div>
+                <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.85rem;"
+                       th:text="#{admin.filter.role}">Role</label>
+                <select id="userRoleFilter" class="form-control" style="width:200px;">
+                    <option value="" th:text="#{admin.filter.all}">All</option>
+                    <option th:each="r : ${roles}"
+                            th:value="${r.name}"
+                            th:text="${r.displayName}"></option>
+                </select>
+            </div>
+            <div>
+                <label style="display:block; font-weight:600; margin-bottom:4px; font-size:0.85rem;"
+                       th:text="#{admin.filter.status}">Status</label>
+                <select id="userStatusFilter" class="form-control" style="width:160px;">
+                    <option value="" th:text="#{admin.filter.all}">All</option>
+                    <option value="enabled" th:text="#{admin.filter.enabled}">Enabled</option>
+                    <option value="disabled" th:text="#{admin.filter.disabled}">Disabled</option>
+                </select>
+            </div>
+            <button type="button" id="userFilterClear" class="btn"
+                    style="background:#6c757d; color:#fff;" th:text="#{admin.filter.clear}">Clear</button>
+            <span id="userFilterCount" style="margin-left:auto; color:#6c757d; font-size:0.85rem;"></span>
+        </div>
+
+        <table id="userTable">
             <thead>
                 <tr>
                     <th th:text="#{admin.id}">ID</th>
@@ -31,91 +66,56 @@
                 </tr>
             </thead>
             <tbody>
-                <tr th:each="user : ${users}" th:data-user-row="${user.id}">
+                <tr th:each="user : ${users}"
+                    th:data-user-row="${user.id}"
+                    th:data-username="${user.username}"
+                    th:data-role="${user.role}"
+                    th:data-enabled="${user.enabled}">
                     <td th:text="${user.id}"></td>
                     <td th:text="${user.username}"></td>
                     <td data-current-role th:text="${user.role}"></td>
                     <td>
-                        <div style="display: flex; gap: 10px;">
+                        <div style="display: flex; gap: 10px; align-items:center;">
                             <select class="form-control" data-role-select style="width: auto;">
-                                <option value="ROLE_USER" th:selected="${user.role == 'ROLE_USER'}">USER</option>
-                                <option value="ROLE_MANAGER" th:selected="${user.role == 'ROLE_MANAGER'}">MANAGER
-                                </option>
-                                <option value="ROLE_ADMIN" th:selected="${user.role == 'ROLE_ADMIN'}">ADMIN</option>
+                                <option th:each="r : ${roles}"
+                                        th:value="${r.name}"
+                                        th:text="${r.displayName}"
+                                        th:selected="${user.role == r.name}"></option>
                             </select>
                             <button type="button" class="btn btn-primary"
                                     th:data-update-role="${user.id}"
                                     th:text="#{admin.update}">Update</button>
+                            <a class="btn"
+                               th:href="@{'/admin/users/' + ${user.id} + '/edit'}"
+                               style="background:#198754; color:#fff; text-decoration:none; padding:6px 12px; border-radius:4px;"
+                               th:text="#{admin.user.edit.btn}">Edit</a>
+                            <span th:if="${!user.enabled}"
+                                  style="background:#dc3545; color:#fff; padding:2px 8px; border-radius:10px; font-size:0.75rem;"
+                                  th:text="#{admin.user.disabled}">DISABLED</span>
                         </div>
                     </td>
                 </tr>
-            </tbody>
-        </table>
-
-        <h2 style="margin-top: 40px;" th:text="#{admin.syslogs}">System Logs</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th th:text="#{admin.log.time}">Time</th>
-                    <th th:text="#{admin.log.user}">User</th>
-                    <th th:text="#{admin.log.action}">Action</th>
-                    <th th:text="#{admin.log.details}">Details</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr th:each="log : ${logsPage.content}">
-                    <td th:text="${#temporals.format(log.timestamp, 'dd/MM/yyyy HH:mm:ss')}"></td>
-                    <td th:text="${log.username}"></td>
-                    <td th:text="${log.action}"></td>
-                    <td th:text="${log.details}"></td>
-                </tr>
-                <tr th:if="${logsPage.content.isEmpty()}">
-                    <td colspan="4" style="text-align: center; color: #888;" th:text="#{admin.log.empty}">No system logs available.</td>
+                <tr id="userNoResults" style="display:none;">
+                    <td colspan="4" style="text-align:center; color:#888; padding:18px;"
+                        th:text="#{admin.filter.empty}">No users match the filter.</td>
                 </tr>
             </tbody>
         </table>
 
-        <!-- Logs Pagination -->
-        <div th:if="${logsPage.totalPages > 1}" style="margin-top: 15px;">
-            <ul style="display: flex; list-style: none; padding: 0; gap: 5px; flex-wrap: wrap;">
-                <li>
-                    <a th:if="${!logsPage.first}" th:href="@{/admin/(logPage=0)}" class="btn"
-                        style="padding:5px 10px; border:1px solid #ccc; text-decoration:none; color:black;"
-                        th:text="#{pagination.first}">« First</a>
-                    <span th:if="${logsPage.first}" class="btn"
-                        style="padding:5px 10px; border:1px solid #ccc; background:#eee; color:#aaa;"
-                        th:text="#{pagination.first}">« First</span>
-                </li>
-                <li>
-                    <a th:if="${!logsPage.first}" th:href="@{/admin/(logPage=${logsPage.number - 1})}" class="btn"
-                        style="padding:5px 10px; border:1px solid #ccc; text-decoration:none; color:black;"
-                        th:text="#{pagination.prev}">‹ Prev</a>
-                    <span th:if="${logsPage.first}" class="btn"
-                        style="padding:5px 10px; border:1px solid #ccc; background:#eee; color:#aaa;"
-                        th:text="#{pagination.prev}">‹ Prev</span>
-                </li>
-                <li style="padding:5px 10px;"
-                    th:text="#{entry.pagination.page.of(${logsPage.number + 1}, ${logsPage.totalPages})}">
-                    Page 1 of 1
-                </li>
-                <li>
-                    <a th:if="${!logsPage.last}" th:href="@{/admin/(logPage=${logsPage.number + 1})}" class="btn"
-                        style="padding:5px 10px; border:1px solid #ccc; text-decoration:none; color:black;"
-                        th:text="#{pagination.next}">Next ›</a>
-                    <span th:if="${logsPage.last}" class="btn"
-                        style="padding:5px 10px; border:1px solid #ccc; background:#eee; color:#aaa;"
-                        th:text="#{pagination.next}">Next ›</span>
-                </li>
-                <li>
-                    <a th:if="${!logsPage.last}" th:href="@{/admin/(logPage=${logsPage.totalPages - 1})}" class="btn"
-                        style="padding:5px 10px; border:1px solid #ccc; text-decoration:none; color:black;"
-                        th:text="#{pagination.last}">Last »</a>
-                    <span th:if="${logsPage.last}" class="btn"
-                        style="padding:5px 10px; border:1px solid #ccc; background:#eee; color:#aaa;"
-                        th:text="#{pagination.last}">Last »</span>
-                </li>
-            </ul>
+        <!-- User pagination -->
+        <div id="userPagination" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px;">
+            <label style="font-weight:600; font-size:0.85rem;" th:text="#{admin.pagination.pageSize}">Per page</label>
+            <select id="userPageSize" class="form-control" style="width:90px;">
+                <option value="10" selected>10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="0" th:text="#{admin.pagination.all}">All</option>
+            </select>
+            <ul id="userPageButtons" style="display:flex; list-style:none; padding:0; gap:5px; flex-wrap:wrap; margin:0;"></ul>
+            <span id="userFilteredCount" style="color:#6c757d; font-size:0.85rem; margin-left:auto;"></span>
         </div>
+
     </div>
 
     <script th:inline="javascript">
@@ -145,6 +145,114 @@
                     btn.disabled = false;
                 }
             });
+
+            // ─── User search, filter & pagination ─────────────────────
+            const searchInput  = document.getElementById('userSearch');
+            const roleFilter   = document.getElementById('userRoleFilter');
+            const statusFilter = document.getElementById('userStatusFilter');
+            const clearBtn     = document.getElementById('userFilterClear');
+            const countLabel   = document.getElementById('userFilterCount');
+            const noResultsRow = document.getElementById('userNoResults');
+            const pageSizeSel  = document.getElementById('userPageSize');
+            const pageBtns     = document.getElementById('userPageButtons');
+            const filteredCount = document.getElementById('userFilteredCount');
+            const userRows = Array.from(document.querySelectorAll('#userTable tbody tr[data-user-row]'));
+            const COUNT_LABEL = /*[[#{admin.filter.count}]]*/ 'Showing {0} / {1}';
+            const PAGE_LABEL  = /*[[#{admin.pagination.label}]]*/ 'Page {0} of {1}';
+            const FIRST_LABEL = /*[[#{pagination.first}]]*/ '« First';
+            const PREV_LABEL  = /*[[#{pagination.prev}]]*/ '‹ Prev';
+            const NEXT_LABEL  = /*[[#{pagination.next}]]*/ 'Next ›';
+            const LAST_LABEL  = /*[[#{pagination.last}]]*/ 'Last »';
+            let currentPage = 1;
+
+            function matchedRows() {
+                const q = (searchInput.value || '').trim().toLowerCase();
+                const role = roleFilter.value;
+                const status = statusFilter.value;
+                return userRows.filter(row => {
+                    const username = (row.getAttribute('data-username') || '').toLowerCase();
+                    const rowRole = row.getAttribute('data-role') || '';
+                    const enabled = row.getAttribute('data-enabled') === 'true';
+                    if (q && !username.includes(q)) return false;
+                    if (role && rowRole !== role) return false;
+                    if (status === 'enabled' && !enabled) return false;
+                    if (status === 'disabled' && enabled) return false;
+                    return true;
+                });
+            }
+
+            function render() {
+                userRows.forEach(r => { r.style.display = 'none'; });
+                const matched = matchedRows();
+                const pageSize = parseInt(pageSizeSel.value, 10) || 0;
+                const total = matched.length;
+                const totalPages = pageSize > 0 ? Math.max(1, Math.ceil(total / pageSize)) : 1;
+                if (currentPage > totalPages) currentPage = totalPages;
+                if (currentPage < 1) currentPage = 1;
+
+                const start = pageSize > 0 ? (currentPage - 1) * pageSize : 0;
+                const end   = pageSize > 0 ? start + pageSize : total;
+                matched.slice(start, end).forEach(r => { r.style.display = ''; });
+
+                noResultsRow.style.display = total === 0 ? '' : 'none';
+                countLabel.textContent = COUNT_LABEL.replace('{0}', Math.max(0, Math.min(end, total) - start))
+                                                     .replace('{1}', userRows.length);
+                filteredCount.textContent = '';
+                renderPageButtons(totalPages);
+            }
+
+            function renderPageButtons(totalPages) {
+                pageBtns.innerHTML = '';
+
+                const makeLi = (label, page, disabled, blue) => {
+                    const li = document.createElement('li');
+                    if (disabled) {
+                        const span = document.createElement('span');
+                        span.textContent = label;
+                        span.className = 'btn';
+                        span.style.cssText = 'padding:5px 10px; border:1px solid #ccc; background:#eee; color:#aaa;';
+                        li.appendChild(span);
+                    } else {
+                        const a = document.createElement('a');
+                        a.textContent = label;
+                        a.href = '#';
+                        a.className = 'btn';
+                        a.style.cssText = blue
+                            ? 'padding:5px 10px; border:1px solid #1a6bbf; background:#1a6bbf; color:#fff; text-decoration:none;'
+                            : 'padding:5px 10px; border:1px solid #ccc; background:#fff; color:#000; text-decoration:none;';
+                        a.addEventListener('click', (e) => { e.preventDefault(); currentPage = page; render(); });
+                        li.appendChild(a);
+                    }
+                    return li;
+                };
+
+                const atFirst = currentPage === 1;
+                const atLast  = currentPage >= totalPages;
+
+                pageBtns.appendChild(makeLi(FIRST_LABEL, 1, atFirst, false));
+                pageBtns.appendChild(makeLi(PREV_LABEL, currentPage - 1, atFirst, false));
+
+                const li = document.createElement('li');
+                li.style.cssText = 'padding:5px 10px;';
+                li.textContent = PAGE_LABEL.replace('{0}', currentPage).replace('{1}', totalPages);
+                pageBtns.appendChild(li);
+
+                pageBtns.appendChild(makeLi(NEXT_LABEL, currentPage + 1, atLast, true));
+                pageBtns.appendChild(makeLi(LAST_LABEL, totalPages, atLast, true));
+            }
+
+            function resetAndRender() { currentPage = 1; render(); }
+            searchInput.addEventListener('input', resetAndRender);
+            roleFilter.addEventListener('change', resetAndRender);
+            statusFilter.addEventListener('change', resetAndRender);
+            pageSizeSel.addEventListener('change', resetAndRender);
+            clearBtn.addEventListener('click', () => {
+                searchInput.value = '';
+                roleFilter.value = '';
+                statusFilter.value = '';
+                resetAndRender();
+            });
+            render();
         })();
     </script>
 </body>

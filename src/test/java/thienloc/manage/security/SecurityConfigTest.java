@@ -3,12 +3,14 @@ package thienloc.manage.security;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-// import thienloc.manage.config.SampleDataInitializer;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -18,13 +20,26 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(SecurityConfigTest.RoleAuthzOverride.class)
 class SecurityConfigTest {
+
+    /**
+     * The test profile disables Flyway (H2 create-drop), so the V8 feature/role seed is
+     * absent and the real manager would grant everything. Override it with a role-driven
+     * manager backed by a manually-seeded PermissionService so the V8 matrix is enforced.
+     */
+    @TestConfiguration
+    static class RoleAuthzOverride {
+        @Bean
+        @Primary
+        FeatureBasedAuthorizationManager roleAwareAuthorizationManager() {
+            return new TestRbacSecurityConfig.RoleAwareAuthorizationManager(
+                    TestRbacSecurityConfig.buildSeededPermissionService());
+        }
+    }
 
     @Autowired
     private MockMvc mockMvc;
-
-    // @MockitoBean
-    // private SampleDataInitializer sampleDataInitializer;
 
     // ─── CSRF verification ───────────────────────────────────────────────────────
 
@@ -173,7 +188,7 @@ class SecurityConfigTest {
 
     @Test
     void testSalary_UserForbidden() throws Exception {
-        mockMvc.perform(get("/salary/").with(user("user").roles("USER")))
+        mockMvc.perform(get("/incentive/").with(user("user").roles("USER")))
                 .andExpect(status().isForbidden());
     }
 
