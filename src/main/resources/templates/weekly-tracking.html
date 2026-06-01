@@ -235,9 +235,9 @@
                    placeholder="Line..." oninput="filterReproTable()" style="max-width:120px;"/>
             <select id="repro-filter-status" class="form-control" onchange="filterReproTable()">
                 <option value="">-- All Status --</option>
-                <option value="total-good">Good (&lt;3%)</option>
-                <option value="total-warn">Warning (&lt;6%)</option>
-                <option value="total-bad">Bad (&#8805;6%)</option>
+                <option value="total-good">Good (&#8805;97%)</option>
+                <option value="total-warn">Warning (&#8805;94%)</option>
+                <option value="total-bad">Bad (&lt;94%)</option>
             </select>
             <button class="btn" style="border:1px solid #ccc;background:#fff;"
                     onclick="resetReproFilter()">Clear</button>
@@ -288,8 +288,8 @@
                     <td class="num" th:text="${r.week5 != null ? r.week5 : '—'}"></td>
                     <td class="num" th:text="${r.output != null ? #numbers.formatInteger(r.output, 1, 'COMMA') : '—'}"></td>
                     <td class="num" data-total
-                        th:classappend="${r.totalPercent == 0} ? '' : (${r.totalPercent < 3} ? 'total-good' : (${r.totalPercent < 6} ? 'total-warn' : 'total-bad'))"
-                        th:text="${r.output != null and r.output > 0 ? #numbers.formatDecimal(r.totalPercent, 1, 2) + '%' : 'N/A'}"></td>
+                        th:classappend="${r.passPercent >= 97} ? 'total-good' : (${r.passPercent >= 94} ? 'total-warn' : 'total-bad')"
+                        th:text="${#numbers.formatDecimal(r.passPercent, 1, 2) + '%'}"></td>
                     <td sec:authorize="hasAnyRole('ADMIN','MANAGER')">
                         <button class="btn btn-warning btn-sm" onclick="openEditReprocessModal(this)"
                                 th:attr="data-id=${r.id},

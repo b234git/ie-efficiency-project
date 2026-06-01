@@ -261,7 +261,129 @@ class EfficiencyCalculatorServiceTest {
         assertEquals(18.0, dto.getStdPph(), 0.001);
     }
 
+    // ─── Multi-article rows (per-slot weighting) ─────────────────────────────
+
+    @Test
+    void testMultiArticleWeightedTargetAndCt() {
+        // SEW row: article Y100 over 3 slots, Y200 over 2 slots — both in Master DB.
+        MasterDb mdA = MasterDb.builder().articleNo("Y100").patternNo("PA").shoeName("SA")
+                .sewCt(1000.0).sewPph(60.0).sewMp(20.0).sewQuotaDb(300.0).build();
+        MasterDb mdB = MasterDb.builder().articleNo("Y200")
+                .sewCt(2000.0).sewPph(30.0).sewMp(10.0).sewQuotaDb(200.0).build();
+
+        DailyProductionDto dto = new DailyProductionDto();
+        dto.setArticle("Y100 (+)");
+        DailyProduction entity = buildEntity("SEW", "Y100 (+)", 1000, 25.0, 10.0, 40.0, 1.0);
+        entity.setDetails(List.of(
+                detailOf("Y100", "07:00-08:00"), detailOf("Y100", "08:00-09:00"),
+                detailOf("Y100", "09:00-10:00"), detailOf("Y200", "10:00-11:00"),
+                detailOf("Y200", "11:00-12:00")));
+
+        stubMasterDb(mdA, mdB);
+
+        calculator.populateEfficiencyMetrics(dto, entity);
+
+        // weightedCt = (1000*3 + 2000*2) / 5 = 1400
+        assertEquals(1400.0, dto.getTct(), 0.001);
+        // weightedPph = (60*3 + 30*2)/5 = 48 ; target = MP*WT*pph*allowance = 40*10*48 = 19200
+        assertEquals(19200.0, dto.getTarget(), 0.001);
+        // effKpi = Output * weightedCt / (MP*WT*3600*allowance) = 1000*1400 / 1_440_000
+        assertEquals(1_400_000.0 / 1_440_000.0, dto.getEffKpi(), 0.0001);
+    }
+
+    @Test
+    void testPartialMasterDbMissRenormalizesTarget() {
+        // Y100 resolves; Y200 is absent from Master DB. The 2 missing slots must NOT
+        // dilute the target. New (renormalized) target = 40*10*60*1.0 = 24000.
+        // OLD behaviour divided by totalSlots (5): 40*10*(60*3)/5 = 14400 → EFF% overstated.
+        MasterDb mdA = MasterDb.builder().articleNo("Y100").patternNo("PA").shoeName("SA")
+                .sewCt(1000.0).sewPph(60.0).sewMp(20.0).sewQuotaDb(300.0).build();
+
+        DailyProductionDto dto = new DailyProductionDto();
+        dto.setArticle("Y100 (+)");
+        DailyProduction entity = buildEntity("SEW", "Y100 (+)", 1000, 25.0, 10.0, 40.0, 1.0);
+        entity.setDetails(List.of(
+                detailOf("Y100", "07:00-08:00"), detailOf("Y100", "08:00-09:00"),
+                detailOf("Y100", "09:00-10:00"), detailOf("Y200", "10:00-11:00"),
+                detailOf("Y200", "11:00-12:00")));
+
+        stubMasterDb(mdA); // Y200 not returned
+
+        calculator.populateEfficiencyMetrics(dto, entity);
+
+        assertEquals(24000.0, dto.getTarget(), 0.001);
+        // weightedCt over resolved slots only = (1000*3)/3 = 1000
+        assertEquals(1000.0, dto.getTct(), 0.001);
+    }
+
+    @Test
+    void testMultiArticleEffSalary() {
+        MasterDb mdA = MasterDb.builder().articleNo("Y100").patternNo("PA").shoeName("SA")
+                .sewCt(1000.0).sewPph(60.0).sewMp(20.0).sewQuotaDb(300.0).build();
+        MasterDb mdB = MasterDb.builder().articleNo("Y200")
+                .sewCt(2000.0).sewPph(30.0).sewMp(10.0).sewQuotaDb(200.0).build();
+
+        DailyProductionDto dto = new DailyProductionDto();
+        dto.setArticle("Y100 (+)");
+        DailyProduction entity = buildEntity("SEW", "Y100 (+)", 1000, 25.0, 10.0, 40.0, 1.0);
+        entity.setDetails(List.of(
+                detailOf("Y100", "07:00-08:00"), detailOf("Y100", "08:00-09:00"),
+                detailOf("Y100", "09:00-10:00"), detailOf("Y200", "10:00-11:00"),
+                detailOf("Y200", "11:00-12:00")));
+
+        stubMasterDb(mdA, mdB);
+
+        calculator.populateEfficiencyMetrics(dto, entity);
+
+        // sumQuota = (300/10)*3 + (200/10)*2 = 90 + 40 = 130 ; sumMp = 20*3 + 10*2 = 80 ; slots = 5
+        // refTime = 5 (≤10) ; adjustedSumQuota = 130 ; avgMp = 16
+        // salaryTarget = (130/16)*DLI*allowance = 8.125*25 = 203.125 ; effSalary = 1000/203.125
+        assertEquals(1000.0 / 203.125, dto.getEffSalary(), 0.0001);
+    }
+
+    @Test
+    void testSingleArticleRowMatchesLegacyTarget() {
+        // Equivalence guard: a fully-resolved single-article row (all slots one article)
+        // yields target = MP*WT*PPH*allowance, unchanged by the renormalization refactor.
+        DailyProductionDto dto = new DailyProductionDto();
+        dto.setArticle("Y12345");
+        DailyProduction entity = buildEntity("SEW", "Y12345", 1000, 25.0, 8.0, 30.0, 0.85);
+        entity.setDetails(List.of(
+                detailOf("Y12345", "07:00-08:00"), detailOf("Y12345", "08:00-09:00"),
+                detailOf("Y12345", "09:00-10:00")));
+
+        when(masterDbRepository.findByArticleNoInAndDataMonthOrderByRefAsc(anyList(), anyString()))
+                .thenReturn(List.of(sampleMasterDb));
+
+        calculator.populateEfficiencyMetrics(dto, entity);
+
+        // target = 30 * 8 * 72 * 0.85 = 14688 ; tct = sewCt = 1681
+        assertEquals(30.0 * 8.0 * 72.0 * 0.85, dto.getTarget(), 0.001);
+        assertEquals(1681.0, dto.getTct(), 0.001);
+    }
+
     // ─── Helper ─────────────────────────────────────────────────────────────
+
+    private DailyProductionDetail detailOf(String articleNo, String timeSlot) {
+        DailyProductionDetail d = new DailyProductionDetail();
+        d.setArticleNo(articleNo);
+        d.setTimeSlot(timeSlot);
+        d.setOutput(0);
+        return d;
+    }
+
+    /** Stub the month-aware batch + single lookups, returning only the given MasterDb rows. */
+    private void stubMasterDb(MasterDb... rows) {
+        when(masterDbRepository.findByArticleNoInAndDataMonthOrderByRefAsc(anyList(), anyString()))
+                .thenAnswer(inv -> {
+                    List<String> arts = inv.getArgument(0);
+                    List<MasterDb> out = new java.util.ArrayList<>();
+                    for (MasterDb m : rows) {
+                        if (arts.contains(m.getArticleNo())) out.add(m);
+                    }
+                    return out;
+                });
+    }
 
     private DailyProduction buildEntity(String section, String article, Integer output,
                                          Double dli, Double wt, Double mp, Double allowance) {

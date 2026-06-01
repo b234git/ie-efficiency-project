@@ -14,7 +14,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(HomeController.class)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, thienloc.manage.security.TestRbacSecurityConfig.class})
 class HomeControllerTest {
 
     @Autowired
@@ -38,23 +38,26 @@ class HomeControllerTest {
     }
 
     @Test
-    void testHome_AdminRole() throws Exception {
-        mockMvc.perform(get("/home").with(user("user").roles("ADMIN")))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/"));
+    void testHome_AdminRole_RendersHomeView() throws Exception {
+        mockMvc.perform(get("/home").with(user("admin").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(view().name("home"))
+                .andExpect(model().attributeExists("username"));
     }
 
     @Test
-    void testHome_ManagerRole() throws Exception {
-        mockMvc.perform(get("/home").with(user("user").roles("MANAGER")))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/dashboard/"));
+    void testHome_ManagerRole_RendersHomeView() throws Exception {
+        mockMvc.perform(get("/home").with(user("mgr").roles("MANAGER")))
+                .andExpect(status().isOk())
+                .andExpect(view().name("home"))
+                .andExpect(model().attributeExists("username"));
     }
 
     @Test
-    void testHome_UserRole() throws Exception {
-        mockMvc.perform(get("/home").with(user("user").roles("USER")))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/split-entry/"));
+    void testHome_UserRole_RendersHomeView() throws Exception {
+        mockMvc.perform(get("/home").with(user("u").roles("USER")))
+                .andExpect(status().isOk())
+                .andExpect(view().name("home"))
+                .andExpect(model().attributeExists("username"));
     }
 }

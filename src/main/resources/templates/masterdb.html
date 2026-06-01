@@ -252,29 +252,37 @@
             <table>
                 <thead>
                     <tr>
-                        <th>#</th>
-                        <th th:text="#{masterdb.col.month}">Month</th>
-                        <th th:text="#{masterdb.col.ref}">Ref</th>
-                        <th th:text="#{masterdb.col.articleno}">Article No</th>
-                        <th th:text="#{masterdb.col.patternno}">Pattern No</th>
-                        <th th:text="#{masterdb.col.shoename}">Shoe Name</th>
-                        <th th:text="#{masterdb.col.oscode}">OS Code</th>
-                        <th th:text="#{masterdb.col.sewquota}">Sew Quota</th>
-                        <th th:text="#{masterdb.col.tct}">TCT (s)</th>
-                        <th style="background:#dff0d8;">SEW PPH</th>
-                        <th style="background:#d9edf7;">BUFF 1ST</th>
-                        <th style="background:#d9edf7;">BUFF 2ND</th>
-                        <th style="background:#fcf8e3;">SF UV</th>
-                        <th style="background:#fcf8e3;">SF 1ST</th>
-                        <th style="background:#fcf8e3;">SF 2ND</th>
-                        <th style="background:#f2dede;">ASSEM BIG</th>
-                        <th style="background:#f2dede;">ASSEM SMALL</th>
-                        <th th:text="#{table.actions}">Actions</th>
+                        <th rowspan="2">#</th>
+                        <th rowspan="2" th:text="#{masterdb.col.month}">Month</th>
+                        <th rowspan="2" th:text="#{masterdb.col.ref}">Ref</th>
+                        <th rowspan="2" th:text="#{masterdb.col.articleno}">Article No</th>
+                        <th rowspan="2" th:text="#{masterdb.col.patternno}">Pattern No</th>
+                        <th rowspan="2" th:text="#{masterdb.col.shoename}">Shoe Name</th>
+                        <th rowspan="2" th:text="#{masterdb.col.oscode}">OS Code</th>
+                        <th colspan="4" style="background:#dff0d8; text-align:center;">SEW</th>
+                        <th colspan="4" style="background:#d9edf7; text-align:center;">BUFFING 1ST</th>
+                        <th colspan="4" style="background:#d9edf7; text-align:center;">BUFFING 2ND</th>
+                        <th colspan="4" style="background:#fcf8e3; text-align:center;">STOCKFIT UV</th>
+                        <th colspan="4" style="background:#fcf8e3; text-align:center;">STOCKFIT 1ST</th>
+                        <th colspan="4" style="background:#fcf8e3; text-align:center;">STOCKFIT 2ND</th>
+                        <th colspan="4" style="background:#f2dede; text-align:center;">ASSEMBLY BIG</th>
+                        <th colspan="4" style="background:#f2dede; text-align:center;">ASSEMBLY SMALL</th>
+                        <th rowspan="2" th:text="#{table.actions}">Actions</th>
+                    </tr>
+                    <tr>
+                        <th style="background:#dff0d8;">CT</th><th style="background:#dff0d8;">MP</th><th style="background:#dff0d8;">Quota</th><th style="background:#dff0d8;">PPH</th>
+                        <th style="background:#d9edf7;">CT</th><th style="background:#d9edf7;">MP</th><th style="background:#d9edf7;">Quota</th><th style="background:#d9edf7;">PPH</th>
+                        <th style="background:#d9edf7;">CT</th><th style="background:#d9edf7;">MP</th><th style="background:#d9edf7;">Quota</th><th style="background:#d9edf7;">PPH</th>
+                        <th style="background:#fcf8e3;">CT</th><th style="background:#fcf8e3;">MP</th><th style="background:#fcf8e3;">Quota</th><th style="background:#fcf8e3;">PPH</th>
+                        <th style="background:#fcf8e3;">CT</th><th style="background:#fcf8e3;">MP</th><th style="background:#fcf8e3;">Quota</th><th style="background:#fcf8e3;">PPH</th>
+                        <th style="background:#fcf8e3;">CT</th><th style="background:#fcf8e3;">MP</th><th style="background:#fcf8e3;">Quota</th><th style="background:#fcf8e3;">PPH</th>
+                        <th style="background:#f2dede;">CT</th><th style="background:#f2dede;">MP</th><th style="background:#f2dede;">Quota</th><th style="background:#f2dede;">PPH</th>
+                        <th style="background:#f2dede;">CT</th><th style="background:#f2dede;">MP</th><th style="background:#f2dede;">Quota</th><th style="background:#f2dede;">PPH</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr th:if="${records.isEmpty()}">
-                        <td colspan="18" style="text-align:center; color:#888; padding:20px;" th:text="#{table.nodata}">
+                        <td colspan="40" style="text-align:center; color:#888; padding:20px;" th:text="#{table.nodata}">
                             No data available.</td>
                     </tr>
                     <tr th:each="rec, stat : ${records.content}">
@@ -286,53 +294,88 @@
                         <td th:text="${rec.patternNo != null ? rec.patternNo : '-'}"></td>
                         <td th:text="${rec.shoeName != null ? rec.shoeName : '-'}"></td>
                         <td th:text="${rec.osCode != null ? rec.osCode : '-'}"></td>
-                        <td class="num"
-                            th:text="${rec.sewQuotaDb != null ? #numbers.formatDecimal(rec.sewQuotaDb,1,2,'POINT') : '-'}">
-                        </td>
-                        <td class="num" th:text="${rec.tct != null ? #numbers.formatDecimal(rec.tct, 1, 2) : '-'}"></td>
-                        <td class="num" style="background:#f5fff5;"
-                            th:text="${rec.sewPph != null ? #numbers.formatDecimal(rec.sewPph,1,2,'POINT') : '-'}">
-                        </td>
-                        <td class="num" style="background:#f0f8ff;"
-                            th:text="${rec.buff1stPph != null ? #numbers.formatDecimal(rec.buff1stPph,1,2,'POINT') : '-'}">
-                        </td>
-                        <td class="num" style="background:#f0f8ff;"
-                            th:text="${rec.buff2ndPph != null ? #numbers.formatDecimal(rec.buff2ndPph,1,2,'POINT') : '-'}">
-                        </td>
-                        <td class="num" style="background:#fffef0;"
-                            th:text="${rec.stockfitUvPph != null ? #numbers.formatDecimal(rec.stockfitUvPph,1,2,'POINT') : '-'}">
-                        </td>
-                        <td class="num" style="background:#fffef0;"
-                            th:text="${rec.stockfit1stPph != null ? #numbers.formatDecimal(rec.stockfit1stPph,1,2,'POINT') : '-'}">
-                        </td>
-                        <td class="num" style="background:#fffef0;"
-                            th:text="${rec.stockfit2ndPph != null ? #numbers.formatDecimal(rec.stockfit2ndPph,1,2,'POINT') : '-'}">
-                        </td>
-                        <td class="num" style="background:#fff5f5;"
-                            th:text="${rec.assemBigPph != null ? #numbers.formatDecimal(rec.assemBigPph,1,2,'POINT') : '-'}">
-                        </td>
-                        <td class="num" style="background:#fff5f5;"
-                            th:text="${rec.assemSmallPph != null ? #numbers.formatDecimal(rec.assemSmallPph,1,2,'POINT') : '-'}">
-                        </td>
+                        <!-- SEW -->
+                        <td class="num" style="background:#f5fff5;" th:text="${rec.sewCt != null ? #numbers.formatDecimal(rec.sewCt,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#f5fff5;" th:text="${rec.sewMp != null ? #numbers.formatDecimal(rec.sewMp,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#f5fff5;" th:text="${rec.sewQuotaDb != null ? #numbers.formatDecimal(rec.sewQuotaDb,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#f5fff5;" th:text="${rec.sewPph != null ? #numbers.formatDecimal(rec.sewPph,1,2,'POINT') : '-'}"></td>
+                        <!-- BUFF 1ST -->
+                        <td class="num" style="background:#f0f8ff;" th:text="${rec.buff1stCt != null ? #numbers.formatDecimal(rec.buff1stCt,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#f0f8ff;" th:text="${rec.buff1stMp != null ? #numbers.formatDecimal(rec.buff1stMp,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#f0f8ff;" th:text="${rec.buff1stQuotaDb != null ? #numbers.formatDecimal(rec.buff1stQuotaDb,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#f0f8ff;" th:text="${rec.buff1stPph != null ? #numbers.formatDecimal(rec.buff1stPph,1,2,'POINT') : '-'}"></td>
+                        <!-- BUFF 2ND -->
+                        <td class="num" style="background:#f0f8ff;" th:text="${rec.buff2ndCt != null ? #numbers.formatDecimal(rec.buff2ndCt,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#f0f8ff;" th:text="${rec.buff2ndMp != null ? #numbers.formatDecimal(rec.buff2ndMp,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#f0f8ff;" th:text="${rec.buff2ndQuotaDb != null ? #numbers.formatDecimal(rec.buff2ndQuotaDb,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#f0f8ff;" th:text="${rec.buff2ndPph != null ? #numbers.formatDecimal(rec.buff2ndPph,1,2,'POINT') : '-'}"></td>
+                        <!-- SF UV -->
+                        <td class="num" style="background:#fffef0;" th:text="${rec.stockfitUvCt != null ? #numbers.formatDecimal(rec.stockfitUvCt,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#fffef0;" th:text="${rec.stockfitUvMp != null ? #numbers.formatDecimal(rec.stockfitUvMp,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#fffef0;" th:text="${rec.stockfitUvQuotaDb != null ? #numbers.formatDecimal(rec.stockfitUvQuotaDb,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#fffef0;" th:text="${rec.stockfitUvPph != null ? #numbers.formatDecimal(rec.stockfitUvPph,1,2,'POINT') : '-'}"></td>
+                        <!-- SF 1ST -->
+                        <td class="num" style="background:#fffef0;" th:text="${rec.stockfit1stCt != null ? #numbers.formatDecimal(rec.stockfit1stCt,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#fffef0;" th:text="${rec.stockfit1stMp != null ? #numbers.formatDecimal(rec.stockfit1stMp,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#fffef0;" th:text="${rec.stockfit1stQuotaDb != null ? #numbers.formatDecimal(rec.stockfit1stQuotaDb,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#fffef0;" th:text="${rec.stockfit1stPph != null ? #numbers.formatDecimal(rec.stockfit1stPph,1,2,'POINT') : '-'}"></td>
+                        <!-- SF 2ND -->
+                        <td class="num" style="background:#fffef0;" th:text="${rec.stockfit2ndCt != null ? #numbers.formatDecimal(rec.stockfit2ndCt,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#fffef0;" th:text="${rec.stockfit2ndMp != null ? #numbers.formatDecimal(rec.stockfit2ndMp,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#fffef0;" th:text="${rec.stockfit2ndQuotaDb != null ? #numbers.formatDecimal(rec.stockfit2ndQuotaDb,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#fffef0;" th:text="${rec.stockfit2ndPph != null ? #numbers.formatDecimal(rec.stockfit2ndPph,1,2,'POINT') : '-'}"></td>
+                        <!-- ASSEM BIG -->
+                        <td class="num" style="background:#fff5f5;" th:text="${rec.assemBigCt != null ? #numbers.formatDecimal(rec.assemBigCt,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#fff5f5;" th:text="${rec.assemBigMp != null ? #numbers.formatDecimal(rec.assemBigMp,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#fff5f5;" th:text="${rec.assemBigQuotaDb != null ? #numbers.formatDecimal(rec.assemBigQuotaDb,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#fff5f5;" th:text="${rec.assemBigPph != null ? #numbers.formatDecimal(rec.assemBigPph,1,2,'POINT') : '-'}"></td>
+                        <!-- ASSEM SMALL -->
+                        <td class="num" style="background:#fff5f5;" th:text="${rec.assemSmallCt != null ? #numbers.formatDecimal(rec.assemSmallCt,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#fff5f5;" th:text="${rec.assemSmallMp != null ? #numbers.formatDecimal(rec.assemSmallMp,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#fff5f5;" th:text="${rec.assemSmallQuotaDb != null ? #numbers.formatDecimal(rec.assemSmallQuotaDb,1,2,'POINT') : '-'}"></td>
+                        <td class="num" style="background:#fff5f5;" th:text="${rec.assemSmallPph != null ? #numbers.formatDecimal(rec.assemSmallPph,1,2,'POINT') : '-'}"></td>
                         <td style="white-space:nowrap;">
                             <!-- Edit — MANAGER/ADMIN only -->
                             <button sec:authorize="hasAnyRole('MANAGER','ADMIN')" class="btn btn-warning btn-sm"
                                 onclick="openEditModal(this)" th:attr="data-id=${rec.id},
+                                             data-datamonth=${rec.dataMonth ?: ''},
                                              data-ref=${rec.ref},
                                              data-articleno=${rec.articleNo},
                                              data-patternno=${rec.patternNo ?: ''},
                                              data-shoename=${rec.shoeName ?: ''},
                                              data-oscode=${rec.osCode ?: ''},
+                                             data-sewct=${rec.sewCt ?: 0},
+                                             data-sewmp=${rec.sewMp ?: 0},
                                              data-sewquota=${rec.sewQuotaDb ?: 0},
-                                             data-tct=${rec.tct ?: 0},
                                              data-sewpph=${rec.sewPph ?: 0},
-                                             data-buff1st=${rec.buff1stPph ?: 0},
-                                             data-buff2nd=${rec.buff2ndPph ?: 0},
-                                             data-sfuv=${rec.stockfitUvPph ?: 0},
-                                             data-sf1st=${rec.stockfit1stPph ?: 0},
-                                             data-sf2nd=${rec.stockfit2ndPph ?: 0},
-                                             data-assembig=${rec.assemBigPph ?: 0},
-                                             data-assemsmall=${rec.assemSmallPph ?: 0}"
+                                             data-buff1stct=${rec.buff1stCt ?: 0},
+                                             data-buff1stmp=${rec.buff1stMp ?: 0},
+                                             data-buff1stquota=${rec.buff1stQuotaDb ?: 0},
+                                             data-buff1stpph=${rec.buff1stPph ?: 0},
+                                             data-buff2ndct=${rec.buff2ndCt ?: 0},
+                                             data-buff2ndmp=${rec.buff2ndMp ?: 0},
+                                             data-buff2ndquota=${rec.buff2ndQuotaDb ?: 0},
+                                             data-buff2ndpph=${rec.buff2ndPph ?: 0},
+                                             data-sfuvct=${rec.stockfitUvCt ?: 0},
+                                             data-sfuvmp=${rec.stockfitUvMp ?: 0},
+                                             data-sfuvquota=${rec.stockfitUvQuotaDb ?: 0},
+                                             data-sfuvpph=${rec.stockfitUvPph ?: 0},
+                                             data-sf1stct=${rec.stockfit1stCt ?: 0},
+                                             data-sf1stmp=${rec.stockfit1stMp ?: 0},
+                                             data-sf1stquota=${rec.stockfit1stQuotaDb ?: 0},
+                                             data-sf1stpph=${rec.stockfit1stPph ?: 0},
+                                             data-sf2ndct=${rec.stockfit2ndCt ?: 0},
+                                             data-sf2ndmp=${rec.stockfit2ndMp ?: 0},
+                                             data-sf2ndquota=${rec.stockfit2ndQuotaDb ?: 0},
+                                             data-sf2ndpph=${rec.stockfit2ndPph ?: 0},
+                                             data-assembigct=${rec.assemBigCt ?: 0},
+                                             data-assembigmp=${rec.assemBigMp ?: 0},
+                                             data-assembigquota=${rec.assemBigQuotaDb ?: 0},
+                                             data-assembigpph=${rec.assemBigPph ?: 0},
+                                             data-assemsmallct=${rec.assemSmallCt ?: 0},
+                                             data-assemsmallmp=${rec.assemSmallMp ?: 0},
+                                             data-assemsmallquota=${rec.assemSmallQuotaDb ?: 0},
+                                             data-assemsmallpph=${rec.assemSmallPph ?: 0}"
                                 th:text="#{masterdb.edit.btn}">
                                 ✏️ Edit
                             </button>
@@ -405,6 +448,10 @@
 
                 <div class="form-grid">
                     <div class="form-group">
+                        <label>Month <span style="color:red">*</span></label>
+                        <input type="month" id="f-dataMonth" name="dataMonth" class="form-control" required />
+                    </div>
+                    <div class="form-group">
                         <label>Ref <span style="color:red">*</span></label>
                         <input type="text" id="f-ref" name="ref" class="form-control" placeholder="E.g: 46024SEW1A"
                             required />
@@ -428,62 +475,72 @@
                         <label>OS Code</label>
                         <input type="text" id="f-osCode" name="osCode" class="form-control" placeholder="E.g: OS001" />
                     </div>
-                    <div class="form-group">
-                        <label>Sew Quota</label>
-                        <input type="number" step="0.01" id="f-sewQuota" name="sewQuota" class="form-control"
-                            placeholder="E.g: 450" min="0" oninput="calcTCT()" />
-                    </div>
-                    <div class="form-group">
-                        <label>TCT (seconds) <small style="color:#6c757d;" th:text="#{masterdb.modal.tct.hint}">– auto-calculated from Quota</small></label>
-                        <input type="number" step="0.0001" id="f-tct" name="tct" class="form-control"
-                            placeholder="Or enter manually" />
-                    </div>
                 </div>
 
-                <!-- PPH section -->
+                <!-- Stage metrics: 8 stages × {CT, MP, Quota, PPH} -->
                 <div style="margin-top:18px;">
-                    <div class="section-header" th:text="#{masterdb.pph.section}">PPH by Section</div>
+                    <div class="section-header" style="color:#28a745;">SEW</div>
                     <div class="pph-grid">
-                        <div class="form-group">
-                            <label style="font-size:0.85rem; color:#28a745;">SEW PPH</label>
-                            <input type="number" step="0.01" id="f-sewPph" name="sewPph" class="form-control"
-                                placeholder="0" min="0" />
-                        </div>
-                        <div class="form-group">
-                            <label style="font-size:0.85rem; color:#17a2b8;">BUFFING 1ST</label>
-                            <input type="number" step="0.01" id="f-buff1stPph" name="buff1stPph" class="form-control"
-                                placeholder="0" min="0" />
-                        </div>
-                        <div class="form-group">
-                            <label style="font-size:0.85rem; color:#17a2b8;">BUFFING 2ND</label>
-                            <input type="number" step="0.01" id="f-buff2ndPph" name="buff2ndPph" class="form-control"
-                                placeholder="0" min="0" />
-                        </div>
-                        <div class="form-group">
-                            <label style="font-size:0.85rem; color:#997700;">STOCKFIT UV</label>
-                            <input type="number" step="0.01" id="f-stockfitUvPph" name="stockfitUvPph"
-                                class="form-control" placeholder="0" min="0" />
-                        </div>
-                        <div class="form-group">
-                            <label style="font-size:0.85rem; color:#997700;">STOCKFIT 1ST</label>
-                            <input type="number" step="0.01" id="f-stockfit1stPph" name="stockfit1stPph"
-                                class="form-control" placeholder="0" min="0" />
-                        </div>
-                        <div class="form-group">
-                            <label style="font-size:0.85rem; color:#997700;">STOCKFIT 2ND</label>
-                            <input type="number" step="0.01" id="f-stockfit2ndPph" name="stockfit2ndPph"
-                                class="form-control" placeholder="0" min="0" />
-                        </div>
-                        <div class="form-group">
-                            <label style="font-size:0.85rem; color:#dc3545;">ASSEMBLY BIG</label>
-                            <input type="number" step="0.01" id="f-assemBigPph" name="assemBigPph" class="form-control"
-                                placeholder="0" min="0" />
-                        </div>
-                        <div class="form-group">
-                            <label style="font-size:0.85rem; color:#dc3545;">ASSEMBLY SMALL</label>
-                            <input type="number" step="0.01" id="f-assemSmallPph" name="assemSmallPph"
-                                class="form-control" placeholder="0" min="0" />
-                        </div>
+                        <div class="form-group"><label style="font-size:0.85rem;">CT</label><input type="number" step="0.01" id="f-sewCt" name="sewCt" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">MP</label><input type="number" step="0.01" id="f-sewMp" name="sewMp" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">Quota</label><input type="number" step="0.01" id="f-sewQuotaDb" name="sewQuotaDb" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">PPH</label><input type="number" step="0.01" id="f-sewPph" name="sewPph" class="form-control" placeholder="0" min="0" /></div>
+                    </div>
+
+                    <div class="section-header" style="color:#17a2b8;">BUFFING 1ST</div>
+                    <div class="pph-grid">
+                        <div class="form-group"><label style="font-size:0.85rem;">CT</label><input type="number" step="0.01" id="f-buff1stCt" name="buff1stCt" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">MP</label><input type="number" step="0.01" id="f-buff1stMp" name="buff1stMp" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">Quota</label><input type="number" step="0.01" id="f-buff1stQuotaDb" name="buff1stQuotaDb" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">PPH</label><input type="number" step="0.01" id="f-buff1stPph" name="buff1stPph" class="form-control" placeholder="0" min="0" /></div>
+                    </div>
+
+                    <div class="section-header" style="color:#17a2b8;">BUFFING 2ND</div>
+                    <div class="pph-grid">
+                        <div class="form-group"><label style="font-size:0.85rem;">CT</label><input type="number" step="0.01" id="f-buff2ndCt" name="buff2ndCt" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">MP</label><input type="number" step="0.01" id="f-buff2ndMp" name="buff2ndMp" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">Quota</label><input type="number" step="0.01" id="f-buff2ndQuotaDb" name="buff2ndQuotaDb" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">PPH</label><input type="number" step="0.01" id="f-buff2ndPph" name="buff2ndPph" class="form-control" placeholder="0" min="0" /></div>
+                    </div>
+
+                    <div class="section-header" style="color:#997700;">STOCKFIT UV</div>
+                    <div class="pph-grid">
+                        <div class="form-group"><label style="font-size:0.85rem;">CT</label><input type="number" step="0.01" id="f-stockfitUvCt" name="stockfitUvCt" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">MP</label><input type="number" step="0.01" id="f-stockfitUvMp" name="stockfitUvMp" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">Quota</label><input type="number" step="0.01" id="f-stockfitUvQuotaDb" name="stockfitUvQuotaDb" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">PPH</label><input type="number" step="0.01" id="f-stockfitUvPph" name="stockfitUvPph" class="form-control" placeholder="0" min="0" /></div>
+                    </div>
+
+                    <div class="section-header" style="color:#997700;">STOCKFIT 1ST</div>
+                    <div class="pph-grid">
+                        <div class="form-group"><label style="font-size:0.85rem;">CT</label><input type="number" step="0.01" id="f-stockfit1stCt" name="stockfit1stCt" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">MP</label><input type="number" step="0.01" id="f-stockfit1stMp" name="stockfit1stMp" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">Quota</label><input type="number" step="0.01" id="f-stockfit1stQuotaDb" name="stockfit1stQuotaDb" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">PPH</label><input type="number" step="0.01" id="f-stockfit1stPph" name="stockfit1stPph" class="form-control" placeholder="0" min="0" /></div>
+                    </div>
+
+                    <div class="section-header" style="color:#997700;">STOCKFIT 2ND</div>
+                    <div class="pph-grid">
+                        <div class="form-group"><label style="font-size:0.85rem;">CT</label><input type="number" step="0.01" id="f-stockfit2ndCt" name="stockfit2ndCt" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">MP</label><input type="number" step="0.01" id="f-stockfit2ndMp" name="stockfit2ndMp" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">Quota</label><input type="number" step="0.01" id="f-stockfit2ndQuotaDb" name="stockfit2ndQuotaDb" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">PPH</label><input type="number" step="0.01" id="f-stockfit2ndPph" name="stockfit2ndPph" class="form-control" placeholder="0" min="0" /></div>
+                    </div>
+
+                    <div class="section-header" style="color:#dc3545;">ASSEMBLY BIG</div>
+                    <div class="pph-grid">
+                        <div class="form-group"><label style="font-size:0.85rem;">CT</label><input type="number" step="0.01" id="f-assemBigCt" name="assemBigCt" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">MP</label><input type="number" step="0.01" id="f-assemBigMp" name="assemBigMp" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">Quota</label><input type="number" step="0.01" id="f-assemBigQuotaDb" name="assemBigQuotaDb" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">PPH</label><input type="number" step="0.01" id="f-assemBigPph" name="assemBigPph" class="form-control" placeholder="0" min="0" /></div>
+                    </div>
+
+                    <div class="section-header" style="color:#dc3545;">ASSEMBLY SMALL</div>
+                    <div class="pph-grid">
+                        <div class="form-group"><label style="font-size:0.85rem;">CT</label><input type="number" step="0.01" id="f-assemSmallCt" name="assemSmallCt" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">MP</label><input type="number" step="0.01" id="f-assemSmallMp" name="assemSmallMp" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">Quota</label><input type="number" step="0.01" id="f-assemSmallQuotaDb" name="assemSmallQuotaDb" class="form-control" placeholder="0" min="0" /></div>
+                        <div class="form-group"><label style="font-size:0.85rem;">PPH</label><input type="number" step="0.01" id="f-assemSmallPph" name="assemSmallPph" class="form-control" placeholder="0" min="0" /></div>
                     </div>
                 </div>
 
@@ -508,9 +565,49 @@
     </script>
 
     <script>
+        const STAGE_KEYS = [
+            { id: 'sewCt',           data: 'sewct'           },
+            { id: 'sewMp',           data: 'sewmp'           },
+            { id: 'sewQuotaDb',      data: 'sewquota'        },
+            { id: 'sewPph',          data: 'sewpph'          },
+            { id: 'buff1stCt',       data: 'buff1stct'       },
+            { id: 'buff1stMp',       data: 'buff1stmp'       },
+            { id: 'buff1stQuotaDb',  data: 'buff1stquota'    },
+            { id: 'buff1stPph',      data: 'buff1stpph'      },
+            { id: 'buff2ndCt',       data: 'buff2ndct'       },
+            { id: 'buff2ndMp',       data: 'buff2ndmp'       },
+            { id: 'buff2ndQuotaDb',  data: 'buff2ndquota'    },
+            { id: 'buff2ndPph',      data: 'buff2ndpph'      },
+            { id: 'stockfitUvCt',    data: 'sfuvct'          },
+            { id: 'stockfitUvMp',    data: 'sfuvmp'          },
+            { id: 'stockfitUvQuotaDb', data: 'sfuvquota'     },
+            { id: 'stockfitUvPph',   data: 'sfuvpph'         },
+            { id: 'stockfit1stCt',   data: 'sf1stct'         },
+            { id: 'stockfit1stMp',   data: 'sf1stmp'         },
+            { id: 'stockfit1stQuotaDb', data: 'sf1stquota'   },
+            { id: 'stockfit1stPph',  data: 'sf1stpph'        },
+            { id: 'stockfit2ndCt',   data: 'sf2ndct'         },
+            { id: 'stockfit2ndMp',   data: 'sf2ndmp'         },
+            { id: 'stockfit2ndQuotaDb', data: 'sf2ndquota'   },
+            { id: 'stockfit2ndPph',  data: 'sf2ndpph'        },
+            { id: 'assemBigCt',      data: 'assembigct'      },
+            { id: 'assemBigMp',      data: 'assembigmp'      },
+            { id: 'assemBigQuotaDb', data: 'assembigquota'   },
+            { id: 'assemBigPph',     data: 'assembigpph'     },
+            { id: 'assemSmallCt',    data: 'assemsmallct'    },
+            { id: 'assemSmallMp',    data: 'assemsmallmp'    },
+            { id: 'assemSmallQuotaDb', data: 'assemsmallquota' },
+            { id: 'assemSmallPph',   data: 'assemsmallpph'   }
+        ];
+
         function openAddModal() {
             document.getElementById('modalTitle').textContent = MSG_MODAL_ADD;
             resetForm();
+            const monthInput = document.getElementById('f-dataMonth');
+            if (!monthInput.value) {
+                const now = new Date();
+                monthInput.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+            }
             document.getElementById('masterdbModal').style.display = 'block';
         }
 
@@ -518,35 +615,24 @@
             const d = btn.dataset;
             document.getElementById('modalTitle').textContent = MSG_MODAL_EDIT;
             document.getElementById('f-id').value = d.id;
+            document.getElementById('f-dataMonth').value = d.datamonth || '';
             document.getElementById('f-ref').value = d.ref || '';
             document.getElementById('f-articleNo').value = d.articleno || '';
             document.getElementById('f-patternNo').value = d.patternno || '';
             document.getElementById('f-shoeName').value = d.shoename || '';
             document.getElementById('f-osCode').value = d.oscode || '';
-            setNum('f-sewQuota', d.sewquota);
-            setNum('f-tct', d.tct);
-            setNum('f-sewPph', d.sewpph);
-            setNum('f-buff1stPph', d.buff1st);
-            setNum('f-buff2ndPph', d.buff2nd);
-            setNum('f-stockfitUvPph', d.sfuv);
-            setNum('f-stockfit1stPph', d.sf1st);
-            setNum('f-stockfit2ndPph', d.sf2nd);
-            setNum('f-assemBigPph', d.assembig);
-            setNum('f-assemSmallPph', d.assemsmall);
+            STAGE_KEYS.forEach(k => setNum('f-' + k.id, d[k.data]));
             document.getElementById('masterdbModal').style.display = 'block';
         }
 
         function setNum(id, val) {
-            document.getElementById(id).value = (val && val !== 0) ? val : '';
+            document.getElementById(id).value = (val && val !== 0 && val !== '0') ? val : '';
         }
 
         function resetForm() {
-            ['f-id', 'f-ref', 'f-articleNo', 'f-patternNo', 'f-shoeName', 'f-osCode',
-                'f-sewQuota', 'f-tct', 'f-sewPph', 'f-buff1stPph', 'f-buff2ndPph',
-                'f-stockfitUvPph', 'f-stockfit1stPph', 'f-stockfit2ndPph',
-                'f-assemBigPph', 'f-assemSmallPph'].forEach(id => {
-                    document.getElementById(id).value = '';
-                });
+            ['f-id', 'f-dataMonth', 'f-ref', 'f-articleNo', 'f-patternNo', 'f-shoeName', 'f-osCode']
+                .forEach(id => { document.getElementById(id).value = ''; });
+            STAGE_KEYS.forEach(k => { document.getElementById('f-' + k.id).value = ''; });
         }
 
         function closeModal() {
@@ -556,16 +642,6 @@
         function closeModalOnOverlay(event) {
             if (event.target === document.getElementById('masterdbModal')) {
                 closeModal();
-            }
-        }
-
-
-
-        function calcTCT() {
-            const quota = parseFloat(document.getElementById('f-sewQuota').value);
-            if (quota && quota > 0) {
-                const tct = (10.0 * 3600.0) / quota;
-                document.getElementById('f-tct').value = tct.toFixed(4);
             }
         }
 

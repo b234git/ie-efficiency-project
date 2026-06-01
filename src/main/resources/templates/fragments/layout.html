@@ -48,7 +48,7 @@
 
                     <div class="nav-hub" sec:authorize="hasAnyRole('MANAGER', 'ADMIN')">
                         <button class="nav-hub-toggle" type="button" data-hub-toggle aria-expanded="false">
-                            <span th:text="#{nav.hub.salary}">Salary</span>
+                            <span th:text="#{nav.hub.salary}">Incentive</span>
                             <span class="nav-hub-caret">&#9662;</span>
                         </button>
                         <div class="nav-hub-links">
@@ -58,15 +58,27 @@
                                th:text="#{nav.weeklytracking}">Weekly Tracking</a>
                             <a class="nav-panel-link" th:href="@{/new-style/}"
                                th:text="#{nav.newstyle}">New Style</a>
-                            <a class="nav-panel-link" th:href="@{/salary/}"
-                               th:text="#{nav.salary}">Salary Bonus</a>
+                            <a class="nav-panel-link" th:href="@{/incentive/}"
+                               th:text="#{nav.salary}">Incentive</a>
                         </div>
                     </div>
 
-                    <a class="nav-panel-link nav-standalone-link" sec:authorize="hasRole('ADMIN')"
-                       th:href="@{/admin/}" th:text="#{nav.admin}">Admin</a>
-                    <a class="nav-panel-link nav-standalone-link" sec:authorize="hasRole('ADMIN')"
-                       th:href="@{/admin/system}" th:text="#{nav.systemhealth}">System Health</a>
+                    <div class="nav-hub" sec:authorize="hasRole('ADMIN')">
+                        <button class="nav-hub-toggle" type="button" data-hub-toggle aria-expanded="false">
+                            <span th:text="#{nav.hub.admin}">Admin</span>
+                            <span class="nav-hub-caret">&#9662;</span>
+                        </button>
+                        <div class="nav-hub-links">
+                            <a class="nav-panel-link" th:href="@{/admin/}"
+                               th:text="#{nav.admin.users}">User Management</a>
+                            <a class="nav-panel-link" th:href="@{/admin/roles/}"
+                               th:text="#{admin.roles.manage}">Roles &amp; Permissions</a>
+                            <a class="nav-panel-link" th:href="@{/admin/logs}"
+                               th:text="#{nav.admin.logs}">System Logs</a>
+                            <a class="nav-panel-link" th:href="@{/admin/system}"
+                               th:text="#{nav.systemhealth}">System Health</a>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="navbar-panel-utility">

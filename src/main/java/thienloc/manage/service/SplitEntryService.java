@@ -44,11 +44,15 @@ public class SplitEntryService implements ISplitEntryService {
     @Autowired
     private SplitEntryMapper splitEntryMapper;
 
+    @Autowired
+    private LineAssignmentService lineAssignmentService;
+
     // ─── Page 1: Manpower ─────────────────────────────────────────────────────────
 
     @Transactional
     public SplitEntry saveManpower(SplitEntryDto dto, String username) {
         User user = userService.findByUsername(username);
+        lineAssignmentService.assertCanWrite(username, dto.getSection(), dto.getLine());
         SplitEntry entry = findOrCreate(dto.getProductionDate(), dto.getSection(), dto.getLine());
 
         entry.setMp(dto.getMp());
@@ -66,6 +70,7 @@ public class SplitEntryService implements ISplitEntryService {
     @Transactional
     public SplitEntry saveOutput(SplitEntryDto dto, String username) {
         User user = userService.findByUsername(username);
+        lineAssignmentService.assertCanWrite(username, dto.getSection(), dto.getLine());
         SplitEntry entry = findOrCreate(dto.getProductionDate(), dto.getSection(), dto.getLine());
 
         entry.setWt(dto.getWt());
@@ -83,6 +88,7 @@ public class SplitEntryService implements ISplitEntryService {
     @Transactional
     public SplitEntry saveArticles(SplitEntryDto dto, String username) {
         User user = userService.findByUsername(username);
+        lineAssignmentService.assertCanWrite(username, dto.getSection(), dto.getLine());
         SplitEntry entry = findOrCreate(dto.getProductionDate(), dto.getSection(), dto.getLine());
 
         entry.setAllowance(NormalizationUtil.normalizeAllowance(dto.getAllowance()));

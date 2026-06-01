@@ -32,4 +32,8 @@ public class User {
 
     @Column(nullable = false)
     private String role; // ROLE_USER, ROLE_MANAGER, ROLE_ADMIN
+
+    @Column(nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT TRUE")
+    @Builder.Default
+    private boolean enabled = true;
 }

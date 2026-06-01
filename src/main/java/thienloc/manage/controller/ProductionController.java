@@ -161,7 +161,12 @@ public class ProductionController {
             redirectAttributes.addFlashAttribute("validationError", errorMsg);
             return "redirect:/entry/?error";
         }
-        productionService.saveDailyProduction(dto, principal.getName());
+        try {
+            productionService.saveDailyProduction(dto, principal.getName());
+        } catch (org.springframework.security.access.AccessDeniedException ex) {
+            redirectAttributes.addFlashAttribute("validationError", ex.getMessage());
+            return "redirect:/entry/?error";
+        }
         systemLogService.logAction("ADD_ENTRY",
                 "Section=" + dto.getSection() + ", Article=" + dto.getArticle(), request);
         return "redirect:/entry/?success";
@@ -183,7 +188,12 @@ public class ProductionController {
             return "redirect:/entry/?error";
         }
         DailyProductionDto before = productionService.getById(dto.getId());
-        productionService.saveDailyProduction(dto, principal.getName());
+        try {
+            productionService.saveDailyProduction(dto, principal.getName());
+        } catch (org.springframework.security.access.AccessDeniedException ex) {
+            redirectAttributes.addFlashAttribute("validationError", ex.getMessage());
+            return "redirect:/entry/?error";
+        }
         systemLogService.logAction("EDIT_ENTRY",
                 "ID=" + dto.getId()
                         + " | before: output=" + before.getOutput() + ", article=" + before.getArticle()

@@ -11,11 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 import thienloc.manage.entity.SystemLog;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Repository
 public interface SystemLogRepository extends JpaRepository<SystemLog, Long> {
-    List<SystemLog> findAllByOrderByTimestampDesc();
     Page<SystemLog> findAllByOrderByTimestampDesc(Pageable pageable);
 
     @Modifying

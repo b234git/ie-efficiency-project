@@ -38,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ProductionApiController.class)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, thienloc.manage.security.TestRbacSecurityConfig.class})
 class ProductionApiControllerTest {
 
     @Autowired

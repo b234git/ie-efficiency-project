@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import thienloc.manage.dto.DailyProductionDetailDto;
 import thienloc.manage.dto.DailyProductionDto;
@@ -13,6 +14,7 @@ import thienloc.manage.dto.WeeklyReportDto;
 import thienloc.manage.entity.DailyProduction;
 import thienloc.manage.entity.DailyProductionDetail;
 import thienloc.manage.entity.User;
+import thienloc.manage.mapper.ProductionMapper;
 import thienloc.manage.repository.DailyProductionRepository;
 import thienloc.manage.repository.MasterDbRepository;
 import thienloc.manage.testutil.TestDataFactory;
@@ -40,6 +42,11 @@ class ProductionServiceTest {
 
     @Mock
     private EfficiencyCalculatorService efficiencyCalculator;
+
+    // Real mapper (dependency-free, field-mapping only) so convertToDto tests
+    // exercise actual mapping logic instead of a null mock.
+    @Spy
+    private ProductionMapper productionMapper = new ProductionMapper();
 
     @InjectMocks
     private ProductionService productionService;
@@ -83,7 +90,6 @@ class ProductionServiceTest {
         when(userService.findByUsername("admin")).thenReturn(testUser);
         DailyProduction existing = TestDataFactory.createDailyProduction("SEW", "1A", 500, 20.0, 7.0);
         when(productionRepository.findById(1L)).thenReturn(Optional.of(existing));
-        when(productionRepository.save(any(DailyProduction.class))).thenAnswer(inv -> inv.getArgument(0));
 
         DailyProductionDto dto = TestDataFactory.createDailyProductionDto();
         dto.setId(1L);
@@ -91,10 +97,11 @@ class ProductionServiceTest {
 
         productionService.saveDailyProduction(dto, "admin");
 
+        // Update path mutates the managed entity in place and relies on JPA
+        // dirty-checking + flush() (no explicit save() call).
         verify(productionRepository).findById(1L);
-        ArgumentCaptor<DailyProduction> captor = ArgumentCaptor.forClass(DailyProduction.class);
-        verify(productionRepository).save(captor.capture());
-        assertEquals(35.0, captor.getValue().getMp(), 0.001);
+        verify(productionRepository).flush();
+        assertEquals(35.0, existing.getMp(), 0.001);
     }
 
     @Test

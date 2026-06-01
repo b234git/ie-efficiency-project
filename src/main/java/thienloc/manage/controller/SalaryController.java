@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Controller
-@RequestMapping("/salary")
+@RequestMapping("/incentive")
 public class SalaryController {
 
     @Autowired

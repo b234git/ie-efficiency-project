@@ -15,11 +15,13 @@ import thienloc.manage.dto.SalaryReportDto.DayRow;
 import thienloc.manage.dto.SalaryReportDto.SectionLineBlock;
 import thienloc.manage.entity.EffIncentiveRate;
 import thienloc.manage.entity.EffMultiplier;
+import thienloc.manage.entity.MasterDb;
 import thienloc.manage.entity.NewStyleEntry;
 import thienloc.manage.entity.ReprocessRecord;
 import thienloc.manage.entity.SixSRecord;
 import thienloc.manage.repository.EffIncentiveRateRepository;
 import thienloc.manage.repository.EffMultiplierRepository;
+import thienloc.manage.repository.MasterDbRepository;
 import thienloc.manage.repository.NewStyleEntryRepository;
 import thienloc.manage.util.NormalizationUtil;
 
@@ -50,6 +52,7 @@ public class SalaryService implements ISalaryService {
     @Autowired private NewStyleEntryRepository newStyleRepo;
     @Autowired private EffIncentiveRateRepository rateRepo;
     @Autowired private EffMultiplierRepository multiplierRepo;
+    @Autowired private MasterDbRepository masterDbRepo;
 
     // ── Public API ────────────────────────────────────────────────────────────
 
@@ -91,6 +94,10 @@ public class SalaryService implements ISalaryService {
             ratesMap.put(sec, rateRepo.findBySecOrderByEffPercentAsc(sec));
         }
 
+        // 4b. Pre-load MasterDb articles for the month (first row per article)
+        Map<String, MasterDb> masterByArticle = masterDbRepo.findByDataMonth(month)
+                .stream().collect(Collectors.toMap(MasterDb::getArticleNo, m -> m, (a, b) -> a));
+
         // 5. Group dtos by section tag|line (preserve insertion order)
         Map<String, List<DailyProductionDto>> grouped = new LinkedHashMap<>();
         for (DailyProductionDto dto : dtos) {
@@ -107,7 +114,7 @@ public class SalaryService implements ISalaryService {
             String line    = parts.length > 1 ? parts[1] : "";
 
             blocks.add(buildBlock(section, line, entry.getValue(),
-                    sixsMap, reproMap, stylesMap, multiplierMap, ratesMap));
+                    sixsMap, reproMap, stylesMap, multiplierMap, ratesMap, masterByArticle));
         }
 
         SalaryReportDto report = new SalaryReportDto();
@@ -132,7 +139,8 @@ public class SalaryService implements ISalaryService {
             Map<String, ReprocessRecord> reproMap,
             Map<String, List<NewStyleEntry>> stylesMap,
             Map<String, EffMultiplier> multiplierMap,
-            Map<String, List<EffIncentiveRate>> ratesMap) {
+            Map<String, List<EffIncentiveRate>> ratesMap,
+            Map<String, MasterDb> masterByArticle) {
 
         SectionLineBlock block = new SectionLineBlock();
         block.setSection(section);
@@ -143,12 +151,15 @@ public class SalaryService implements ISalaryService {
         String trackingKey = WeeklyTrackingService.normalizeSection(section) + "|" + line;
         SixSRecord sixs = sixsMap.get(trackingKey);
         ReprocessRecord repro = reproMap.get(trackingKey);
-        double sixsPct    = (sixs  != null) ? sixs.getTotalPercent()  : 0.0;
-        double reproPct   = (repro != null) ? repro.getTotalPercent() : 0.0;
-        double effectivePct = Math.max(0.0, sixsPct - reproPct);
+        // No tracking record = perfect by default: 6S 100% (no violations), 0% reprocess defect.
+        double sixsPct     = (sixs  != null) ? sixs.getTotalPercent()  : 100.0;
+        double reproDefect = (repro != null) ? repro.getTotalPercent() : 0.0;
+        double effectivePct = Math.max(0.0, sixsPct - reproDefect);
 
         block.setSixSPercent(sixsPct);
-        block.setReprocessPercent(reproPct);
+        // Show reprocess as a pass rate (100% − defect) to match the Weekly Tracking page;
+        // effectivePct above still uses the defect rate, so salary amounts are unchanged.
+        block.setReprocessPercent(100.0 - reproDefect);
         block.setEffectivePct(effectivePct);
 
         // New Style — incentive = SUM(quantity) × 30,000 VND
@@ -174,6 +185,11 @@ public class SalaryService implements ISalaryService {
             row.setDate(dto.getProductionDate());
             row.setMp(dto.getMp() != null ? dto.getMp().intValue() : 0);
             row.setWt(dto.getWt() != null ? dto.getWt() : 0.0);
+            row.setTargetQuota(dto.getTarget() != null ? dto.getTarget() : 0.0);
+            row.setOutput(dto.getOutput() != null ? dto.getOutput().doubleValue() : 0.0);
+
+            // Target MP from MasterDb.{section}Mp via article lookup
+            row.setTargetMp(lookupTargetMp(dto.getArticle(), baseSec, masterByArticle));
 
             // Determine SEC code (e.g. SEW10, ASSY8)
             int normWt = normalizeWT(dto.getWt());
@@ -211,6 +227,23 @@ public class SalaryService implements ISalaryService {
         block.setDailyRows(dayRows);
         block.setGradeTotals(gradeTotals);
         return block;
+    }
+
+    /** Look up standard MP from MasterDb based on article + base section. */
+    private int lookupTargetMp(String article, String baseSec, Map<String, MasterDb> masterByArticle) {
+        if (article == null || article.isBlank()) return 0;
+        // Strip trailing "-2" variant suffix (MasterDb stores articles without it)
+        String lookup = article.endsWith("-2") ? article.substring(0, article.length() - 2) : article;
+        MasterDb m = masterByArticle.get(lookup);
+        if (m == null) return 0;
+        Double mp = switch (baseSec) {
+            case "SEW"  -> m.getSewMp();
+            case "ASSY" -> m.getAssemBigMp();
+            case "BUFF" -> m.getBuff1stMp();
+            case "SF"   -> m.getStockfit1stMp();
+            default     -> null;
+        };
+        return (mp != null) ? (int) Math.round(mp) : 0;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

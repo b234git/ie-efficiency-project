@@ -61,6 +61,7 @@ public class SplitEntry {
 
     @Builder.Default
     @OneToMany(mappedBy = "splitEntry", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("timeSlot ASC")
     private List<SplitEntryDetail> details = new ArrayList<>();
 
     // ── Tracking who filled each page ──

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <title th:text="#{admin.permissions.title}">Role Permissions</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <style>
+        .feature-category { background:#eef3fa; font-weight:600; }
+        .feature-row td { vertical-align: middle; }
+        .feature-row .feat-key { font-family: monospace; color:#6c757d; font-size:0.8rem; }
+        .actions-bar { position: sticky; top: 0; background: #fff; padding: 12px 0; z-index: 5; border-bottom: 1px solid #dee2e6; margin-bottom: 16px; }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/layout :: navbar}"></div>
+
+    <div class="container">
+        <div style="margin-bottom:8px;">
+            <a th:href="@{/admin/roles/}" style="color:#1a6bbf; text-decoration:none;">&larr;
+                <span th:text="#{admin.roles.backToRoles}">Back to Roles</span></a>
+        </div>
+
+        <h2>
+            <span th:text="#{admin.permissions.title}">Permissions for</span>
+            <span th:text="${role.displayName}" style="color:#1a6bbf;"></span>
+            <small style="color:#6c757d; font-weight: normal;" th:text="'(' + ${role.name} + ')'"></small>
+        </h2>
+
+        <div class="actions-bar">
+            <button type="button" id="savePermsBtn" class="btn btn-primary" th:text="#{admin.permissions.save}">Save</button>
+            <button type="button" id="checkAllBtn" class="btn" style="background:#198754; color:#fff; margin-left:8px;"
+                    th:text="#{admin.permissions.checkAll}">Check all</button>
+            <button type="button" id="uncheckAllBtn" class="btn" style="background:#6c757d; color:#fff; margin-left:8px;"
+                    th:text="#{admin.permissions.uncheckAll}">Uncheck all</button>
+            <span id="dirtyHint" style="color:#dc3545; margin-left:14px; display:none;"
+                  th:text="#{admin.permissions.unsaved}">You have unsaved changes.</span>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:60px;" th:text="#{admin.permissions.allow}">Allow</th>
+                    <th th:text="#{admin.permissions.feature}">Feature</th>
+                    <th th:text="#{admin.permissions.category}">Category</th>
+                    <th th:text="#{admin.permissions.urls}">URL patterns</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="f : ${features}" class="feature-row">
+                    <td style="text-align:center;">
+                        <input type="checkbox"
+                               class="perm-check"
+                               th:data-feature-id="${f.id}"
+                               th:checked="${role.features.contains(f)}"/>
+                    </td>
+                    <td>
+                        <div th:text="${f.displayName}" style="font-weight:600;"></div>
+                        <div class="feat-key" th:text="${f.featureKey}"></div>
+                    </td>
+                    <td th:text="${f.category}"></td>
+                    <td style="font-family:monospace; color:#495057; font-size:0.85rem;" th:text="${f.urlPatterns}"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script th:inline="javascript">
+        (function () {
+            const ROLE_ID = /*[[${role.id}]]*/ 0;
+            const SAVED_MSG = /*[[#{admin.permissions.saved}]]*/ 'Permissions saved.';
+            const ERROR_MSG = /*[[#{notification.toast.error}]]*/ 'Action failed.';
+
+            const dirtyHint = document.getElementById('dirtyHint');
+            function markDirty() { dirtyHint.style.display = 'inline'; }
+            function clearDirty() { dirtyHint.style.display = 'none'; }
+
+            document.querySelectorAll('.perm-check').forEach(cb => {
+                cb.addEventListener('change', markDirty);
+            });
+
+            document.getElementById('checkAllBtn').addEventListener('click', () => {
+                document.querySelectorAll('.perm-check').forEach(cb => { cb.checked = true; });
+                markDirty();
+            });
+            document.getElementById('uncheckAllBtn').addEventListener('click', () => {
+                document.querySelectorAll('.perm-check').forEach(cb => { cb.checked = false; });
+                markDirty();
+            });
+
+            document.getElementById('savePermsBtn').addEventListener('click', async function () {
+                const ids = [];
+                document.querySelectorAll('.perm-check:checked').forEach(cb => {
+                    ids.push(Number(cb.getAttribute('data-feature-id')));
+                });
+                this.disabled = true;
+                try {
+                    await window.api.fetchJson('/api/v1/admin/roles/' + ROLE_ID + '/permissions', {
+                        method: 'PUT',
+                        body: JSON.stringify({ featureIds: ids })
+                    });
+                    window.api.toast('success', SAVED_MSG);
+                    clearDirty();
+                } catch (err) {
+                    window.api.toast('error', (err && err.message) || ERROR_MSG);
+                } finally {
+                    this.disabled = false;
+                }
+            });
+        })();
+    </script>
+</body>
+
+</html>

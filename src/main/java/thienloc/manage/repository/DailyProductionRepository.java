@@ -54,6 +54,11 @@ public interface DailyProductionRepository extends JpaRepository<DailyProduction
         @Query("SELECT DISTINCT TO_CHAR(p.productionDate, 'YYYY-MM') FROM DailyProduction p ORDER BY 1 DESC")
         List<String> findDistinctMonths();
 
+        // ─── Distinct (section, line) pairs — feeds the line-assignment picker ───────
+        @Query("SELECT DISTINCT p.section, p.line FROM DailyProduction p " +
+               "WHERE p.section IS NOT NULL AND p.section <> '' AND p.line IS NOT NULL AND p.line <> ''")
+        List<Object[]> findDistinctSectionLinePairs();
+
         // ─── DB-level pagination (two-pass) ───────────────────────────────────────
         // Pass 1: lấy IDs có LIMIT/OFFSET — section/line lọc tại DB, KHÔNG dùng JOIN FETCH
         // (JOIN FETCH + Pageable sẽ gây HibernateJpaDialect warning và paginate in-memory)

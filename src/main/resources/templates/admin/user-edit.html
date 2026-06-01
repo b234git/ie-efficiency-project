@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <title th:text="#{admin.user.edit.title}">Edit User</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <style>
+        .card { background:#fff; border:1px solid #dee2e6; border-radius:6px; padding:16px 20px; margin-bottom:20px; }
+        .card h3 { margin-top:0; }
+        .field-row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+        .field-row label { font-weight:600; }
+        .danger-zone { border-color:#dc3545; }
+        .danger-zone h3 { color:#dc3545; }
+        .three-state { display:flex; gap:6px; align-items:center; font-size:0.85rem; }
+        .three-state input[type=radio] { margin-right:4px; }
+        .feat-key { font-family: monospace; color:#6c757d; font-size:0.78rem; display:block; }
+        .role-grant-y { color:#198754; font-weight:700; }
+        .role-grant-n { color:#dc3545; font-weight:700; }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/layout :: navbar}"></div>
+
+    <div class="container">
+        <div style="margin-bottom:8px;">
+            <a th:href="@{/admin/}" style="color:#1a6bbf; text-decoration:none;">&larr;
+                <span th:text="#{admin.user.edit.back}">Back to Admin</span></a>
+        </div>
+
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+            <h2 style="margin:0;">
+                <span th:text="#{admin.user.edit.title}">Edit User</span>:
+                <span th:text="${user.username}" style="color:#1a6bbf;"></span>
+                <small style="color:#6c757d; font-weight:normal;" th:text="'#' + ${user.id}"></small>
+            </h2>
+            <button type="button" id="deleteUserBtnTop" class="btn btn-danger"
+                    style="background:#dc3545; color:#fff; padding:8px 16px; font-weight:600;"
+                    th:text="#{admin.user.edit.deleteUser}">Delete this user</button>
+        </div>
+
+        <!-- Account section -->
+        <div class="card">
+            <h3 th:text="#{admin.user.edit.account}">Account</h3>
+
+            <div class="field-row" style="margin-bottom:14px;">
+                <div>
+                    <label style="display:block; margin-bottom:4px;" th:text="#{admin.username}">Username</label>
+                    <input type="text" id="usernameInput" class="form-control"
+                           th:value="${user.username}" style="width:240px;"/>
+                </div>
+                <button type="button" id="saveUsernameBtn" class="btn btn-primary"
+                        th:text="#{admin.user.edit.saveUsername}">Save username</button>
+            </div>
+
+            <div class="field-row" style="margin-bottom:14px;">
+                <div>
+                    <label style="display:block; margin-bottom:4px;" th:text="#{admin.role}">Role</label>
+                    <select id="roleSelect" class="form-control" style="width:240px;">
+                        <option th:each="r : ${roles}"
+                                th:value="${r.name}"
+                                th:text="${r.displayName}"
+                                th:selected="${user.role == r.name}"></option>
+                    </select>
+                </div>
+                <button type="button" id="saveRoleBtn" class="btn btn-primary"
+                        th:text="#{admin.user.edit.saveRole}">Save role</button>
+            </div>
+
+            <div class="field-row" style="margin-bottom:14px;">
+                <div>
+                    <label style="display:block; margin-bottom:4px;" th:text="#{admin.user.edit.newPassword}">New password</label>
+                    <input type="password" id="passwordInput" class="form-control"
+                           placeholder="••••••" style="width:240px;"/>
+                    <small style="color:#6c757d;" th:text="#{admin.user.edit.passwordHint}">Min 6 characters.</small>
+                </div>
+                <button type="button" id="resetPasswordBtn" class="btn"
+                        style="background:#ffa726; color:#000;"
+                        th:text="#{admin.user.edit.resetPassword}">Reset password</button>
+            </div>
+
+            <div class="field-row">
+                <label style="display:flex; align-items:center; gap:8px;">
+                    <input type="checkbox" id="enabledToggle" th:checked="${user.enabled}"/>
+                    <span th:text="#{admin.user.edit.enabled}">Account enabled (user can log in)</span>
+                </label>
+                <button type="button" id="saveEnabledBtn" class="btn btn-primary"
+                        th:text="#{admin.user.edit.saveEnabled}">Save status</button>
+            </div>
+        </div>
+
+        <!-- Per-user feature overrides -->
+        <div class="card">
+            <h3 th:text="#{admin.user.edit.permissions}">Per-user feature overrides</h3>
+            <p style="color:#6c757d;" th:text="#{admin.user.edit.permissions.subtitle}">
+                Inherit follows the role. Set to Allow or Deny to override the role for this specific user.
+            </p>
+
+            <div style="margin-bottom:12px;">
+                <button type="button" id="savePermsBtn" class="btn btn-primary"
+                        th:text="#{admin.permissions.save}">Save permissions</button>
+                <span id="dirtyHint" style="color:#dc3545; margin-left:14px; display:none;"
+                      th:text="#{admin.permissions.unsaved}">You have unsaved changes.</span>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th th:text="#{admin.permissions.feature}">Feature</th>
+                        <th th:text="#{admin.user.edit.roleDefault}">Role default</th>
+                        <th style="width:330px;" th:text="#{admin.user.edit.override}">User override</th>
+                        <th th:text="#{admin.permissions.category}">Category</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="f : ${features}">
+                        <td>
+                            <div th:text="${f.displayName}" style="font-weight:600;"></div>
+                            <span class="feat-key" th:text="${f.featureKey}"></span>
+                        </td>
+                        <td>
+                            <span th:if="${roleFeatures.contains(f.featureKey)}" class="role-grant-y"
+                                  th:text="#{admin.user.edit.allow}">Allow</span>
+                            <span th:unless="${roleFeatures.contains(f.featureKey)}" class="role-grant-n"
+                                  th:text="#{admin.user.edit.deny}">Deny</span>
+                        </td>
+                        <td>
+                            <div class="three-state">
+                                <label>
+                                    <input type="radio" th:name="'ov-' + ${f.featureKey}" value="inherit"
+                                           th:checked="${!overrides.containsKey(f.featureKey)}"
+                                           class="ov-radio" th:data-feature="${f.featureKey}"/>
+                                    <span th:text="#{admin.user.edit.inherit}">Inherit</span>
+                                </label>
+                                <label>
+                                    <input type="radio" th:name="'ov-' + ${f.featureKey}" value="grant"
+                                           th:checked="${overrides.containsKey(f.featureKey) and overrides[__${f.featureKey}__] == true}"
+                                           class="ov-radio" th:data-feature="${f.featureKey}"/>
+                                    <span th:text="#{admin.user.edit.allow}" style="color:#198754;">Allow</span>
+                                </label>
+                                <label>
+                                    <input type="radio" th:name="'ov-' + ${f.featureKey}" value="deny"
+                                           th:checked="${overrides.containsKey(f.featureKey) and overrides[__${f.featureKey}__] == false}"
+                                           class="ov-radio" th:data-feature="${f.featureKey}"/>
+                                    <span th:text="#{admin.user.edit.deny}" style="color:#dc3545;">Deny</span>
+                                </label>
+                            </div>
+                        </td>
+                        <td th:text="${f.category}"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Section / Line assignments -->
+        <div class="card">
+            <h3 th:text="#{admin.user.edit.lineAssign}">Section / Line assignments</h3>
+            <p style="color:#6c757d;" th:text="#{admin.user.edit.lineAssign.subtitle}">
+                Restrict this user to specific workshops/lines. No assignment = full access. Admin/Manager always have full access.
+            </p>
+
+            <div class="field-row" style="margin-bottom:12px;">
+                <div>
+                    <label style="display:block; margin-bottom:4px;" th:text="#{entry.label.section}">Workshop</label>
+                    <select id="laSection" class="form-control" style="width:200px;"></select>
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:4px;" th:text="#{entry.label.line}">Line</label>
+                    <select id="laLine" class="form-control" style="width:170px;"></select>
+                </div>
+                <button type="button" id="laAddBtn" class="btn btn-primary"
+                        th:text="#{admin.user.edit.lineAssign.add}">Add</button>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th th:text="#{entry.label.section}">Workshop</th>
+                        <th th:text="#{entry.label.line}">Line</th>
+                        <th style="width:60px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="laTableBody"></tbody>
+            </table>
+            <p id="laEmpty" style="color:#6c757d;" th:text="#{admin.user.edit.lineAssign.empty}">
+                No assignment — this user can enter any workshop/line.
+            </p>
+
+            <div style="margin-top:12px;">
+                <button type="button" id="laSaveBtn" class="btn btn-primary"
+                        th:text="#{admin.permissions.save}">Save</button>
+            </div>
+        </div>
+
+        <!-- Danger zone -->
+        <div class="card danger-zone">
+            <h3 th:text="#{admin.user.edit.dangerZone}">Danger zone</h3>
+            <p style="color:#6c757d;" th:text="#{admin.user.edit.deleteWarning}">
+                Permanently delete this user. This cannot be undone.
+            </p>
+            <button type="button" id="deleteUserBtn" class="btn btn-danger"
+                    style="background:#dc3545; color:#fff;"
+                    th:text="#{admin.user.edit.deleteUser}">Delete this user</button>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        (function () {
+            const USER_ID = /*[[${user.id}]]*/ 0;
+            const SAVED_MSG = /*[[#{admin.user.edit.saved}]]*/ 'Saved.';
+            const DELETED_MSG = /*[[#{admin.user.edit.deleted}]]*/ 'User deleted.';
+            const CONFIRM_DELETE = /*[[#{admin.user.edit.deleteConfirm}]]*/ 'Permanently delete this user?';
+            const ERROR_MSG = /*[[#{notification.toast.error}]]*/ 'Action failed.';
+
+            async function call(path, method, body) {
+                const opts = { method: method };
+                if (body !== undefined) opts.body = JSON.stringify(body);
+                return window.api.fetchJson(path, opts);
+            }
+
+            document.getElementById('saveUsernameBtn').addEventListener('click', async function () {
+                const username = document.getElementById('usernameInput').value.trim();
+                this.disabled = true;
+                try {
+                    await call('/api/v1/admin/users/' + USER_ID + '/username', 'PUT', { username });
+                    window.api.toast('success', SAVED_MSG);
+                } catch (err) {
+                    window.api.toast('error', (err && err.message) || ERROR_MSG);
+                } finally {
+                    this.disabled = false;
+                }
+            });
+
+            document.getElementById('saveRoleBtn').addEventListener('click', async function () {
+                const role = document.getElementById('roleSelect').value;
+                this.disabled = true;
+                try {
+                    await call('/api/v1/admin/users/' + USER_ID + '/role', 'PUT', { role });
+                    window.api.toast('success', SAVED_MSG);
+                    setTimeout(() => location.reload(), 400);
+                } catch (err) {
+                    window.api.toast('error', (err && err.message) || ERROR_MSG);
+                } finally {
+                    this.disabled = false;
+                }
+            });
+
+            document.getElementById('resetPasswordBtn').addEventListener('click', async function () {
+                const password = document.getElementById('passwordInput').value;
+                if (!password) return;
+                this.disabled = true;
+                try {
+                    await call('/api/v1/admin/users/' + USER_ID + '/password', 'PUT', { password });
+                    document.getElementById('passwordInput').value = '';
+                    window.api.toast('success', SAVED_MSG);
+                } catch (err) {
+                    window.api.toast('error', (err && err.message) || ERROR_MSG);
+                } finally {
+                    this.disabled = false;
+                }
+            });
+
+            document.getElementById('saveEnabledBtn').addEventListener('click', async function () {
+                const enabled = document.getElementById('enabledToggle').checked;
+                this.disabled = true;
+                try {
+                    await call('/api/v1/admin/users/' + USER_ID + '/enabled', 'PUT', { enabled });
+                    window.api.toast('success', SAVED_MSG);
+                } catch (err) {
+                    window.api.toast('error', (err && err.message) || ERROR_MSG);
+                } finally {
+                    this.disabled = false;
+                }
+            });
+
+            const dirtyHint = document.getElementById('dirtyHint');
+            document.querySelectorAll('.ov-radio').forEach(r => {
+                r.addEventListener('change', () => { dirtyHint.style.display = 'inline'; });
+            });
+
+            document.getElementById('savePermsBtn').addEventListener('click', async function () {
+                const overrides = {};
+                document.querySelectorAll('.ov-radio:checked').forEach(r => {
+                    const feature = r.getAttribute('data-feature');
+                    const v = r.value;
+                    if (v === 'grant') overrides[feature] = true;
+                    else if (v === 'deny') overrides[feature] = false;
+                    // inherit → omit from map
+                });
+                this.disabled = true;
+                try {
+                    await call('/api/v1/admin/users/' + USER_ID + '/permissions', 'PUT', { overrides });
+                    window.api.toast('success', SAVED_MSG);
+                    dirtyHint.style.display = 'none';
+                } catch (err) {
+                    window.api.toast('error', (err && err.message) || ERROR_MSG);
+                } finally {
+                    this.disabled = false;
+                }
+            });
+
+            async function handleDelete(btn) {
+                if (!confirm(CONFIRM_DELETE)) return;
+                btn.disabled = true;
+                try {
+                    await call('/api/v1/admin/users/' + USER_ID, 'DELETE');
+                    window.api.toast('success', DELETED_MSG);
+                    setTimeout(() => { window.location.href = '/admin/'; }, 500);
+                } catch (err) {
+                    window.api.toast('error', (err && err.message) || ERROR_MSG);
+                    btn.disabled = false;
+                }
+            }
+            document.getElementById('deleteUserBtn').addEventListener('click', function () { handleDelete(this); });
+            const topBtn = document.getElementById('deleteUserBtnTop');
+            if (topBtn) topBtn.addEventListener('click', function () { handleDelete(this); });
+        })();
+    </script>
+
+    <script th:inline="javascript">
+        (function () {
+            const USER_ID = /*[[${user.id}]]*/ 0;
+            const AVAILABLE = /*[[${availableLines}]]*/ {};
+            const INITIAL = /*[[${lineAssignments}]]*/ [];
+            const SAVED_MSG = /*[[#{admin.user.edit.saved}]]*/ 'Saved.';
+            const ERROR_MSG = /*[[#{notification.toast.error}]]*/ 'Action failed.';
+            const ALL_LINES = /*[[#{admin.user.edit.lineAssign.allLines}]]*/ '(Whole workshop)';
+
+            let assignments = (INITIAL || []).map(a => ({ section: a.section, line: a.line || '' }));
+
+            const sectionSel = document.getElementById('laSection');
+            const lineSel = document.getElementById('laLine');
+            const tbody = document.getElementById('laTableBody');
+            const emptyMsg = document.getElementById('laEmpty');
+
+            Object.keys(AVAILABLE).forEach(s => {
+                const o = document.createElement('option');
+                o.value = s; o.textContent = s;
+                sectionSel.appendChild(o);
+            });
+
+            function populateLines() {
+                lineSel.innerHTML = '';
+                const all = document.createElement('option');
+                all.value = ''; all.textContent = ALL_LINES;
+                lineSel.appendChild(all);
+                (AVAILABLE[sectionSel.value] || []).forEach(l => {
+                    const o = document.createElement('option');
+                    o.value = l; o.textContent = l;
+                    lineSel.appendChild(o);
+                });
+            }
+            sectionSel.addEventListener('change', populateLines);
+            populateLines();
+
+            function render() {
+                tbody.innerHTML = '';
+                assignments.forEach((a, idx) => {
+                    const tr = document.createElement('tr');
+                    const tdS = document.createElement('td'); tdS.textContent = a.section;
+                    const tdL = document.createElement('td'); tdL.textContent = a.line ? a.line : ALL_LINES;
+                    const tdX = document.createElement('td');
+                    const btn = document.createElement('button');
+                    btn.type = 'button'; btn.textContent = '✕';
+                    btn.style.cssText = 'background:#dc3545;color:#fff;border:none;border-radius:4px;padding:2px 10px;cursor:pointer;';
+                    btn.addEventListener('click', () => { assignments.splice(idx, 1); render(); });
+                    tdX.appendChild(btn);
+                    tr.appendChild(tdS); tr.appendChild(tdL); tr.appendChild(tdX);
+                    tbody.appendChild(tr);
+                });
+                emptyMsg.style.display = assignments.length ? 'none' : 'block';
+            }
+            render();
+
+            document.getElementById('laAddBtn').addEventListener('click', function () {
+                const section = sectionSel.value;
+                if (!section) return;
+                const line = lineSel.value || '';
+                if (assignments.some(a => a.section === section && a.line === line)) return;
+                assignments.push({ section, line });
+                render();
+            });
+
+            document.getElementById('laSaveBtn').addEventListener('click', async function () {
+                this.disabled = true;
+                try {
+                    await window.api.fetchJson('/api/v1/admin/users/' + USER_ID + '/line-assignments', {
+                        method: 'PUT', body: JSON.stringify({ assignments })
+                    });
+                    window.api.toast('success', SAVED_MSG);
+                } catch (err) {
+                    window.api.toast('error', (err && err.message) || ERROR_MSG);
+                } finally {
+                    this.disabled = false;
+                }
+            });
+        })();
+    </script>
+</body>
+
+</html>

@@ -20,7 +20,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AuthController.class)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, thienloc.manage.security.TestRbacSecurityConfig.class})
 class AuthControllerTest {
 
     @Autowired
@@ -57,12 +57,13 @@ class AuthControllerTest {
         mockMvc.perform(post("/register")
                 .param("username", "newuser")
                 .param("password", "pass123")
+                .param("confirmPassword", "pass123")
                 .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login?success"));
 
         verify(userService).registerUser(any(User.class));
-        verify(systemLogService).logAction(eq("REGISTER"), anyString());
+        verify(systemLogService).logAction(eq("REGISTER"), anyString(), any());
     }
 
     @Test
@@ -73,6 +74,7 @@ class AuthControllerTest {
         mockMvc.perform(post("/register")
                 .param("username", "existing")
                 .param("password", "pass123")
+                .param("confirmPassword", "pass123")
                 .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(view().name("register"))

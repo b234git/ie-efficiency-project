@@ -5,111 +5,100 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title th:text="#{salary.title}">Salary Bonus Calculation</title>
+    <title th:text="#{salary.title}">Incentive Calculation</title>
     <link rel="stylesheet" th:href="@{/css/main.css}"/>
     <style>
         .salary-block {
             background: #fff;
-            border: 1px solid #dee2e6;
-            border-radius: 10px;
+            border: 1px solid #c9d4e0;
+            border-radius: 4px;
             margin-bottom: 28px;
             overflow: hidden;
             box-shadow: 0 1px 4px rgba(0,0,0,0.07);
         }
-        .block-header {
-            background: linear-gradient(135deg, #1a6bbf 0%, #0d4d8c 100%);
-            color: #fff;
-            padding: 12px 18px;
+        .excel-toolbar {
             display: flex;
-            flex-wrap: wrap;
-            gap: 18px;
-            align-items: center;
+            justify-content: flex-end;
+            padding: 6px 10px;
+            background: #f8faff;
+            border-bottom: 1px solid #dde5ee;
         }
-        .block-header .excel-btn {
-            margin-left: auto;
-            background: rgba(255,255,255,0.18);
+        .excel-toolbar .excel-btn {
+            background: #1a6bbf;
             color: #fff;
-            border: 1px solid rgba(255,255,255,0.4);
+            border: none;
             padding: 6px 14px;
-            border-radius: 6px;
+            border-radius: 4px;
             font-size: 0.82rem;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.15s;
             white-space: nowrap;
         }
-        .block-header .excel-btn:hover { background: rgba(255,255,255,0.3); }
+        .excel-toolbar .excel-btn:hover { background: #145294; }
         @media print { .excel-btn { display: none !important; } }
-        .block-header .hitem {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-        }
-        .block-header .hlabel {
-            font-size: 0.7rem;
-            opacity: 0.75;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        .block-header .hvalue {
-            font-size: 1.05rem;
-            font-weight: 700;
-        }
-        .block-header .hvalue.pct-good  { color: #7fffb4; }
-        .block-header .hvalue.pct-warn  { color: #ffe07a; }
-        .block-header .hvalue.pct-bad   { color: #ff8787; }
         .salary-table-wrap { overflow-x: auto; }
         .salary-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 0.82rem;
-            min-width: 900px;
+            min-width: 1200px;
+            table-layout: fixed;
         }
-        .salary-table thead th {
-            background: #f1f4f9;
-            border: 1px solid #dee2e6;
-            padding: 7px 10px;
+        .salary-table col.col-date  { width: 56px; }
+        .salary-table col.col-data  { width: 90px; }
+        .salary-table col.col-grade { width: 78px; }
+        .salary-table th, .salary-table td {
+            border: 1px solid #b8c5d3;
+            padding: 4px 6px;
             text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        /* Excel-like header rows — Section row (yellow) + Line row (blue) */
+        .salary-table .meta-row td {
             font-weight: 700;
-            white-space: nowrap;
-            position: sticky;
-            top: 0;
-            z-index: 2;
+            font-size: 0.85rem;
         }
-        .salary-table tbody td {
-            border: 1px solid #dee2e6;
-            padding: 5px 10px;
-            text-align: center;
-            white-space: nowrap;
+        .meta-row .lbl-yellow { background: #fff45a; color: #000; }
+        .meta-row .val-yellow { background: #fff45a; color: #000; }
+        .meta-row .lbl-blue   { background: #b9d4ec; color: #000; }
+        .meta-row .val-blue   { background: #b9d4ec; color: #000; }
+        .meta-row .lbl-6s     { background: #c6e0b4; color: #000; }
+        .meta-row .val-6s     { background: #c6e0b4; color: #000; }
+        .meta-row .lbl-rp     { background: #ffe699; color: #000; }
+        .meta-row .val-rp     { background: #ffe699; color: #000; }
+        .meta-row .rate-cell  { background: #2c5f8d; color: #fff; font-weight: 700; }
+        .salary-table thead .col-row th {
+            background: #1f6a3e;
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.78rem;
+            white-space: normal;
+            line-height: 1.2;
+            padding: 6px 4px;
         }
-        .salary-table tbody tr:hover { background: #f8faff; }
+        .salary-table thead .col-row th.date-head { background: #fff45a; color: #000; }
+        .salary-table tbody td { background: #fff; }
+        .salary-table tbody tr.zebra td { background: #eaf3df; }
+        .salary-table tbody tr.zebra td.grade-col { background: #d9e9c4; }
+        .salary-table tbody tr:hover td { background: #fff7d6 !important; }
         .salary-table tfoot td {
-            border: 1px solid #dee2e6;
-            padding: 7px 10px;
             font-weight: 700;
-            text-align: center;
-            background: #eaf1fb;
-            white-space: nowrap;
+            background: #d9e2f3;
         }
         .num  { text-align: right !important; font-variant-numeric: tabular-nums; }
         .eff-good { color: #198754; font-weight: 700; }
         .eff-warn { color: #f08c00; font-weight: 700; }
         .eff-bad  { color: #dc3545; font-weight: 700; }
         .grade-col { background: #f9f9ff; }
+        .empty-row td { background: #d9d9d9 !important; color: #aaa; }
         .new-style-row td {
-            background: #fff8e1;
+            background: #fff8e1 !important;
             color: #7d5a00;
             font-style: italic;
         }
         .month-filter { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
-        .section-tag {
-            display: inline-block;
-            padding: 2px 10px;
-            border-radius: 12px;
-            font-size: 0.78rem;
-            font-weight: 700;
-            background: rgba(255,255,255,0.2);
-        }
     </style>
 </head>
 
@@ -120,7 +109,7 @@
 
     <!-- Page header -->
     <div class="page-header" style="margin-bottom: 20px;">
-        <h2 th:text="#{salary.title}">Salary Bonus Calculation</h2>
+        <h2 th:text="#{salary.title}">Incentive Calculation</h2>
         <p style="color:#6c757d; margin:4px 0 0;" th:text="#{salary.subtitle}">
             Monthly EFF bonus table — Section &amp; Line
         </p>
@@ -128,7 +117,7 @@
 
     <!-- Filters -->
     <div class="month-filter">
-        <form method="get" th:action="@{/salary/}" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <form method="get" th:action="@{/incentive/}" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <label style="font-weight:600;" th:text="#{salary.month}">Month:</label>
             <select name="month" class="form-control" style="width:160px;" onchange="this.form.submit()">
                 <option value="" th:text="#{salary.selectmonth}">-- Select month --</option>
@@ -166,43 +155,8 @@
         <div th:each="block,iter : ${report.blocks}" class="salary-block"
              th:id="'salary-block-' + ${iter.index}">
 
-            <!-- Block header -->
-            <div class="block-header">
-                <div class="hitem">
-                    <span class="hlabel" th:text="#{salary.section}">Section</span>
-                    <span class="hvalue" th:text="${block.section}">SEW</span>
-                </div>
-                <div class="hitem">
-                    <span class="hlabel" th:text="#{salary.line}">Line</span>
-                    <span class="hvalue" th:text="${block.line}">1A</span>
-                </div>
-                <div class="hitem">
-                    <span class="hlabel" th:text="#{salary.sixs}">6S Score</span>
-                    <span class="hvalue"
-                          th:classappend="${block.sixSPercent >= 95 ? 'pct-good' : (block.sixSPercent >= 80 ? 'pct-warn' : 'pct-bad')}"
-                          th:text="${#numbers.formatDecimal(block.sixSPercent, 1, 2)} + '%'">95.00%</span>
-                </div>
-                <div class="hitem">
-                    <span class="hlabel" th:text="#{salary.reprocess}">Reprocess%</span>
-                    <span class="hvalue"
-                          th:classappend="${block.reprocessPercent <= 2 ? 'pct-good' : (block.reprocessPercent <= 5 ? 'pct-warn' : 'pct-bad')}"
-                          th:text="${#numbers.formatDecimal(block.reprocessPercent, 1, 2)} + '%'">2.00%</span>
-                </div>
-                <div class="hitem">
-                    <span class="hlabel" th:text="#{salary.effective}">Effective%</span>
-                    <span class="hvalue"
-                          th:classappend="${block.effectivePct >= 90 ? 'pct-good' : (block.effectivePct >= 70 ? 'pct-warn' : 'pct-bad')}"
-                          th:text="${#numbers.formatDecimal(block.effectivePct, 1, 2)} + '%'">93.00%</span>
-                </div>
-                <div class="hitem">
-                    <span class="hlabel" th:text="#{salary.newstylecount}">New Style Count</span>
-                    <span class="hvalue" th:text="${block.newStyleCount}">0</span>
-                </div>
-                <div class="hitem">
-                    <span class="hlabel" th:text="#{salary.newincentive}">New Style Incentive</span>
-                    <span class="hvalue"
-                          th:text="${#numbers.formatInteger(block.newStyleIncentive, 0, 'COMMA')} + ' ₫'">0 ₫</span>
-                </div>
+            <!-- Excel export toolbar -->
+            <div class="excel-toolbar">
                 <button type="button" class="excel-btn"
                         th:attr="data-block-id='salary-block-' + ${iter.index},
                                  data-file-name=${block.section} + '_Line-' + ${block.line} + '_' + ${selectedMonth} + '.xlsx',
@@ -215,7 +169,7 @@
                                  data-new-style-count=${block.newStyleCount},
                                  data-new-style-incentive=${block.newStyleIncentive}"
                         onclick="exportBlockToExcel(this)">
-                    📊 Xuất Excel
+                    📊 Export to Excel
                 </button>
             </div>
 
@@ -225,51 +179,79 @@
                 No daily data for this month.
             </div>
 
-            <!-- Daily table -->
+            <!-- Daily table — Excel-like layout matching sheet S -->
             <div th:if="${block.dailyRows != null and !block.dailyRows.isEmpty()}"
                  class="salary-table-wrap">
                 <table class="salary-table">
+                    <colgroup>
+                        <col class="col-date"/>
+                        <col class="col-data"/>
+                        <col class="col-data"/>
+                        <col class="col-data"/>
+                        <col class="col-data"/>
+                        <col class="col-data"/>
+                        <col class="col-data"/>
+                        <col class="col-grade" th:each="label : ${block.gradeLabels}"/>
+                    </colgroup>
                     <thead>
-                        <tr>
-                            <th th:text="#{salary.col.date}">Date</th>
-                            <th th:text="#{salary.col.mp}">MP</th>
-                            <th th:text="#{salary.col.wt}">WT (h)</th>
-                            <th th:text="#{salary.col.sec}">SEC</th>
-                            <th th:text="#{salary.col.eff}">EFF Salary%</th>
-                            <th th:text="#{salary.col.rate}">Rate (₫)</th>
-                            <!-- Grade columns -->
+                        <!-- Row 1: Section | <value> | 6S | <%> | (empty span to end) -->
+                        <tr class="meta-row">
+                            <td class="lbl-yellow" colspan="2" th:text="#{salary.section}">Section</td>
+                            <td class="val-yellow" colspan="2" th:text="${block.section}">SF</td>
+                            <td class="lbl-6s" th:text="#{salary.sixs}">6S</td>
+                            <td class="val-6s"
+                                th:text="${#numbers.formatDecimal(block.sixSPercent, 1, 2)} + '%'">90.00%</td>
+                            <td th:attr="colspan=${1 + block.gradeLabels.size()}" style="background:#fff;"></td>
+                        </tr>
+                        <!-- Row 2: Line | <value> | Reprocess | <%> | (empty span to end) -->
+                        <tr class="meta-row">
+                            <td class="lbl-blue" colspan="2" th:text="#{salary.line}">Line</td>
+                            <td class="val-blue" colspan="2" th:text="${block.line}">3</td>
+                            <td class="lbl-rp" th:text="#{salary.reprocess}">Reprocess</td>
+                            <td class="val-rp"
+                                th:text="${#numbers.formatDecimal(block.reprocessPercent, 1, 2)} + '%'">0.00%</td>
+                            <td th:attr="colspan=${1 + block.gradeLabels.size()}" style="background:#fff;"></td>
+                        </tr>
+                        <!-- Row 3: Column headers — Date | Quota(KH) | MP(KH) | WT | Quota(TT) | MP(TT) | EFF | <grades> -->
+                        <tr class="col-row">
+                            <th class="date-head" th:text="#{salary.col.date}">Date</th>
+                            <th th:text="#{salary.col.quota.target}">Quota (Kế hoạch)</th>
+                            <th th:text="#{salary.col.mp.target}">MP (Kế hoạch)</th>
+                            <th th:text="#{salary.col.wt}">WT</th>
+                            <th th:text="#{salary.col.quota.actual}">Quota (Thực tế)</th>
+                            <th th:text="#{salary.col.mp.actual}">MP (Thực tế)</th>
+                            <th th:text="#{salary.col.eff}">EFF</th>
                             <th th:each="label : ${block.gradeLabels}"
-                                class="grade-col"
-                                th:text="${label}">G</th>
+                                th:text="${label}">A</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="row : ${block.dailyRows}">
-                            <td th:text="${#temporals.format(row.date, 'dd/MM')}">01/04</td>
-                            <td th:text="${row.mp}">10</td>
-                            <td th:text="${#numbers.formatDecimal(row.wt, 1, 1)}">10.0</td>
-                            <td th:text="${row.sec}">SEW10</td>
+                        <tr th:each="row,rIt : ${block.dailyRows}"
+                            th:classappend="${rIt.index % 2 == 1 ? 'zebra' : ''}">
+                            <td th:text="${#temporals.format(row.date, 'd/M')}">4/1</td>
+                            <td th:text="${row.targetQuota > 0 ? #numbers.formatInteger(row.targetQuota, 0, 'COMMA') : ''}">1,500</td>
+                            <td th:text="${row.targetMp > 0 ? #numbers.formatDecimal(row.targetMp, 1, 1) : ''}">20.0</td>
+                            <td th:text="${row.wt > 0 ? #numbers.formatDecimal(row.wt, 1, 1) : ''}">9.8</td>
+                            <td th:text="${row.output > 0 ? #numbers.formatInteger(row.output, 0, 'COMMA') : ''}">1,178</td>
+                            <td th:text="${row.mp > 0 ? #numbers.formatDecimal(row.mp, 1, 1) : ''}">14.0</td>
                             <td th:classappend="${row.effSalary >= 100 ? 'eff-good' : (row.effSalary >= 79.5 ? 'eff-warn' : 'eff-bad')}"
-                                th:text="${#numbers.formatDecimal(row.effSalary, 1, 2)} + '%'">104.50%</td>
-                            <td class="num"
-                                th:text="${#numbers.formatInteger(row.baseRate, 0, 'COMMA')}">7,969</td>
-                            <!-- Grade amount cells -->
+                                th:text="${row.effSalary > 0 ? #numbers.formatDecimal(row.effSalary, 1, 2) + '%' : ''}">112.19%</td>
                             <td th:each="label,i : ${block.gradeLabels}"
                                 class="num grade-col"
-                                th:text="${#numbers.formatInteger(row.gradeAmounts[i.index], 0, 'COMMA')}">0</td>
+                                th:text="${row.gradeAmounts[i.index] > 0 ? #numbers.formatInteger(row.gradeAmounts[i.index], 0, 'COMMA') + ' ₫' : ''}">15,300 ₫</td>
                         </tr>
                     </tbody>
                     <tfoot>
                         <!-- Monthly total row -->
                         <tr>
-                            <td colspan="6" style="text-align:left;" th:text="#{salary.total}">Monthly Total</td>
+                            <td colspan="7" style="text-align:left; padding-left:10px;" th:text="#{salary.total}">Monthly Total</td>
                             <td th:each="label,i : ${block.gradeLabels}"
                                 class="num"
-                                th:text="${#numbers.formatInteger(block.gradeTotals[i.index], 0, 'COMMA')}">0</td>
+                                th:text="${block.gradeTotals[i.index] > 0 ? #numbers.formatInteger(block.gradeTotals[i.index], 0, 'COMMA') : ''}">0</td>
                         </tr>
                         <!-- New Style Incentive row (only if > 0) -->
                         <tr th:if="${block.newStyleIncentive > 0}" class="new-style-row">
-                            <td colspan="6" style="text-align:left;"
+                            <td colspan="7" style="text-align:left; padding-left:10px;"
                                 th:text="'+ ' + #{salary.newstylelabel} + ' (' + ${block.newStyleCount} + ' styles × 30,000 ₫)'">
                                 + New Style
                             </td>
@@ -277,9 +259,9 @@
                                 class="num"
                                 th:text="${#numbers.formatInteger(block.newStyleIncentive, 0, 'COMMA')}">0</td>
                         </tr>
-                        <!-- Grand Total row (monthly total + new style incentive) -->
-                        <tr th:if="${block.newStyleIncentive > 0}" style="background:#d4e6f9; font-weight:800;">
-                            <td colspan="6" style="text-align:left;" th:text="#{salary.grandtotal}">Grand Total</td>
+                        <!-- Grand Total row -->
+                        <tr th:if="${block.newStyleIncentive > 0}" style="background:#a9c5e8 !important; font-weight:800;">
+                            <td colspan="7" style="text-align:left; padding-left:10px;" th:text="#{salary.grandtotal}">Grand Total</td>
                             <td th:each="label,i : ${block.gradeLabels}"
                                 class="num"
                                 th:text="${#numbers.formatInteger(block.gradeTotals[i.index] + block.newStyleIncentive, 0, 'COMMA')}">0</td>
@@ -299,7 +281,7 @@
     function exportBlockToExcel(btn) {
         var blockId = btn.getAttribute('data-block-id');
         var fileName = btn.getAttribute('data-file-name') || 'salary.xlsx';
-        var sheetName = (btn.getAttribute('data-sheet-name') || 'Salary').substring(0, 31);
+        var sheetName = (btn.getAttribute('data-sheet-name') || 'Incentive').substring(0, 31);
         var block = document.getElementById(blockId);
         if (!block || typeof XLSX === 'undefined') {
             alert('Không thể xuất Excel. Vui lòng thử lại.');
@@ -329,16 +311,18 @@
         var month = Number(mParts[1]) || (new Date().getMonth() + 1);
         var monthLabel = (month < 10 ? '0' + month : month) + '/' + year;
 
+        // Column header is the 3rd <tr> in thead (after 2 meta-rows)
+        var headerTr = table.querySelector('thead tr.col-row');
         var headers = [];
-        table.querySelectorAll('thead th').forEach(function (th) {
-            headers.push(th.textContent.trim());
-        });
+        if (headerTr) {
+            headerTr.querySelectorAll('th').forEach(function (th) { headers.push(th.textContent.trim()); });
+        }
         var numCols = headers.length;
 
         var bodyRows = [];
         table.querySelectorAll('tbody tr').forEach(function (tr) {
             var r = [];
-            tr.querySelectorAll('td').forEach(function (td) { r.push(td.textContent.trim()); });
+            tr.querySelectorAll('td').forEach(function (td) { r.push(td.textContent.trim().replace(/\s*₫\s*$/, '')); });
             bodyRows.push(r);
         });
 
@@ -346,19 +330,20 @@
         table.querySelectorAll('tfoot tr').forEach(function (tr) {
             var cells = [];
             tr.querySelectorAll('td').forEach(function (td) {
-                cells.push({ text: td.textContent.trim(), colspan: Number(td.getAttribute('colspan') || 1) });
+                cells.push({ text: td.textContent.trim().replace(/\s*₫\s*$/, ''), colspan: Number(td.getAttribute('colspan') || 1) });
             });
             footerRaw.push(cells);
         });
 
-        var EFF_COL = 4, RATE_COL = 5, GRADE_START = 6;
+        // Columns: 0=Date, 1=QuotaT, 2=MPt, 3=WT, 4=QuotaA, 5=MPa, 6=EFF, 7+ = grade amounts
+        var EFF_COL = 6, GRADE_START = 7, NUMERIC_START = 1;
 
         var aoa = [];
         var merges = [];
 
-        aoa.push(['Salary Bonus — ' + (btn.getAttribute('data-section') || '') +
-                  ' / Line ' + (btn.getAttribute('data-line') || '') +
-                  ' — ' + monthLabel]);
+        var sectionName = btn.getAttribute('data-section') || '';
+        var lineName    = btn.getAttribute('data-line') || '';
+        aoa.push(['Incentive — ' + sectionName + ' / Line ' + lineName + ' — ' + monthLabel]);
         merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: numCols - 1 } });
 
         var sixS = Number(btn.getAttribute('data-six-s')) || 0;
@@ -366,9 +351,24 @@
         var effec = Number(btn.getAttribute('data-effective')) || 0;
         var nsCount = Number(btn.getAttribute('data-new-style-count')) || 0;
         var nsIncent = Number(btn.getAttribute('data-new-style-incentive')) || 0;
-        aoa.push(['6S Score', sixS / 100, 'Reprocess %', reproc / 100, 'Effective %', effec / 100]);
-        aoa.push(['New Style Count', nsCount, 'New Style Incentive (₫)', nsIncent]);
-        aoa.push([]);
+
+        // Row 1: Section | <val> | Line | <val> | 6S | % | Reprocess | % | Effective | %
+        var metaRow1 = new Array(numCols).fill('');
+        metaRow1[0] = 'Section';      metaRow1[1] = sectionName;
+        metaRow1[2] = 'Line';         metaRow1[3] = lineName;
+        metaRow1[4] = '6S Score';     metaRow1[5] = sixS / 100;
+        metaRow1[6] = 'Reprocess %';  metaRow1[7] = reproc / 100;
+        if (numCols > 9) { metaRow1[8] = 'Effective %'; metaRow1[9] = effec / 100; }
+        aoa.push(metaRow1);
+
+        // Row 2: New Style info
+        var metaRow2 = new Array(numCols).fill('');
+        metaRow2[0] = 'New Style';
+        metaRow2[1] = nsCount + ' styles';
+        metaRow2[2] = '× 30,000 ₫ =';
+        metaRow2[3] = nsIncent;
+        aoa.push(metaRow2);
+        aoa.push([]); // spacer
 
         var headerRowIdx = aoa.length;
         aoa.push(headers);
@@ -382,7 +382,8 @@
                 var pn = Number(String(parsed[EFF_COL]).replace('%', '').trim());
                 if (!isNaN(pn)) parsed[EFF_COL] = pn / 100;
             }
-            for (var c = RATE_COL; c < numCols; c++) {
+            for (var c = NUMERIC_START; c < numCols; c++) {
+                if (c === EFF_COL) continue;
                 var n = Number(String(parsed[c] || '').replace(/,/g, '').trim());
                 if (!isNaN(n) && parsed[c] !== '') parsed[c] = n;
             }
@@ -416,107 +417,169 @@
         var ws = XLSX.utils.aoa_to_sheet(aoa);
         ws['!merges'] = merges;
 
+        // ─── Column widths ───────────────────────────────────────────────────
         var cols = [];
         for (var c = 0; c < numCols; c++) {
-            var w = 11;
-            if (c === 0) w = 13;
-            else if (c === 1) w = 6;
-            else if (c === 2) w = 7;
-            else if (c === 3) w = 9;
-            else if (c === EFF_COL) w = 12;
-            else if (c === RATE_COL) w = 11;
+            var w = 12;
+            if (c === 0)             w = 11;  // Date
+            else if (c === 1)        w = 14;  // Quota (Target)
+            else if (c === 2)        w = 13;  // MP (Target)
+            else if (c === 3)        w = 7;   // WT
+            else if (c === 4)        w = 14;  // Quota (Actual)
+            else if (c === 5)        w = 13;  // MP (Actual)
+            else if (c === EFF_COL)  w = 9;   // EFF
             cols.push({ wch: w });
         }
         ws['!cols'] = cols;
         ws['!views'] = [{ state: 'frozen', ySplit: headerRowIdx + 1, xSplit: 1 }];
 
+        // ─── Helpers ─────────────────────────────────────────────────────────
         var addr = function (r, c) { return XLSX.utils.encode_cell({ r: r, c: c }); };
         var ensure = function (a) { if (!ws[a]) ws[a] = { t: 's', v: '' }; return ws[a]; };
         var applyStyle = function (a, s) { var cell = ensure(a); cell.s = Object.assign({}, cell.s || {}, s); };
 
-        var thin = { style: 'thin', color: { rgb: 'BFBFBF' } };
-        var border = { top: thin, bottom: thin, left: thin, right: thin };
+        var thin   = { style: 'thin',   color: { rgb: '8FA8C1' } };
+        var medium = { style: 'medium', color: { rgb: '4A6E94' } };
+        var border        = { top: thin, bottom: thin, left: thin, right: thin };
+        var headerBorder  = { top: medium, bottom: medium, left: thin, right: thin };
 
+        // ─── Number formats (body) ──────────────────────────────────────────
+        var moneyFmt = '#,##0" ₫"';
         for (var r = bodyStart; r <= bodyEnd; r++) {
             var a0 = addr(r, 0);
             if (ws[a0] && ws[a0].v instanceof Date) { ws[a0].t = 'd'; ws[a0].z = 'dd/mm/yyyy'; }
             var ae = addr(r, EFF_COL);
             if (ws[ae] && typeof ws[ae].v === 'number') { ws[ae].t = 'n'; ws[ae].z = '0.00%'; }
-            for (var c2 = RATE_COL; c2 < numCols; c2++) {
-                var ac = addr(r, c2);
+            [1, 4].forEach(function (c) {
+                var ac = addr(r, c);
                 if (ws[ac] && typeof ws[ac].v === 'number') { ws[ac].t = 'n'; ws[ac].z = '#,##0'; }
+            });
+            [2, 3, 5].forEach(function (c) {
+                var ac = addr(r, c);
+                if (ws[ac] && typeof ws[ac].v === 'number') { ws[ac].t = 'n'; ws[ac].z = '0.0'; }
+            });
+            for (var c2 = GRADE_START; c2 < numCols; c2++) {
+                var ac2 = addr(r, c2);
+                if (ws[ac2] && typeof ws[ac2].v === 'number') { ws[ac2].t = 'n'; ws[ac2].z = moneyFmt; }
             }
         }
         for (var r2 = footerStart; r2 <= footerEnd; r2++) {
             for (var c3 = GRADE_START; c3 < numCols; c3++) {
                 var af = addr(r2, c3);
-                if (ws[af] && typeof ws[af].v === 'number') { ws[af].t = 'n'; ws[af].z = '#,##0'; }
+                if (ws[af] && typeof ws[af].v === 'number') { ws[af].t = 'n'; ws[af].z = moneyFmt; }
             }
         }
-        // Meta rows percent formatting (row 1 cols 1,3,5)
-        [1, 3, 5].forEach(function (c) {
+        // Meta row 1: percent cells (cols 5, 7, 9)
+        [5, 7, 9].forEach(function (c) {
             var a = addr(1, c);
             if (ws[a] && typeof ws[a].v === 'number') { ws[a].t = 'n'; ws[a].z = '0.00%'; }
         });
+        // Meta row 2: incentive (col 3) as currency
         var aInc = addr(2, 3);
-        if (ws[aInc] && typeof ws[aInc].v === 'number') { ws[aInc].t = 'n'; ws[aInc].z = '#,##0'; }
+        if (ws[aInc] && typeof ws[aInc].v === 'number') { ws[aInc].t = 'n'; ws[aInc].z = moneyFmt; }
 
+        // ─── Title row (dark blue, white, large) ───────────────────────────
         applyStyle(addr(0, 0), {
             font: { bold: true, sz: 14, color: { rgb: 'FFFFFF' } },
             fill: { patternType: 'solid', fgColor: { rgb: '0D4D8C' } },
-            alignment: { horizontal: 'center', vertical: 'center' }
+            alignment: { horizontal: 'center', vertical: 'center' },
+            border: headerBorder
         });
 
-        [1, 2].forEach(function (r) {
-            for (var c = 0; c < numCols; c++) {
-                var a = addr(r, c);
-                if (ws[a] && ws[a].v !== '' && ws[a].v != null) {
-                    applyStyle(a, {
-                        font: { bold: c % 2 === 0, sz: 11 },
-                        alignment: { horizontal: c % 2 === 0 ? 'left' : 'right', vertical: 'center' }
-                    });
-                }
-            }
-        });
+        // ─── Meta row 1: Section / Line / 6S / Reprocess / Effective ──────
+        var META1_PALETTE = {
+            0: 'FFF45A', 1: 'FFF45A',   // Section — yellow
+            2: 'B9D4EC', 3: 'B9D4EC',   // Line — blue
+            4: 'C6E0B4', 5: 'C6E0B4',   // 6S — green
+            6: 'FFE699', 7: 'FFE699',   // Reprocess — orange
+            8: 'D9E9C4', 9: 'D9E9C4'    // Effective — lt-green
+        };
+        for (var mc = 0; mc < numCols; mc++) {
+            var ma = addr(1, mc);
+            if (!ws[ma] || ws[ma].v === '' || ws[ma].v == null) continue;
+            var isLabel = (mc % 2 === 0);
+            var bg = META1_PALETTE[mc];
+            var st = {
+                font: { bold: isLabel, sz: 11, color: { rgb: '000000' } },
+                alignment: { horizontal: isLabel ? 'left' : 'right', vertical: 'center', indent: isLabel ? 1 : 0 },
+                border: border
+            };
+            if (bg) st.fill = { patternType: 'solid', fgColor: { rgb: bg } };
+            applyStyle(ma, st);
+        }
 
-        for (var c4 = 0; c4 < numCols; c4++) {
-            applyStyle(addr(headerRowIdx, c4), {
-                font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
-                fill: { patternType: 'solid', fgColor: { rgb: '1A6BBF' } },
-                alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+        // ─── Meta row 2: New Style info (tan) ──────────────────────────────
+        for (var mc2 = 0; mc2 < 4; mc2++) {
+            var ma2 = addr(2, mc2);
+            if (!ws[ma2] || ws[ma2].v === '' || ws[ma2].v == null) continue;
+            applyStyle(ma2, {
+                font: { bold: (mc2 === 0 || mc2 === 2), sz: 11, color: { rgb: '7d5a00' }, italic: true },
+                fill: { patternType: 'solid', fgColor: { rgb: 'FFF2CC' } },
+                alignment: { horizontal: (mc2 % 2 === 0) ? 'left' : 'right', vertical: 'center', indent: (mc2 % 2 === 0) ? 1 : 0 },
                 border: border
             });
         }
-        if (!ws['!rows']) ws['!rows'] = [];
-        ws['!rows'][headerRowIdx] = { hpt: 22 };
-        ws['!rows'][0] = { hpt: 24 };
 
+        // ─── Column header row (dark green, white, wrap) ───────────────────
+        for (var c4 = 0; c4 < numCols; c4++) {
+            var dateHead = (c4 === 0);
+            applyStyle(addr(headerRowIdx, c4), {
+                font: { bold: true, color: { rgb: dateHead ? '000000' : 'FFFFFF' }, sz: 11 },
+                fill: { patternType: 'solid', fgColor: { rgb: dateHead ? 'FFF45A' : '1F6A3E' } },
+                alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+                border: headerBorder
+            });
+        }
+        if (!ws['!rows']) ws['!rows'] = [];
+        ws['!rows'][0] = { hpt: 28 };                  // title
+        ws['!rows'][1] = { hpt: 22 };                  // meta row 1
+        ws['!rows'][2] = { hpt: 20 };                  // meta row 2
+        ws['!rows'][3] = { hpt: 6 };                   // spacer
+        ws['!rows'][headerRowIdx] = { hpt: 36 };       // column header (taller for wrap)
+
+        // ─── Body rows (zebra green) ───────────────────────────────────────
         for (var r3 = bodyStart; r3 <= bodyEnd; r3++) {
             var zebra = (r3 - bodyStart) % 2 === 1;
             for (var c5 = 0; c5 < numCols; c5++) {
                 var align = 'right';
-                if (c5 === 0) align = 'center';
-                else if (c5 === 3) align = 'center';
-                else if (c5 === 1 || c5 === 2) align = 'center';
-                var st = {
+                if (c5 === 0 || c5 === 2 || c5 === 3 || c5 === 5 || c5 === EFF_COL) align = 'center';
+                var effVal = (typeof ws[addr(r3, EFF_COL)] !== 'undefined' && typeof ws[addr(r3, EFF_COL)].v === 'number')
+                             ? ws[addr(r3, EFF_COL)].v * 100 : null;
+                var st3 = {
                     alignment: { horizontal: align, vertical: 'center' },
                     border: border,
                     font: { sz: 10 }
                 };
-                if (zebra) st.fill = { patternType: 'solid', fgColor: { rgb: 'F8FAFF' } };
-                applyStyle(addr(r3, c5), st);
+                if (c5 === EFF_COL && effVal != null) {
+                    var color = (effVal >= 100) ? '198754' : (effVal >= 79.5 ? 'D97706' : 'DC3545');
+                    st3.font = { sz: 10, bold: true, color: { rgb: color } };
+                }
+                if (zebra) st3.fill = { patternType: 'solid', fgColor: { rgb: 'EAF3DF' } };
+                else       st3.fill = { patternType: 'solid', fgColor: { rgb: 'FFFFFF' } };
+                applyStyle(addr(r3, c5), st3);
             }
+            ws['!rows'][r3] = { hpt: 18 };
         }
 
+        // ─── Footer rows: detect by content ────────────────────────────────
         for (var r4 = footerStart; r4 <= footerEnd; r4++) {
+            var firstCell = ws[addr(r4, 0)];
+            var firstText = (firstCell && firstCell.v) ? String(firstCell.v) : '';
+            var isNewStyleRow = firstText.indexOf('+') === 0 || firstText.toLowerCase().indexOf('new style') >= 0;
+            var isGrandTotal  = firstText.toLowerCase().indexOf('grand') >= 0 || firstText.toLowerCase().indexOf('tổng cộng') >= 0;
+            var rowBg = isGrandTotal ? 'A9C5E8' : (isNewStyleRow ? 'FFF2CC' : 'D9E2F3');
+            var rowFont = isNewStyleRow
+                ? { bold: false, italic: true, sz: 10, color: { rgb: '7d5a00' } }
+                : { bold: true, sz: 10, color: { rgb: '000000' } };
             for (var c6 = 0; c6 < numCols; c6++) {
                 applyStyle(addr(r4, c6), {
-                    font: { bold: true, sz: 10 },
-                    fill: { patternType: 'solid', fgColor: { rgb: 'EAF1FB' } },
-                    alignment: { horizontal: c6 >= GRADE_START ? 'right' : 'left', vertical: 'center' },
-                    border: border
+                    font: rowFont,
+                    fill: { patternType: 'solid', fgColor: { rgb: rowBg } },
+                    alignment: { horizontal: c6 >= GRADE_START ? 'right' : 'left', vertical: 'center', indent: c6 < GRADE_START ? 1 : 0 },
+                    border: headerBorder
                 });
             }
+            ws['!rows'][r4] = { hpt: 20 };
         }
 
         var wb = XLSX.utils.book_new();

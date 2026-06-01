@@ -8,7 +8,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import thienloc.manage.security.SecurityConfig;
+import thienloc.manage.service.LineAssignmentService;
 import thienloc.manage.service.NotificationService;
+import thienloc.manage.service.RoleService;
 import thienloc.manage.service.SystemLogService;
 import thienloc.manage.service.UserService;
 
@@ -22,7 +24,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AdminController.class)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, thienloc.manage.security.TestRbacSecurityConfig.class})
 class AdminControllerTest {
 
     @Autowired
@@ -35,17 +37,22 @@ class AdminControllerTest {
     private SystemLogService systemLogService;
 
     @MockitoBean
+    private RoleService roleService;
+
+    @MockitoBean
     private NotificationService notificationService;
+
+    @MockitoBean
+    private LineAssignmentService lineAssignmentService;
 
     @Test
     void testAdminDashboard_AdminRole() throws Exception {
         when(userService.findAllUsers()).thenReturn(List.of());
-        when(systemLogService.getLogsPage(any())).thenReturn(new PageImpl<>(List.of()));
 
         mockMvc.perform(get("/admin/").with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin"))
-                .andExpect(model().attributeExists("users", "logsPage"));
+                .andExpect(model().attributeExists("users", "roles"));
     }
 
     @Test
@@ -63,7 +70,7 @@ class AdminControllerTest {
                 .andExpect(content().string(containsString("href=\"/eff-config/\"")))
                 .andExpect(content().string(containsString("href=\"/weekly-tracking/\"")))
                 .andExpect(content().string(containsString("href=\"/new-style/\"")))
-                .andExpect(content().string(containsString("href=\"/salary/\"")))
+                .andExpect(content().string(containsString("href=\"/incentive/\"")))
                 .andExpect(content().string(containsString("href=\"/admin/\"")));
     }
 
