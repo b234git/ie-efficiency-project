@@ -47,6 +47,7 @@ public class DailyProductionDto {
     private String shoeName; // Style
     private Double actualPph; // Actual PPH
     private Double stdPph; // Standard PPH
+    private Double stdMp; // Standard/target MP from MasterDb (Excel sheet S column C "MP")
     // Sheet D KPI fields
     private Double effKpi;
     private Double effSalary;

@@ -201,7 +201,11 @@
                             <td class="lbl-6s" th:text="#{salary.sixs}">6S</td>
                             <td class="val-6s"
                                 th:text="${#numbers.formatDecimal(block.sixSPercent, 1, 2)} + '%'">90.00%</td>
-                            <td th:attr="colspan=${1 + block.gradeLabels.size()}" style="background:#fff;"></td>
+                            <td th:attr="colspan=${1 + block.gradeLabels.size()}"
+                                style="background:#fff; text-align:right; padding-right:10px; font-weight:600; color:#7d5a00;">
+                                <span th:if="${block.newStyleIncentive > 0}"
+                                      th:text="#{salary.newstylecount} + ': ' + ${block.newStyleCount}"></span>
+                            </td>
                         </tr>
                         <!-- Row 2: Line | <value> | Reprocess | <%> | (empty span to end) -->
                         <tr class="meta-row">
@@ -210,7 +214,11 @@
                             <td class="lbl-rp" th:text="#{salary.reprocess}">Reprocess</td>
                             <td class="val-rp"
                                 th:text="${#numbers.formatDecimal(block.reprocessPercent, 1, 2)} + '%'">0.00%</td>
-                            <td th:attr="colspan=${1 + block.gradeLabels.size()}" style="background:#fff;"></td>
+                            <td th:attr="colspan=${1 + block.gradeLabels.size()}"
+                                style="background:#fff; text-align:right; padding-right:10px; font-weight:600; color:#7d5a00;">
+                                <span th:if="${block.newStyleIncentive > 0}"
+                                      th:text="#{salary.newstylelabel} + ': ' + ${#numbers.formatInteger(block.newStyleIncentive, 0, 'COMMA')} + ' ₫'"></span>
+                            </td>
                         </tr>
                         <!-- Row 3: Column headers — Date | Quota(KH) | MP(KH) | WT | Quota(TT) | MP(TT) | EFF | <grades> -->
                         <tr class="col-row">
@@ -249,23 +257,8 @@
                                 class="num"
                                 th:text="${block.gradeTotals[i.index] > 0 ? #numbers.formatInteger(block.gradeTotals[i.index], 0, 'COMMA') : ''}">0</td>
                         </tr>
-                        <!-- New Style Incentive row (only if > 0) -->
-                        <tr th:if="${block.newStyleIncentive > 0}" class="new-style-row">
-                            <td colspan="7" style="text-align:left; padding-left:10px;"
-                                th:text="'+ ' + #{salary.newstylelabel} + ' (' + ${block.newStyleCount} + ' styles × 30,000 ₫)'">
-                                + New Style
-                            </td>
-                            <td th:each="label,i : ${block.gradeLabels}"
-                                class="num"
-                                th:text="${#numbers.formatInteger(block.newStyleIncentive, 0, 'COMMA')}">0</td>
-                        </tr>
-                        <!-- Grand Total row -->
-                        <tr th:if="${block.newStyleIncentive > 0}" style="background:#a9c5e8 !important; font-weight:800;">
-                            <td colspan="7" style="text-align:left; padding-left:10px;" th:text="#{salary.grandtotal}">Grand Total</td>
-                            <td th:each="label,i : ${block.gradeLabels}"
-                                class="num"
-                                th:text="${#numbers.formatInteger(block.gradeTotals[i.index] + block.newStyleIncentive, 0, 'COMMA')}">0</td>
-                        </tr>
+                        <!-- New Style is already distributed into the daily grade cells and the
+                             Monthly Total above (matches Excel sheet S); shown in the header. -->
                     </tfoot>
                 </table>
             </div>

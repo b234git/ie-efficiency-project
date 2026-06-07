@@ -43,6 +43,8 @@
                                th:href="@{/report/weekly}" th:text="#{nav.weekly}">Weekly Report</a>
                             <a class="nav-panel-link" sec:authorize="hasAnyRole('MANAGER', 'ADMIN')"
                                th:href="@{/masterdb/}" th:text="#{nav.masterdb}">Master DB</a>
+                            <a class="nav-panel-link" sec:authorize="hasAnyRole('MANAGER', 'ADMIN')"
+                               th:href="@{/voc/}" th:text="#{nav.voc}">VOC</a>
                         </div>
                     </div>
 

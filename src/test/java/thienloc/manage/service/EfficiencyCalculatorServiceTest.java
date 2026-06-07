@@ -58,9 +58,9 @@ class EfficiencyCalculatorServiceTest {
 
         calculator.populateEfficiencyMetrics(dto, entity);
 
-        // Actual PPH = 1000 / 25 / 8 = 5.0
+        // Actual PPH = Output / MP / WT = 1000 / 30 / 8 ≈ 4.1667 (uses DL/MP, matching Excel)
         assertNotNull(dto.getActualPph());
-        assertEquals(5.0, dto.getActualPph(), 0.001);
+        assertEquals(1000.0 / 30.0 / 8.0, dto.getActualPph(), 0.001);
     }
 
     @Test

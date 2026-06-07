@@ -90,7 +90,7 @@ class ExcelControllerTest {
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/entry"))
-                .andExpect(flash().attributeExists("error"));
+                .andExpect(flash().attributeExists("importError"));
     }
 
     @Test

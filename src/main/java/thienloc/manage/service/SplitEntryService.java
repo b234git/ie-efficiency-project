@@ -140,14 +140,7 @@ public class SplitEntryService implements ISplitEntryService {
      * ASSEMBLY + other lines → ASSEMBLY BIG
      */
     private String normalizeSection(String section, String line) {
-        if ("ASSEMBLY".equalsIgnoreCase(section)) {
-            return "5".equals(line)
-                    ? SectionMetrics.ASSEMBLY_SMALL.getSectionName()
-                    : SectionMetrics.ASSEMBLY_BIG.getSectionName();
-        } else if ("ASSEMBLY BIG".equalsIgnoreCase(section) && "5".equals(line)) {
-            return SectionMetrics.ASSEMBLY_SMALL.getSectionName();
-        }
-        return section;
+        return SectionMetrics.applyAssemblyLine(section, line);
     }
 
     // ─── Auto-sync to DailyProduction ─────────────────────────────────────────────

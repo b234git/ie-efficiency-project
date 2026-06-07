@@ -66,7 +66,7 @@ public class ExcelController {
                                 Model model,
                                 RedirectAttributes redirectAttributes) {
         if (file.isEmpty()) {
-            redirectAttributes.addFlashAttribute("error", "Please select a file to upload");
+            redirectAttributes.addFlashAttribute("importError", "Please select a file to upload");
             return "redirect:/entry";
         }
 
@@ -81,7 +81,7 @@ public class ExcelController {
             model.addAttribute("preview", preview);
             return "entry-import-confirm";
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "Failed to parse file: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("importError", "Failed to parse file: " + e.getMessage());
             log.error("Failed to parse uploaded file", e);
             return "redirect:/entry";
         }

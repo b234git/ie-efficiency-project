@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
  * Formulas:
  *   EFF KPI     = Output * CT / (MP * WT * 3600 * Allowance)
  *   EFF Salary  = Output / (SUM(PPH*MP) / AVG(MP) * DLI * Allowance)
- *   Actual PPH  = Output / DLI / WT
+ *   Actual PPH  = Output / MP / WT
  *   Target      = MP * WT * PPH * Allowance (weighted by article time-slots)
  *
  * MasterDb lookup mirrors Excel AVERAGEIFS: when multiple rows share the same
@@ -131,6 +131,7 @@ public class EfficiencyCalculatorService implements IEfficiencyCalculatorService
             Double dbMp = avgMetric(masterList, m -> effPrimary.getMpOrFallback(m, fb));
             Double dbQuota = avgMetric(masterList, m -> effPrimary.getQuotaOrFallback(m, fb));
             Double displayPph = avgMetric(masterList, m -> effPrimary.getPphOrFallback(m, fb));
+            dto.setStdMp(dbMp); // Excel sheet S column C "MP" (target)
 
             // Single resolution pass over distinct articles, reused by all metrics below.
             List<ArticleAgg> aggs = buildArticleAggregates(section, validDetails, masterDbMap);
@@ -293,6 +294,7 @@ public class EfficiencyCalculatorService implements IEfficiencyCalculatorService
             Double dbMp = avgMetric(masterList, m -> effPrimary.getMpOrFallback(m, fb));
             Double dbQuota = avgMetric(masterList, m -> effPrimary.getQuotaOrFallback(m, fb));
             Double displayPph = avgMetric(masterList, m -> effPrimary.getPphOrFallback(m, fb));
+            dto.setStdMp(dbMp); // Excel sheet S column C "MP" (target)
 
             List<ArticleAgg> aggs = buildArticleAggregates(section, validDetails, masterDbMap);
             Double weightedCt = calculateWeightedCt(aggs, singleCt);
@@ -362,13 +364,13 @@ public class EfficiencyCalculatorService implements IEfficiencyCalculatorService
     }
 
     /**
-     * Actual PPH = Output / DLI / WT (uses Direct Labor Involved, not total MP).
+     * Actual PPH = Output / MP / WT (uses DL/total manpower, matching the Excel "PPH" column).
      */
     private void calculateActualPph(DailyProductionDto dto, DailyProduction entity) {
-        if (entity.getDli() != null && entity.getWt() != null
-                && entity.getDli() > 0 && entity.getWt() > 0
+        if (entity.getMp() != null && entity.getWt() != null
+                && entity.getMp() > 0 && entity.getWt() > 0
                 && entity.getTotalOutput() != null) {
-            dto.setActualPph((double) entity.getTotalOutput() / entity.getDli() / entity.getWt());
+            dto.setActualPph((double) entity.getTotalOutput() / entity.getMp() / entity.getWt());
         }
     }
 

@@ -88,10 +88,10 @@ public class EntryExcelImportService {
                 LocalDate productionDate = ExcelCellUtil.parseDateCell(dateCell);
                 if (productionDate == null) continue;
 
-                String section = resolveSection(row, headers);
                 String line = combineLine(
                         ExcelCellUtil.getString(headers.cell(row, CanonicalColumn.LINE)),
                         ExcelCellUtil.getString(headers.cell(row, CanonicalColumn.SUBLINE)));
+                String section = SectionMetrics.applyAssemblyLine(resolveSection(row, headers), line);
                 Double mp = ExcelCellUtil.getDouble(headers.cell(row, CanonicalColumn.DL));
                 Double dli = ExcelCellUtil.getDouble(headers.cell(row, CanonicalColumn.DLI));
                 Double idl = ExcelCellUtil.getDouble(headers.cell(row, CanonicalColumn.IDL));
@@ -197,10 +197,11 @@ public class EntryExcelImportService {
                     preview.setProductionDate(parsedDate);
                 }
 
-                preview.setSection(resolveSection(row, headers));
-                preview.setLine(combineLine(
+                String line = combineLine(
                         ExcelCellUtil.getString(headers.cell(row, CanonicalColumn.LINE)),
-                        ExcelCellUtil.getString(headers.cell(row, CanonicalColumn.SUBLINE))));
+                        ExcelCellUtil.getString(headers.cell(row, CanonicalColumn.SUBLINE)));
+                preview.setSection(SectionMetrics.applyAssemblyLine(resolveSection(row, headers), line));
+                preview.setLine(line);
                 preview.setMp(ExcelCellUtil.getDouble(headers.cell(row, CanonicalColumn.DL)));
                 preview.setDli(ExcelCellUtil.getDouble(headers.cell(row, CanonicalColumn.DLI)));
                 preview.setIdl(ExcelCellUtil.getDouble(headers.cell(row, CanonicalColumn.IDL)));

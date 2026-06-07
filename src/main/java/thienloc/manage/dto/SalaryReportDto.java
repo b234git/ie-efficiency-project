@@ -17,7 +17,7 @@ public class SalaryReportDto {
         private String line;
         private double sixSPercent;        // 6S pass rate; no record = 100%
         private double reprocessPercent;   // reprocess pass rate (100 - defect); no record = 100%
-        private double effectivePct;       // max(0, sixS - reprocess defect rate)
+        private double effectivePct;       // 6S × (1 − reprocess defect rate), as % (Excel G1×(1−G3))
         private int newStyleCount;         // number of distinct styles
         private long newStyleIncentive;    // sum(qty) × 30,000
         private List<String> gradeLabels;  // ["AA","A","B","C","D","E","LL1","LL2","LL3"] for SEW
@@ -29,13 +29,13 @@ public class SalaryReportDto {
     public static class DayRow {
         private LocalDate date;
         private double targetQuota;  // planned daily quota (from DailyProductionDto.target)
-        private int targetMp;        // standard MP from MasterDb.{section}Mp
+        private double targetMp;     // standard MP resolved by EFF calc (Excel sheet S col C)
         private int mp;              // actual MP
         private double wt;
         private double output;       // actual produced quantity
         private String sec;          // e.g. "SEW10"
         private double effSalary;    // from DailyProductionDto
         private double baseRate;     // floor-looked-up from EffIncentiveRate
-        private long[] gradeAmounts; // baseRate × multiplier[i] × effectivePct / 100 (9 elements)
+        private long[] gradeAmounts; // ROUNDUP(baseRate × mult[i] × effectiveFraction + newStyle/days, −2)
     }
 }

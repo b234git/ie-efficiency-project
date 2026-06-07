@@ -226,6 +226,26 @@ public enum SectionMetrics {
                 .orElse(section.trim().toUpperCase());
     }
 
+    /**
+     * Resolve ASSEMBLY into BIG/SMALL based on the production line: line "5" maps to
+     * ASSEMBLY SMALL, any other line maps to ASSEMBLY BIG. A section already carrying an
+     * explicit subsection (e.g. "ASSEMBLY SMALL") is left untouched. Non-ASSEMBLY sections
+     * pass through unchanged. Shared by the daily-production import and the split-entry
+     * service so both paths classify line 5 identically.
+     */
+    public static String applyAssemblyLine(String section, String line) {
+        if (section == null) return null;
+        String s = section.trim();
+        boolean isFive = "5".equals(line == null ? "" : line.trim());
+        if ("ASSEMBLY".equalsIgnoreCase(s) || "ASSY".equalsIgnoreCase(s)) {
+            return isFive ? ASSEMBLY_SMALL.getSectionName() : ASSEMBLY_BIG.getSectionName();
+        }
+        if ("ASSEMBLY BIG".equalsIgnoreCase(s) && isFive) {
+            return ASSEMBLY_SMALL.getSectionName();
+        }
+        return s;
+    }
+
     public String getSectionName() {
         return sectionName;
     }

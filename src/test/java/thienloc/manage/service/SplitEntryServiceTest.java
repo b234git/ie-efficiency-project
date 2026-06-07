@@ -44,6 +44,9 @@ class SplitEntryServiceTest {
     @Mock
     private DailyProductionRepository dailyProductionRepository;
 
+    @Mock
+    private LineAssignmentService lineAssignmentService;
+
     // Real mapper (dependency-free, field-mapping only) so convertToDto tests
     // exercise actual mapping logic instead of a null mock.
     @Spy

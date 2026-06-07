@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <title th:text="#{voc.entry.title}">VOC Entry</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}"/>
+    <style>
+        .num { text-align:right; font-variant-numeric:tabular-nums; }
+        .filter-bar { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-bottom:18px; }
+        .filter-bar .fld label { display:block; font-weight:600; font-size:0.8rem; margin-bottom:3px; }
+        .filter-bar .fld input, .filter-bar .fld select { width:150px; }
+        .add-row td { padding:6px; }
+        .toolbar { display:flex; gap:8px; flex-wrap:wrap; }
+    </style>
+</head>
+
+<body>
+<div th:replace="~{fragments/layout :: navbar}"></div>
+
+<div class="container-xl" style="padding:20px;">
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <div>
+            <h2 th:text="#{voc.entry.title}">VOC Consumption Entry</h2>
+            <p style="color:#6c757d; margin:4px 0 0;" th:text="#{voc.entry.subtitle}">
+                Record daily chemical usage per line.
+            </p>
+        </div>
+        <div class="toolbar" sec:authorize="hasAnyRole('ADMIN','MANAGER')">
+            <a th:href="@{/voc/}" class="btn btn-outline-secondary btn-sm" th:text="#{voc.nav.report}">Report</a>
+            <a th:href="@{/voc/recipe}" class="btn btn-outline-secondary btn-sm" th:text="#{voc.nav.recipe}">Recipe</a>
+            <a th:href="@{/voc/consumption/template}" class="btn btn-outline-success btn-sm">Download Template</a>
+            <button class="btn btn-outline-primary btn-sm" onclick="openImport()">Import Excel</button>
+        </div>
+    </div>
+
+    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+    <div th:if="${error}"   class="alert alert-danger"  th:text="${error}"></div>
+
+    <!-- Date / section / line picker -->
+    <form method="get" th:action="@{/voc/entry}" class="filter-bar">
+        <div class="fld">
+            <label th:text="#{voc.col.date}">Date</label>
+            <input class="form-control" type="date" name="date" th:value="${date}"/>
+        </div>
+        <div class="fld">
+            <label th:text="#{voc.col.section}">Section</label>
+            <select class="form-control" name="section">
+                <option th:each="s : ${sections}" th:value="${s}" th:text="${s}"
+                        th:selected="${s == section}"></option>
+            </select>
+        </div>
+        <div class="fld">
+            <label th:text="#{voc.col.line}">Line</label>
+            <input class="form-control" name="line" th:value="${line}" placeholder="1A"
+                   list="line-options" autocomplete="off"/>
+            <datalist id="line-options">
+                <option th:each="l : ${lines}" th:value="${l}"></option>
+            </datalist>
+        </div>
+        <button type="submit" class="btn btn-primary" th:text="#{voc.entry.load}">Load</button>
+    </form>
+
+    <div th:if="${line == null or line.isEmpty()}" class="alert alert-info" th:text="#{voc.entry.pickline}">
+        Pick a date and line to record consumption.
+    </div>
+
+    <div th:if="${line != null and !line.isEmpty()}">
+        <h3 style="margin-bottom:10px;">
+            <span th:text="${date}">2026-05-01</span> ·
+            <span th:text="${section}">SEW</span> ·
+            <span th:text="${line}">1A</span>
+        </h3>
+
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                <tr>
+                    <th th:text="#{voc.col.chemical}">Chemical</th>
+                    <th class="num" th:text="#{voc.col.qtykg}">Quantity (kg)</th>
+                    <th class="num" th:text="#{voc.entry.reuse}">Reuse (kg)</th>
+                    <th sec:authorize="hasAnyRole('ADMIN','MANAGER')"></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="r : ${rows}">
+                    <td th:text="${r.chemicalCode}">577NT3</td>
+                    <td class="num" th:text="${#numbers.formatDecimal(r.quantityKg, 1, 2)}">0</td>
+                    <td class="num" th:text="${#numbers.formatDecimal(r.reuseKg, 1, 2)}">0</td>
+                    <td sec:authorize="hasAnyRole('ADMIN','MANAGER')">
+                        <form th:action="@{'/voc/entry/delete/' + ${r.id}}" method="post" style="display:inline;"
+                              onsubmit="return confirm('Delete?');">
+                            <input type="hidden" name="date" th:value="${date}"/>
+                            <input type="hidden" name="section" th:value="${section}"/>
+                            <input type="hidden" name="line" th:value="${line}"/>
+                            <button class="btn btn-outline-danger btn-sm" type="submit">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr th:if="${rows == null or rows.isEmpty()}">
+                    <td colspan="4" style="text-align:center; color:#6c757d;" th:text="#{voc.entry.norows}">
+                        No rows yet.
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Add consumption -->
+        <form th:action="@{/voc/entry/save}" method="post" sec:authorize="hasAnyRole('ADMIN','MANAGER')"
+              style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-top:14px;
+                     background:#f8f9fa; border:1px solid #e9ecef; border-radius:8px; padding:14px;">
+            <input type="hidden" name="productionDate" th:value="${date}"/>
+            <input type="hidden" name="section" th:value="${section}"/>
+            <input type="hidden" name="line" th:value="${line}"/>
+            <div>
+                <label style="display:block; font-weight:600; font-size:0.8rem; margin-bottom:3px;"
+                       th:text="#{voc.col.chemical}">Chemical</label>
+                <select class="form-control" name="chemicalCode" required style="width:170px;">
+                    <option value="" th:text="#{voc.entry.selectchem}">-- chemical --</option>
+                    <option th:each="ch : ${chemicals}" th:value="${ch.code}" th:text="${ch.code}"></option>
+                </select>
+            </div>
+            <div>
+                <label style="display:block; font-weight:600; font-size:0.8rem; margin-bottom:3px;"
+                       th:text="#{voc.col.qtykg}">Quantity (kg)</label>
+                <input class="form-control num" type="number" step="0.01" min="0" name="quantityKg" value="0" required style="width:130px;"/>
+            </div>
+            <div>
+                <label style="display:block; font-weight:600; font-size:0.8rem; margin-bottom:3px;"
+                       th:text="#{voc.entry.reuse}">Reuse (kg)</label>
+                <input class="form-control num" type="number" step="0.01" min="0" name="reuseKg" value="0" style="width:130px;"/>
+            </div>
+            <button class="btn btn-primary" type="submit" th:text="#{voc.entry.addrow}">+ Add</button>
+        </form>
+    </div>
+</div>
+
+<!-- Import modal -->
+<div id="importModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:8px; padding:22px; width:460px; max-width:94vw;">
+        <h3>Import Consumption</h3>
+        <p style="color:#6c757d; font-size:0.85rem;">
+            Columns: Date | Section | Line | Chemical | Quantity Kg | Reuse Kg
+        </p>
+        <form th:action="@{/voc/consumption/import}" method="post" enctype="multipart/form-data">
+            <input class="form-control" type="file" name="file" accept=".xlsx,.xls" required/>
+            <div style="margin-top:18px; display:flex; gap:8px; justify-content:flex-end;">
+                <button type="button" class="btn btn-outline-secondary" onclick="closeImport()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Import</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openImport() { document.getElementById('importModal').style.display = 'flex'; }
+    function closeImport() { document.getElementById('importModal').style.display = 'none'; }
+</script>
+</body>
+</html>

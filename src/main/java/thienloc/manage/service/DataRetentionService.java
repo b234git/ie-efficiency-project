@@ -10,6 +10,7 @@ import thienloc.manage.repository.DailyProductionRepository;
 import thienloc.manage.repository.MasterDbRepository;
 import thienloc.manage.repository.SplitEntryRepository;
 import thienloc.manage.repository.SystemLogRepository;
+import thienloc.manage.repository.VocConsumptionRepository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -32,6 +33,9 @@ public class DataRetentionService {
 
     @Autowired
     private DailyProductionRepository dailyProductionRepository;
+
+    @Autowired
+    private VocConsumptionRepository vocConsumptionRepository;
 
     @Autowired
     private SystemLogRepository systemLogRepository;
@@ -83,6 +87,13 @@ public class DataRetentionService {
             log.info("Data retention: deleted {} DailyProduction records before {}", prodDeleted, cutoffDate);
             systemLogService.logAction("DATA_RETENTION",
                     "Auto-deleted " + prodDeleted + " DailyProduction records before " + cutoffDate);
+        }
+
+        int vocDeleted = vocConsumptionRepository.deleteByProductionDateBefore(cutoffDate);
+        if (vocDeleted > 0) {
+            log.info("Data retention: deleted {} VocConsumption records before {}", vocDeleted, cutoffDate);
+            systemLogService.logAction("DATA_RETENTION",
+                    "Auto-deleted " + vocDeleted + " VocConsumption records before " + cutoffDate);
         }
     }
 

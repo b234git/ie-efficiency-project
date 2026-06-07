@@ -15,13 +15,11 @@ import thienloc.manage.dto.SalaryReportDto.DayRow;
 import thienloc.manage.dto.SalaryReportDto.SectionLineBlock;
 import thienloc.manage.entity.EffIncentiveRate;
 import thienloc.manage.entity.EffMultiplier;
-import thienloc.manage.entity.MasterDb;
 import thienloc.manage.entity.NewStyleEntry;
 import thienloc.manage.entity.ReprocessRecord;
 import thienloc.manage.entity.SixSRecord;
 import thienloc.manage.repository.EffIncentiveRateRepository;
 import thienloc.manage.repository.EffMultiplierRepository;
-import thienloc.manage.repository.MasterDbRepository;
 import thienloc.manage.repository.NewStyleEntryRepository;
 import thienloc.manage.util.NormalizationUtil;
 
@@ -52,7 +50,6 @@ public class SalaryService implements ISalaryService {
     @Autowired private NewStyleEntryRepository newStyleRepo;
     @Autowired private EffIncentiveRateRepository rateRepo;
     @Autowired private EffMultiplierRepository multiplierRepo;
-    @Autowired private MasterDbRepository masterDbRepo;
 
     // ── Public API ────────────────────────────────────────────────────────────
 
@@ -94,10 +91,6 @@ public class SalaryService implements ISalaryService {
             ratesMap.put(sec, rateRepo.findBySecOrderByEffPercentAsc(sec));
         }
 
-        // 4b. Pre-load MasterDb articles for the month (first row per article)
-        Map<String, MasterDb> masterByArticle = masterDbRepo.findByDataMonth(month)
-                .stream().collect(Collectors.toMap(MasterDb::getArticleNo, m -> m, (a, b) -> a));
-
         // 5. Group dtos by section tag|line (preserve insertion order)
         Map<String, List<DailyProductionDto>> grouped = new LinkedHashMap<>();
         for (DailyProductionDto dto : dtos) {
@@ -114,7 +107,7 @@ public class SalaryService implements ISalaryService {
             String line    = parts.length > 1 ? parts[1] : "";
 
             blocks.add(buildBlock(section, line, entry.getValue(),
-                    sixsMap, reproMap, stylesMap, multiplierMap, ratesMap, masterByArticle));
+                    sixsMap, reproMap, stylesMap, multiplierMap, ratesMap));
         }
 
         SalaryReportDto report = new SalaryReportDto();
@@ -139,8 +132,7 @@ public class SalaryService implements ISalaryService {
             Map<String, ReprocessRecord> reproMap,
             Map<String, List<NewStyleEntry>> stylesMap,
             Map<String, EffMultiplier> multiplierMap,
-            Map<String, List<EffIncentiveRate>> ratesMap,
-            Map<String, MasterDb> masterByArticle) {
+            Map<String, List<EffIncentiveRate>> ratesMap) {
 
         SectionLineBlock block = new SectionLineBlock();
         block.setSection(section);
@@ -154,13 +146,14 @@ public class SalaryService implements ISalaryService {
         // No tracking record = perfect by default: 6S 100% (no violations), 0% reprocess defect.
         double sixsPct     = (sixs  != null) ? sixs.getTotalPercent()  : 100.0;
         double reproDefect = (repro != null) ? repro.getTotalPercent() : 0.0;
-        double effectivePct = Math.max(0.0, sixsPct - reproDefect);
+        // Excel sheet S: effective factor = 6S × (1 − reprocess), multiplicative (G1 × (1−G3)),
+        // NOT (6S − reprocess). The two only agree when reprocess = 0.
+        double effectiveFraction = Math.max(0.0, (sixsPct / 100.0) * (1.0 - reproDefect / 100.0));
 
         block.setSixSPercent(sixsPct);
-        // Show reprocess as a pass rate (100% − defect) to match the Weekly Tracking page;
-        // effectivePct above still uses the defect rate, so salary amounts are unchanged.
+        // Show reprocess as a pass rate (100% − defect) to match the Weekly Tracking page.
         block.setReprocessPercent(100.0 - reproDefect);
-        block.setEffectivePct(effectivePct);
+        block.setEffectivePct(effectiveFraction * 100.0);
 
         // New Style — incentive = SUM(quantity) × 30,000 VND
         List<NewStyleEntry> styles = stylesMap.getOrDefault(key, List.of());
@@ -177,6 +170,13 @@ public class SalaryService implements ISalaryService {
         // Sort daily rows by date
         dtos.sort(Comparator.comparing(DailyProductionDto::getProductionDate));
 
+        // Excel folds the line's New Style incentive into every daily grade cell, distributed
+        // evenly across working days (K1 / COUNT(B6:B36)) before the per-day round-up.
+        long workingDays = dtos.stream()
+                .filter(d -> d.getTarget() != null && d.getTarget() > 0).count();
+        double perDayNewStyle = workingDays > 0
+                ? (double) block.getNewStyleIncentive() / workingDays : 0.0;
+
         long[] gradeTotals = new long[9];
         List<DayRow> dayRows = new ArrayList<>();
 
@@ -188,8 +188,9 @@ public class SalaryService implements ISalaryService {
             row.setTargetQuota(dto.getTarget() != null ? dto.getTarget() : 0.0);
             row.setOutput(dto.getOutput() != null ? dto.getOutput().doubleValue() : 0.0);
 
-            // Target MP from MasterDb.{section}Mp via article lookup
-            row.setTargetMp(lookupTargetMp(dto.getArticle(), baseSec, masterByArticle));
+            // Target MP = standard MP resolved by the EFF calculator (same robust article
+            // resolution as EFF), so it is present whenever EFF is. Excel sheet S column C.
+            row.setTargetMp(dto.getStdMp() != null ? dto.getStdMp() : 0.0);
 
             // Determine SEC code (e.g. SEW10, ASSY8)
             int normWt = normalizeWT(dto.getWt());
@@ -211,12 +212,15 @@ public class SalaryService implements ISalaryService {
             double baseRate = floorRateLookup(rates, effSalary);
             row.setBaseRate(baseRate);
 
-            // Grade amounts
+            // Grade amounts — Excel: ROUNDUP(base × mult × 6S×(1−reprocess) + newStyle/days, −2)
             long[] gradeAmounts = new long[9];
             if (multiplier != null) {
                 double[] mults = getMultiplierArray(multiplier);
+                double dayNewStyle = (dto.getTarget() != null && dto.getTarget() > 0)
+                        ? perDayNewStyle : 0.0;
                 for (int i = 0; i < 9; i++) {
-                    gradeAmounts[i] = (long)(Math.ceil(baseRate * mults[i] * effectivePct / 100.0 / 100.0)) * 100L;
+                    gradeAmounts[i] = (long) Math.ceil(
+                            (baseRate * mults[i] * effectiveFraction + dayNewStyle) / 100.0) * 100L;
                     gradeTotals[i] += gradeAmounts[i];
                 }
             }
@@ -227,23 +231,6 @@ public class SalaryService implements ISalaryService {
         block.setDailyRows(dayRows);
         block.setGradeTotals(gradeTotals);
         return block;
-    }
-
-    /** Look up standard MP from MasterDb based on article + base section. */
-    private int lookupTargetMp(String article, String baseSec, Map<String, MasterDb> masterByArticle) {
-        if (article == null || article.isBlank()) return 0;
-        // Strip trailing "-2" variant suffix (MasterDb stores articles without it)
-        String lookup = article.endsWith("-2") ? article.substring(0, article.length() - 2) : article;
-        MasterDb m = masterByArticle.get(lookup);
-        if (m == null) return 0;
-        Double mp = switch (baseSec) {
-            case "SEW"  -> m.getSewMp();
-            case "ASSY" -> m.getAssemBigMp();
-            case "BUFF" -> m.getBuff1stMp();
-            case "SF"   -> m.getStockfit1stMp();
-            default     -> null;
-        };
-        return (mp != null) ? (int) Math.round(mp) : 0;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

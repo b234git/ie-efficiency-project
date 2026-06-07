@@ -54,10 +54,26 @@ public interface DailyProductionRepository extends JpaRepository<DailyProduction
         @Query("SELECT DISTINCT TO_CHAR(p.productionDate, 'YYYY-MM') FROM DailyProduction p ORDER BY 1 DESC")
         List<String> findDistinctMonths();
 
+        // ─── Output sums per (date, section, line) — feeds the VOC g/pair report ─────
+        @Query("SELECT p.productionDate, p.section, p.line, SUM(p.totalOutput) FROM DailyProduction p " +
+               "WHERE p.productionDate BETWEEN :from AND :to " +
+               "GROUP BY p.productionDate, p.section, p.line")
+        List<Object[]> sumOutputByDateSectionLine(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
         // ─── Distinct (section, line) pairs — feeds the line-assignment picker ───────
         @Query("SELECT DISTINCT p.section, p.line FROM DailyProduction p " +
                "WHERE p.section IS NOT NULL AND p.section <> '' AND p.line IS NOT NULL AND p.line <> ''")
         List<Object[]> findDistinctSectionLinePairs();
+
+        // ─── Distinct sections — feeds the VOC entry section dropdown ────────────────
+        @Query("SELECT DISTINCT p.section FROM DailyProduction p " +
+               "WHERE p.section IS NOT NULL AND p.section <> '' ORDER BY p.section")
+        List<String> findDistinctSections();
+
+        // ─── Distinct lines — feeds the VOC entry line suggestions (datalist) ────────
+        @Query("SELECT DISTINCT p.line FROM DailyProduction p " +
+               "WHERE p.line IS NOT NULL AND p.line <> '' ORDER BY p.line")
+        List<String> findDistinctLines();
 
         // ─── DB-level pagination (two-pass) ───────────────────────────────────────
         // Pass 1: lấy IDs có LIMIT/OFFSET — section/line lọc tại DB, KHÔNG dùng JOIN FETCH
