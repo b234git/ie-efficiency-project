@@ -43,8 +43,25 @@
                                th:href="@{/report/weekly}" th:text="#{nav.weekly}">Weekly Report</a>
                             <a class="nav-panel-link" sec:authorize="hasAnyRole('MANAGER', 'ADMIN')"
                                th:href="@{/masterdb/}" th:text="#{nav.masterdb}">Master DB</a>
-                            <a class="nav-panel-link" sec:authorize="hasAnyRole('MANAGER', 'ADMIN')"
-                               th:href="@{/voc/}" th:text="#{nav.voc}">VOC</a>
+                        </div>
+                    </div>
+
+                    <div class="nav-hub" sec:authorize="hasAnyRole('MANAGER', 'ADMIN')">
+                        <button class="nav-hub-toggle" type="button" data-hub-toggle aria-expanded="false">
+                            <span th:text="#{nav.voc}">VOC</span>
+                            <span class="nav-hub-caret">&#9662;</span>
+                        </button>
+                        <div class="nav-hub-links">
+                            <a class="nav-panel-link" th:href="@{/voc/}"
+                               th:text="#{voc.nav.report}">Báo cáo</a>
+                            <a class="nav-panel-link" th:href="@{/voc/entry}"
+                               th:text="#{voc.nav.entry}">Nhập liệu</a>
+                            <a class="nav-panel-link" th:href="@{/voc/subcon}"
+                               th:text="#{voc.nav.subcon}">Nhà thầu phụ</a>
+                            <a class="nav-panel-link" th:href="@{/voc/chemicals}"
+                               th:text="#{voc.nav.chemicals}">Hóa chất</a>
+                            <a class="nav-panel-link" th:href="@{/voc/recipe}"
+                               th:text="#{voc.nav.recipe}">Định mức</a>
                         </div>
                     </div>
 

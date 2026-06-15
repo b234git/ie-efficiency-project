@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Friendly import modal: drag-drop zone, filename echo, submit spinner.
+     Usage: th:replace="~{fragments/voc-fragments :: importModal('vocImportModal', @{/voc/subcon/import}, #{voc.import.cols.subcon})}" -->
+<div th:fragment="importModal(id, action, cols)" th:id="${id}" class="voc-modal-backdrop">
+    <div class="voc-modal">
+        <h3 th:text="#{voc.import.title}">Import Excel</h3>
+        <p class="muted" th:text="${cols}">Columns…</p>
+        <form th:action="${action}" method="post" enctype="multipart/form-data">
+            <div class="voc-dropzone">
+                <span th:text="#{voc.import.drophint}">Drag a file here or click to choose</span>
+                <span class="file-name"></span>
+            </div>
+            <input type="file" name="file" accept=".xlsx,.xls" required style="display:none;"/>
+            <div style="margin-top:18px; display:flex; gap:8px; justify-content:flex-end;">
+                <button type="button" class="btn btn-outline-secondary" onclick="vocCloseImport()"
+                        th:text="#{voc.import.cancel}">Cancel</button>
+                <button type="submit" class="btn btn-primary"
+                        th:attr="data-loading=#{voc.import.loading}" th:text="#{voc.import.submit}">Import</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Styled delete-confirm modal (one per page). Forms opt in with data-confirm="msg". -->
+<div th:fragment="confirmModal" id="vocConfirmModal" class="voc-modal-backdrop">
+    <div class="voc-modal" style="width:380px;">
+        <h3 th:text="#{voc.confirm.title}">Confirm</h3>
+        <p class="confirm-msg" style="margin:10px 0 18px;">Are you sure?</p>
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
+            <button type="button" class="btn btn-outline-secondary" data-confirm-cancel
+                    th:text="#{voc.confirm.cancel}">Cancel</button>
+            <button type="button" class="btn btn-danger" data-confirm-ok
+                    th:text="#{voc.confirm.ok}">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Structured import result panel (rendered when an importResult flash attribute is present). -->
+<div th:fragment="importResult(result)" th:if="${result != null}" class="import-result">
+    <div class="counts">
+        <span class="ok" th:text="#{voc.import.inserted} + ': ' + ${result.inserted}">Inserted: 0</span>
+        <span class="ok" th:text="#{voc.import.updated} + ': ' + ${result.updated}">Updated: 0</span>
+        <span class="warn" th:text="#{voc.import.skipped} + ': ' + ${result.skipped}">Skipped: 0</span>
+        <span th:if="${!result.errors.isEmpty()}" style="color:#dc3545;"
+              th:text="#{voc.import.errorcount(${result.errors.size()})}">3 errors</span>
+    </div>
+    <ul th:if="${!result.errors.isEmpty()}">
+        <li th:each="e : ${result.errors}" th:text="${e}">Row 5: bad date</li>
+    </ul>
+</div>
+
+</body>
+</html>

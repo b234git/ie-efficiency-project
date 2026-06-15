@@ -37,6 +37,11 @@ public class VocStandardRate {
     @Column(name = "kg_per_pair", nullable = false)
     private Double kgPerPair = 0.0;
 
+    /** Raw reciprocal expression from the DB sheet, e.g. "1/1300+1/1500+1/1400".
+     *  kgPerPair is its evaluated value. Null when the user typed a plain number. */
+    @Column(name = "formula", length = 255)
+    private String formula;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

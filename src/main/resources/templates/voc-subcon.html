@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <title th:text="#{voc.subcon.title}">VOC Subcon</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}"/>
+    <link rel="stylesheet" th:href="@{/css/voc.css}"/>
+    <script th:src="@{/js/voc.js}" defer></script>
+</head>
+
+<body>
+<div th:replace="~{fragments/layout :: navbar}"></div>
+
+<div class="container-xl" style="padding:20px;">
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <div>
+            <h2 th:text="#{voc.subcon.title}">VOC Subcontractor</h2>
+            <p style="color:#6c757d; margin:4px 0 0;" th:text="#{voc.subcon.subtitle}">
+                Subcontractor chemical usage: standard vs actual, with shortage.
+            </p>
+        </div>
+        <div class="voc-toolbar" sec:authorize="hasAnyRole('ADMIN','MANAGER')">
+            <a th:href="@{/voc/}" class="btn btn-outline-secondary btn-sm" th:text="#{voc.nav.report}">Report</a>
+            <a th:href="@{/voc/entry}" class="btn btn-outline-secondary btn-sm" th:text="#{voc.nav.entry}">Entry</a>
+            <a th:href="@{/voc/subcon/template}" class="btn btn-outline-success btn-sm">Template</a>
+            <button class="btn btn-outline-primary btn-sm" onclick="vocOpenImport()" th:text="#{voc.import.title}">Import Excel</button>
+        </div>
+    </div>
+
+    <div th:if="${success}" class="alert alert-success voc-fade" th:text="${success}"></div>
+    <div th:if="${error}"   class="alert alert-danger"  th:text="${error}"></div>
+    <div th:replace="~{fragments/voc-fragments :: importResult(${importResult})}"></div>
+
+    <!-- Month picker -->
+    <form method="get" th:action="@{/voc/subcon}" class="filter-bar">
+        <div class="fld">
+            <label th:text="#{voc.month}">Month</label>
+            <select class="form-control" name="month" onchange="this.form.submit()">
+                <option th:each="m : ${report.allMonths}" th:value="${m}" th:text="${m}"
+                        th:selected="${m == report.selectedMonth}"></option>
+            </select>
+        </div>
+    </form>
+
+    <!-- Standard vs Actual vs Shortage pivot -->
+    <div th:if="${report.rows.isEmpty()}" class="alert alert-info" th:text="#{voc.subcon.empty}">
+        No subcontractor data — add a row below or import.
+    </div>
+    <div th:if="${!report.rows.isEmpty()}">
+        <div class="pivot-legend">
+            <span th:text="#{voc.reconcile.ratiohint}">Cell = Actual / Standard %</span>
+            <span class="cell-ok">OK ≤100%</span>
+            <span class="cell-over">OVER &gt;100%</span>
+            <span class="cell-nc" th:text="#{voc.reconcile.nc}">NC = no actual</span>
+            <span class="cell-na" th:text="#{voc.reconcile.na}">NA = no recipe</span>
+        </div>
+        <div class="table-wrapper">
+            <table class="table pivot">
+                <thead>
+                <tr>
+                    <th th:text="#{voc.col.date}">Date</th>
+                    <th th:text="#{voc.subcon.subcontractor}">Subcontractor</th>
+                    <th th:text="#{voc.subcon.article}">Article</th>
+                    <th class="num" th:text="#{voc.col.output}">Output</th>
+                    <th class="num" th:each="chem : ${report.chemicals}" th:text="${chem}">577NT3</th>
+                    <th class="num" th:text="#{voc.subcon.standard}">Std (kg)</th>
+                    <th class="num" th:text="#{voc.subcon.actual}">Actual (kg)</th>
+                    <th class="num" th:text="#{voc.subcon.shortage}">Shortage</th>
+                    <th class="num" th:text="#{voc.col.vockg}">VOC (kg)</th>
+                    <th sec:authorize="hasAnyRole('ADMIN','MANAGER')"></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="row : ${report.rows}">
+                    <td th:text="${row.date}">2026-04-01</td>
+                    <td th:text="${row.subcontractor}">TH2</td>
+                    <td th:text="${row.articleNo}">399028</td>
+                    <td class="num" th:text="${#numbers.formatInteger(row.output, 0, 'COMMA')}">2768</td>
+                    <td class="num" th:each="chem : ${report.chemicals}"
+                        th:with="cell=${row.cells.get(chem)}"
+                        th:classappend="${cell == null ? '' : (cell.status == 'OVER' ? 'cell-over' : (cell.status == 'OK' ? 'cell-ok' : (cell.status == 'NC' ? 'cell-nc' : 'cell-na')))}"
+                        th:title="${cell == null ? '' : 'Std ' + #numbers.formatDecimal(cell.allowanceKg,1,2) + ' / Actual ' + #numbers.formatDecimal(cell.actualKg,1,2) + ' / Short ' + #numbers.formatDecimal(cell.diffKg,1,2) + ' kg'}">
+                        <span th:if="${cell != null and cell.ratio != null}"
+                              th:text="${#numbers.formatDecimal(cell.ratio * 100, 1, 0)} + '%'">95%</span>
+                        <span th:if="${cell != null and cell.ratio == null}" th:text="${cell.status}">NC</span>
+                    </td>
+                    <td class="num" th:text="${#numbers.formatDecimal(row.totalStandardKg, 1, 2)}">0</td>
+                    <td class="num" th:text="${#numbers.formatDecimal(row.totalActualKg, 1, 2)}">0</td>
+                    <td class="num" th:text="${#numbers.formatDecimal(row.totalShortageKg, 1, 2)}">0</td>
+                    <td class="num" th:text="${#numbers.formatDecimal(row.vocKg, 1, 3)}">0</td>
+                    <td sec:authorize="hasAnyRole('ADMIN','MANAGER')">
+                        <form th:action="@{'/voc/subcon/delete/' + ${row.id}}" method="post" style="display:inline;"
+                              th:attr="data-confirm=#{voc.confirm.title}">
+                            <input type="hidden" name="month" th:value="${report.selectedMonth}"/>
+                            <button class="btn btn-outline-danger btn-sm" type="submit">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Batch add: one (date, subcontractor, article, output) header + every chemical at once -->
+    <div sec:authorize="hasAnyRole('ADMIN','MANAGER')" style="margin-top:18px;">
+        <h3 style="margin:0 0 4px;" th:text="#{voc.subcon.add}">+ Add</h3>
+        <p class="muted" th:text="#{voc.batch.hint}">Enter actuals, blank = unused, then Save all.</p>
+        <form th:action="@{/voc/subcon/save-batch}" method="post" class="voc-add-card" style="display:block;">
+            <input type="hidden" name="month" th:value="${report.selectedMonth}"/>
+            <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-bottom:12px;">
+                <div>
+                    <label th:text="#{voc.col.date}">Date</label>
+                    <input class="form-control" type="date" name="date" required style="width:150px;"/>
+                </div>
+                <div>
+                    <label th:text="#{voc.subcon.subcontractor}">Subcontractor</label>
+                    <input class="form-control" name="subcontractor" required placeholder="TH2 / 1A"
+                           list="subcon-options" autocomplete="off" style="width:150px;"/>
+                    <datalist id="subcon-options">
+                        <option th:each="s : ${subcontractors}" th:value="${s}"></option>
+                    </datalist>
+                </div>
+                <div>
+                    <label th:text="#{voc.subcon.article}">Article</label>
+                    <input class="form-control" name="articleNo" required style="width:140px;"/>
+                </div>
+                <div>
+                    <label th:text="#{voc.col.output}">Output</label>
+                    <input class="form-control num" type="number" min="0" name="output" value="0" style="width:120px;"/>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th th:text="#{voc.col.chemical}">Chemical</th>
+                        <th class="num" th:text="#{voc.subcon.actual}">Actual (kg)</th>
+                        <th class="num" th:text="#{voc.entry.reuse}">Reuse (kg)</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="ch : ${chemicals}">
+                        <td th:text="${ch.code}">577NT3
+                            <input type="hidden" name="chemicalCode" th:value="${ch.code}"/></td>
+                        <td class="num"><input class="form-control num grid-input" type="number" step="0.01" min="0" name="actualKg"/></td>
+                        <td class="num"><input class="form-control num grid-input" type="number" step="0.01" min="0" name="reuseKg"/></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <button class="btn btn-primary" type="submit" th:text="#{voc.batch.saveall}">Save all</button>
+        </form>
+    </div>
+</div>
+
+<!-- Shared import modal + delete-confirm modal -->
+<div th:replace="~{fragments/voc-fragments :: importModal('vocImportModal', @{/voc/subcon/import}, #{voc.import.cols.subcon})}"></div>
+<div th:replace="~{fragments/voc-fragments :: confirmModal}"></div>
+</body>
+</html>

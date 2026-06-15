@@ -21,6 +21,10 @@ public interface VocConsumptionRepository extends JpaRepository<VocConsumption, 
     List<VocConsumption> findByProductionDateAndSectionAndLineOrderByChemicalCodeAsc(
             LocalDate productionDate, String section, String line);
 
+    /** Whole-day log across every line (the "Actual" sheet view when no line is picked). */
+    List<VocConsumption> findByProductionDateAndSectionOrderByLineAscChemicalCodeAsc(
+            LocalDate productionDate, String section);
+
     Optional<VocConsumption> findByProductionDateAndSectionAndLineAndChemicalCode(
             LocalDate productionDate, String section, String line, String chemicalCode);
 

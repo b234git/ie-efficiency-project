@@ -14,6 +14,8 @@ import java.util.Map;
 public class VocReconcileRowDto {
 
     private LocalDate date;
+    /** Set instead of {@code date} for the EFF per-line pivot (rows keyed by line). */
+    private String line;
     private Map<String, VocReconcileCellDto> cells = new LinkedHashMap<>();
 
     private int output;

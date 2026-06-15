@@ -44,7 +44,20 @@ public class VocChemical {
     private Double vocFactor = 0.0;      // 0..1
 
     @Column(name = "price_per_kg")
-    private Double pricePerKg;
+    private Double pricePerKg;            // $ / KG (R sheet col J — drives cost)
+
+    // Reference fields from the "R" sheet (price tracking; not used in VOC math)
+    @Column(length = 20)
+    private String unit;                  // R col F "UNIT"
+
+    @Column(name = "container_size_kg")
+    private Double containerSizeKg;       // R col G "kg" (container weight)
+
+    @Column(name = "container_price")
+    private Double containerPrice;        // R col I "Price" (per container)
+
+    @Column(name = "price_ref_note", length = 60)
+    private String priceRefNote;          // R col K "Date" — holds dates AND text (e.g. "TAIWAN")
 
     @Builder.Default
     @Column(nullable = false)

@@ -1,0 +1,145 @@
+/* ============================================================================
+   VOC module shared styles. Linked by all /voc/** pages so the look stays
+   consistent and templates drop their per-page <style> blocks + inline noise.
+   ========================================================================== */
+
+/* ── Page chrome ─────────────────────────────────────────────────────────── */
+.voc-page-header { display:flex; justify-content:space-between; align-items:flex-start;
+                   gap:12px; flex-wrap:wrap; margin-bottom:10px; }
+.voc-subtitle { color:#6c757d; margin:4px 0 0; }
+.voc-toolbar { display:flex; gap:8px; flex-wrap:wrap; }
+.muted { color:#6c757d; font-size:.85rem; margin:0 0 10px; }
+.num { text-align:right; font-variant-numeric:tabular-nums; }
+
+/* ── Summary cards (report) ──────────────────────────────────────────────── */
+.voc-cards { display:flex; gap:14px; flex-wrap:wrap; margin:16px 0 22px; }
+.voc-card { flex:1; min-width:150px; background:#fff; border:1px solid #e9ecef;
+            border-radius:8px; padding:14px 16px; }
+.voc-card .label { font-size:.78rem; color:#6c757d; text-transform:uppercase; letter-spacing:.4px; }
+.voc-card .value { font-size:1.5rem; font-weight:700; color:#0d6efd; margin-top:4px; }
+
+/* ── Filter bar / form fields ────────────────────────────────────────────── */
+.filter-bar { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:10px;
+              background:#f8f9fa; border:1px solid #e9ecef; border-radius:8px; padding:10px 14px; }
+.filter-bar .fld label, .fgroup > label {
+    display:block; font-size:.72rem; color:#6c757d; text-transform:uppercase;
+    letter-spacing:.4px; margin-bottom:3px; font-weight:600; }
+.filter-bar .fld input, .filter-bar .fld select { width:150px; }
+.fgroup .form-control { min-width:110px; }
+
+/* Add-row card (the grey "+ Add" strip on entry/subcon/chemicals) */
+.voc-add-card { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-top:14px;
+                background:#f8f9fa; border:1px solid #e9ecef; border-radius:8px; padding:14px; }
+.voc-add-card label { display:block; font-weight:600; font-size:.8rem; margin-bottom:3px; }
+
+/* Chemical multi-select dropdown (report filter) */
+.chem-dd { position:relative; }
+.chem-dd-panel { display:none; position:absolute; top:100%; left:0; z-index:30; background:#fff;
+                 border:1px solid #dee2e6; border-radius:6px; padding:8px 12px; margin-top:2px;
+                 max-height:260px; overflow:auto; min-width:190px; box-shadow:0 4px 12px rgba(0,0,0,.12); }
+.chem-dd-panel.open { display:block; }
+.chem-dd-panel label { display:flex; gap:6px; align-items:center; font-size:.85rem;
+                       margin:2px 0; cursor:pointer; white-space:nowrap; }
+
+/* ── Tabs ────────────────────────────────────────────────────────────────── */
+.voc-tabs { display:flex; gap:8px; margin:20px 0 12px; flex-wrap:wrap; }
+.tab-btn { padding:8px 20px; border:2px solid #dee2e6; border-radius:6px; background:#f8f9fa;
+           cursor:pointer; font-weight:600; font-size:.9rem; }
+.tab-btn.active { background:#0d6efd; color:#fff; border-color:#0d6efd; }
+.tab-pane { display:none; } .tab-pane.active { display:block; }
+
+/* ── Material-type accents ───────────────────────────────────────────────── */
+.mat-water   { color:#198754; font-weight:600; }
+.mat-solvent { color:#dc3545; font-weight:600; }
+
+/* ── Pivot tables (reconcile / subcon / EFF per-line) ────────────────────── */
+.table-wrapper { overflow-x:auto; }
+.pivot { border-collapse:collapse; }
+.pivot td, .pivot th { white-space:nowrap; }
+.pivot thead th { position:sticky; top:0; background:#fff; z-index:3; }
+.pivot td:first-child, .pivot tbody th:first-child {
+    position:sticky; left:0; background:#fff; z-index:2; }
+.pivot thead th:first-child { z-index:4; }
+.tab-pane .table-wrapper.tall { max-height:72vh; overflow:auto; }
+
+/* Reconcile cell status colours (also fixes subcon pivot which lacked them) */
+.cell-ok   { background:#e9f7ef; color:#198754; font-weight:600; }
+.cell-over { background:#fdecea; color:#dc3545; font-weight:700; }
+.cell-nc   { background:#f1f3f5; color:#868e96; }
+.cell-na   { background:#fff3cd; color:#946200; }
+.pivot-legend { display:flex; gap:14px; flex-wrap:wrap; font-size:.8rem; color:#6c757d; margin:6px 0 12px; }
+.pivot-legend span { padding:2px 8px; border-radius:4px; }
+
+/* Cell display modes (% / actual / allowance toggle) */
+.mode-bar { display:flex; gap:6px; align-items:center; margin:0 0 8px; flex-wrap:wrap; }
+.mode-btn { padding:4px 12px; border:1px solid #dee2e6; border-radius:5px; background:#f8f9fa;
+            cursor:pointer; font-weight:600; font-size:.8rem; }
+.mode-btn.active { background:#0d6efd; color:#fff; border-color:#0d6efd; }
+.pivot .cv { display:none; }
+.pivot.mode-ratio  .cv-ratio  { display:block; }
+.pivot.mode-actual .cv-actual { display:block; }
+.pivot.mode-allow  .cv-allow  { display:block; }
+.pivot .t1 { display:block; line-height:1.15; }
+.pivot .t2 { display:block; line-height:1.1; font-size:.74em; font-weight:400; opacity:.75; }
+
+/* Week bands + ranking chips + total rows */
+.week-band td { background:#eef3fb; border-top:2px solid #cfe0f7; padding:6px 10px; position:sticky; left:0; }
+.band-wrap { position:sticky; left:10px; display:inline-flex; gap:14px; align-items:center; flex-wrap:wrap; }
+.band-label { font-weight:700; color:#1c4e9d; }
+.band-rank { font-size:.78rem; color:#6c757d; font-weight:600; }
+.chip { display:inline-block; padding:1px 8px; border-radius:10px; font-size:.75rem;
+        font-weight:700; margin-left:4px; white-space:nowrap; }
+.chip-high { background:#fdecea; color:#dc3545; }
+.chip-low  { background:#e9f7ef; color:#198754; }
+.row-total td { background:#f1f3f5; font-weight:700; }
+.row-total td:first-child { background:#f1f3f5; }
+.row-grand td { background:#e9ecef; font-weight:700; border-top:2px solid #adb5bd; }
+.row-grand td:first-child { background:#e9ecef; }
+
+/* ── "Actual" sheet faithful table (entry) ───────────────────────────────── */
+.actual-tbl { border-collapse:collapse; width:100%; font-size:.9rem; }
+.actual-tbl th, .actual-tbl td { border:1px solid #d0d7de; padding:6px 9px; white-space:nowrap; }
+.actual-tbl thead th { background:#1f7a6b; color:#fff; position:sticky; top:0; }
+.actual-tbl thead th.voc-h { background:#ffff00; color:#000; }
+.actual-tbl tbody td.derived { background:#fffde7; }
+.actual-tbl tbody tr:hover td { background:#eef6f4; }
+.actual-tbl tbody tr:hover td.derived { background:#fdf7c8; }
+.actual-tbl tfoot td { background:#e2efda; font-weight:600; }
+
+/* Batch entry grid inputs (compact) */
+.grid-input { width:110px; }
+.grid-input:focus { outline:2px solid #0d6efd33; }
+
+/* ── Shared import modal + dropzone ──────────────────────────────────────── */
+.voc-modal-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.4);
+                      z-index:1000; align-items:center; justify-content:center; }
+.voc-modal-backdrop.open { display:flex; }
+.voc-modal { background:#fff; border-radius:8px; padding:22px; width:480px; max-width:94vw; }
+.voc-dropzone { border:2px dashed #adb5bd; border-radius:8px; padding:26px 16px; text-align:center;
+                color:#6c757d; cursor:pointer; transition:border-color .15s, background .15s; }
+.voc-dropzone.dragover { border-color:#0d6efd; background:#eef4ff; color:#0d6efd; }
+.voc-dropzone .file-name { display:block; margin-top:8px; font-weight:600; color:#212529; word-break:break-all; }
+.voc-spinner { display:inline-block; width:14px; height:14px; border:2px solid #ffffff80;
+               border-top-color:#fff; border-radius:50%; animation:voc-spin .6s linear infinite;
+               vertical-align:-2px; margin-right:6px; }
+@keyframes voc-spin { to { transform:rotate(360deg); } }
+
+/* Import result panel (structured inserted/updated/skipped/errors) */
+.import-result { border:1px solid #e9ecef; border-radius:8px; padding:12px 14px; margin:12px 0; }
+.import-result .counts { display:flex; gap:16px; flex-wrap:wrap; font-weight:600; margin-bottom:6px; }
+.import-result .counts .ok { color:#198754; }
+.import-result .counts .warn { color:#946200; }
+.import-result ul { margin:6px 0 0; padding-left:20px; color:#dc3545; font-size:.85rem; max-height:180px; overflow:auto; }
+
+/* ── Flash auto-hide transition ──────────────────────────────────────────── */
+.alert.voc-fade { transition:opacity .5s ease; }
+.alert.voc-fade.hide { opacity:0; }
+
+/* ── Responsive: stack controls + let wide tables scroll on small screens ── */
+@media (max-width:768px) {
+    .voc-page-header { flex-direction:column; align-items:stretch; }
+    .filter-bar, .voc-add-card { flex-direction:column; align-items:stretch; }
+    .filter-bar .fld input, .filter-bar .fld select,
+    .fgroup .form-control, .grid-input { width:100%; }
+    .voc-cards .voc-card { min-width:120px; }
+}
