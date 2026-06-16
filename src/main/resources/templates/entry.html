@@ -858,17 +858,21 @@
             var allowancePct = Math.round((parseFloat(btn.dataset.allowance) || 1.0) * 100);
             syncAllowance(allowancePct);
 
-            // First apply WT restrictions (12:00-13:00 starts as soft lunch = enabled)
-            updateActiveSlots();
+            // Populate slot values FIRST, then apply WT/lunch restrictions. Order matters:
+            // updateActiveSlots() detects the lunch slot from the input values and enables
+            // only ceil(WT) working slots. If it runs before the values are injected, no
+            // lunch is detected, the window is off by one, and the genuine last working slot
+            // gets disabled — so the populate loop (which skipped disabled inputs) left it
+            // blank even though the article is present in data-articles.
             var articles = {};
             try { articles = JSON.parse(btn.dataset.articles || '{}'); } catch(e) {}
             ALL_SLOTS.forEach(function(slot) {
                 var input = document.getElementById('articleSlot_' + slot);
-                if (input && !input.disabled) {
+                if (input) {
                     input.value = articles[slot] || '';
                 }
             });
-            // Re-run to update lunch lock based on actual article values
+            // Now apply WT restrictions + lunch lock with the real values in place.
             updateActiveSlots();
 
             // Switch form action to edit endpoint
