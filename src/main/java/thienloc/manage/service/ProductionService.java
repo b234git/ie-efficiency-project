@@ -67,17 +67,9 @@ public class ProductionService implements IProductionService {
             throw new ResourceNotFoundException("User not found: " + username);
         }
 
-        // Normalize section abbreviations; for ambiguous assembly inputs route by line
-        String section = dto.getSection();
-        if ("ASSEMBLY".equalsIgnoreCase(section) || "ASSY".equalsIgnoreCase(section)) {
-            section = "5".equals(dto.getLine())
-                    ? SectionMetrics.ASSEMBLY_SMALL.getSectionName()
-                    : SectionMetrics.ASSEMBLY_BIG.getSectionName();
-        } else if ("ASSEMBLY BIG".equalsIgnoreCase(section) && "5".equals(dto.getLine())) {
-            section = SectionMetrics.ASSEMBLY_SMALL.getSectionName();
-        } else {
-            section = SectionMetrics.normalize(section);
-        }
+        // Normalize section abbreviations + ASSEMBLY line-5 rule via the shared helper,
+        // so manual entry classifies identically to import / split-entry / weekly report.
+        String section = SectionMetrics.applyAssemblyLine(dto.getSection(), dto.getLine());
         dto.setSection(section);
 
         // Row-level scope: block users who aren't assigned this section/line.
@@ -342,13 +334,11 @@ public class ProductionService implements IProductionService {
         // Reuse the same DTO conversion + efficiency calculation as the daily report
         List<DailyProductionDto> allDtos = convertAllToDtoAndCalculateEff(allRecords);
 
-        // Group DTOs by section|line (with ASSEMBLY BIG line 5 → ASSEMBLY SMALL override)
+        // Group DTOs by section|line, routing ASSEMBLY line 5 → ASSEMBLY SMALL via the
+        // shared helper (same classification as save/import; not just "ASSEMBLY BIG").
         Map<String, List<DailyProductionDto>> grouped = new LinkedHashMap<>();
         for (DailyProductionDto dto : allDtos) {
-            String section = dto.getSection();
-            if ("ASSEMBLY BIG".equalsIgnoreCase(section) && "5".equals(dto.getLine())) {
-                section = SectionMetrics.ASSEMBLY_SMALL.getSectionName();
-            }
+            String section = SectionMetrics.applyAssemblyLine(dto.getSection(), dto.getLine());
             String key = section + "|" + dto.getLine();
             grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(dto);
         }

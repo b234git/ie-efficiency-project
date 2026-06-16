@@ -112,6 +112,44 @@ class SectionMetricsTest {
         assertEquals(36.0, big.getPph(m));
     }
 
+    // ─── applyAssemblyLine: single source of truth for section + line ───────
+
+    @Test
+    void applyAssemblyLineRoutesLine5ToSmall() {
+        // Both the short alias and the canonical "ASSEMBLY BIG" must collapse to SMALL on line 5.
+        assertEquals("ASSEMBLY SMALL", SectionMetrics.applyAssemblyLine("ASSY", "5"));
+        assertEquals("ASSEMBLY SMALL", SectionMetrics.applyAssemblyLine("ASSEMBLY", "5"));
+        assertEquals("ASSEMBLY SMALL", SectionMetrics.applyAssemblyLine("ASSEMBLY BIG", "5"));
+    }
+
+    @Test
+    void applyAssemblyLineKeepsBigForOtherLines() {
+        assertEquals("ASSEMBLY BIG", SectionMetrics.applyAssemblyLine("ASSY", "3"));
+        assertEquals("ASSEMBLY BIG", SectionMetrics.applyAssemblyLine("ASSEMBLY", "6A"));
+    }
+
+    @Test
+    void applyAssemblyLineTrimsLineBeforeMatching() {
+        // Regression: the old inline copy in ProductionService did not trim, so "5 " slipped to BIG.
+        assertEquals("ASSEMBLY SMALL", SectionMetrics.applyAssemblyLine("ASSEMBLY", "5 "));
+    }
+
+    @Test
+    void applyAssemblyLineLeavesExplicitSmallUntouched() {
+        assertEquals("ASSEMBLY SMALL", SectionMetrics.applyAssemblyLine("ASSEMBLY SMALL", "3"));
+    }
+
+    @Test
+    void applyAssemblyLineNormalizesNonAssemblySections() {
+        assertEquals("STOCKFIT 1ST", SectionMetrics.applyAssemblyLine("sf", "5"));
+        assertEquals("SEW", SectionMetrics.applyAssemblyLine("SEW", "1A"));
+    }
+
+    @Test
+    void applyAssemblyLineNullSection() {
+        assertNull(SectionMetrics.applyAssemblyLine(null, "5"));
+    }
+
     // ─── ArticleKey parsing ─────────────────────────────────────────────────
 
     @Test

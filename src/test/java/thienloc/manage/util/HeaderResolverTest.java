@@ -90,6 +90,72 @@ class HeaderResolverTest {
     }
 
     @Test
+    void resolves_may_v6_layout_detecting_shifted_section_by_content() {
+        // MAY V6 shifted the Section/Line/Subline block one column left vs APR V6:
+        // Section=3, Line=4, Subline=5 (DL..RFT still at 7-12). The "Line" header still
+        // sits at col 4, so the column must be detected by data content, not the label.
+        Workbook wb = new XSSFWorkbook();
+        Sheet sheet = wb.createSheet("D");
+
+        Row r1 = sheet.createRow(0);
+        r1.createCell(0).setCellValue("REF 1");
+        r1.createCell(1).setCellValue("REF 2");
+        r1.createCell(2).setCellValue("Date");
+        r1.createCell(4).setCellValue("Line");          // label above the Line column now
+        r1.createCell(7).setCellValue("DL");
+        r1.createCell(8).setCellValue("DLI");
+        r1.createCell(9).setCellValue("IDL");
+        r1.createCell(10).setCellValue("Output");
+        r1.createCell(11).setCellValue("WT");
+        r1.createCell(12).setCellValue("RFT");
+        r1.createCell(13).setCellValue("Article");
+        r1.createCell(28).setCellValue("ARTICLE");
+
+        Row r2 = sheet.createRow(1);
+        for (int i = 0; i < 15; i++) {
+            r2.createCell(13 + i).setCellValue(String.format("%02d:00\n%02d:00", 7 + i, 8 + i));
+        }
+
+        // Data rows: Section codes live in col 3, line numbers in col 4.
+        String[] secs = {"ASSY", "SEW", "SF", "BUFF"};
+        for (int i = 0; i < secs.length; i++) {
+            Row d = sheet.createRow(2 + i);
+            d.createCell(3).setCellValue(secs[i]);
+            d.createCell(4).setCellValue(5);
+        }
+
+        HeaderResolver h = HeaderResolver.resolve(sheet);
+        assertEquals(HeaderResolver.Format.FACTORY_XLSX, h.getFormat());
+        assertEquals(3, h.get(CanonicalColumn.SECTION));
+        assertEquals(4, h.get(CanonicalColumn.LINE));
+        assertEquals(5, h.get(CanonicalColumn.SUBLINE));
+        assertEquals(7, h.get(CanonicalColumn.DL));
+        assertEquals(28, h.get(CanonicalColumn.ARTICLE));
+    }
+
+    @Test
+    void keeps_only_first_contiguous_slot_run_ignoring_helper_grids() {
+        // MAY V6 "D" sheet repeats hour labels in helper CT/Quota/MP grids further right,
+        // separated by gaps. Only the real 15-slot run (13..27) must be kept.
+        String[] r1 = new String[60];
+        r1[0] = "REF 1"; r1[1] = "REF 2"; r1[2] = "Date"; r1[4] = "Line";
+        r1[7] = "DL"; r1[8] = "DLI"; r1[9] = "IDL"; r1[10] = "Output";
+        r1[11] = "WT"; r1[12] = "RFT"; r1[13] = "Article";
+        r1[28] = "ARTICLE";
+
+        String[] r2 = new String[60];
+        for (int i = 0; i < 15; i++) r2[13 + i] = String.format("%02d:00\n%02d:00", 7 + i, 8 + i);
+        // Helper grid: a second run of hour labels at 35..49 (gap at 28..34 in between).
+        for (int i = 0; i < 15; i++) r2[35 + i] = String.format("%02d:00\n%02d:00", 7 + i, 8 + i);
+
+        HeaderResolver h = HeaderResolver.resolve(buildSheet(r1, r2));
+        List<Integer> slots = h.getTimeSlotColumns();
+        assertEquals(15, slots.size(), () -> "should keep only the real run, got " + slots);
+        assertEquals(13, slots.get(0));
+        assertEquals(27, slots.get(14));
+    }
+
+    @Test
     void fails_on_missing_required_column() {
         // Project template missing the Output column -> fail with name in message
         String[] r1 = new String[28];

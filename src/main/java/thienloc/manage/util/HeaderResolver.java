@@ -104,9 +104,15 @@ public final class HeaderResolver {
             putIfPresent(map, CanonicalColumn.REF1, 0);
             putIfPresent(map, CanonicalColumn.REF2, 1);
             putIfPresent(map, CanonicalColumn.DATE, 2);
-            putIfPresent(map, CanonicalColumn.SECTION, 4);
-            putIfPresent(map, CanonicalColumn.LINE, 5);
-            putIfPresent(map, CanonicalColumn.SUBLINE, 6);
+            // SECTION/LINE/SUBLINE form a 3-column block whose offset shifted between the
+            // factory's APR V6 (Section=4, Line=5, Subline=6) and MAY V6 (Section=3, Line=4,
+            // Subline=5) layouts. The "Line" header label is unreliable (in APR V6 it sits
+            // above the Section column, in MAY V6 above the Line column), so detect the
+            // Section column by its data content and derive Line/Subline from it.
+            int sectionCol = detectSectionColumn(sheet, slotSet, 4, 3);
+            putIfPresent(map, CanonicalColumn.SECTION, sectionCol);
+            putIfPresent(map, CanonicalColumn.LINE, sectionCol + 1);
+            putIfPresent(map, CanonicalColumn.SUBLINE, sectionCol + 2);
             putIfPresent(map, CanonicalColumn.DL, 7);
             putIfPresent(map, CanonicalColumn.DLI, 8);
             putIfPresent(map, CanonicalColumn.IDL, 9);
@@ -160,15 +166,36 @@ public final class HeaderResolver {
 
     private static List<Integer> scanForTimeSlots(Row row) {
         if (row == null) return List.of();
-        List<Integer> result = new ArrayList<>();
+        List<Integer> all = new ArrayList<>();
         int last = row.getLastCellNum();
         for (int c = 0; c < last; c++) {
             String v = ExcelCellUtil.getString(row.getCell(c));
             if (v != null && TIME_SLOT.matcher(v).matches()) {
-                result.add(c);
+                all.add(c);
             }
         }
-        return result;
+        if (all.isEmpty()) return List.of();
+        // The daily-detail block is a single contiguous run of slots. The factory "D"
+        // sheet's helper CT/Quota/MP grids repeat the same hour labels further right,
+        // separated by gaps — keep only the longest contiguous run (first on a tie) so
+        // those helper columns aren't mistaken for time slots.
+        List<Integer> best = new ArrayList<>();
+        List<Integer> cur = new ArrayList<>();
+        for (int idx : all) {
+            if (cur.isEmpty() || idx == cur.get(cur.size() - 1) + 1) {
+                cur.add(idx);
+            } else {
+                if (cur.size() > best.size()) best = cur;
+                cur = new ArrayList<>();
+                cur.add(idx);
+            }
+        }
+        if (cur.size() > best.size()) best = cur;
+        // Safeguard: never exceed the canonical 15 hourly slots.
+        if (best.size() > EntryExcelLayout.TIME_SLOTS.size()) {
+            best = new ArrayList<>(best.subList(0, EntryExcelLayout.TIME_SLOTS.size()));
+        }
+        return best;
     }
 
     private static boolean rowHasTimeSlotLabels(Row row) {
@@ -190,6 +217,41 @@ public final class HeaderResolver {
 
     private static void putIfPresent(Map<CanonicalColumn, Integer> map, CanonicalColumn col, int idx) {
         map.put(col, idx);
+    }
+
+    /** Section codes seen in the factory workbooks' Section column (short forms + canonical). */
+    private static final Set<String> SECTION_TOKENS = Set.of(
+            "SEW", "ASSY", "ASSEMBLY", "BUFF", "BUFFING", "SF", "STOCKFIT", "CP");
+
+    /**
+     * Detect which candidate column holds the Section, by counting how many sampled
+     * data rows carry a recognised section code. The first candidate is returned on a
+     * tie or when no data rows are present, so header-only sheets keep the historical
+     * APR V6 position. {@code skip} excludes time-slot columns from being mistaken.
+     */
+    private static int detectSectionColumn(Sheet sheet, Set<Integer> skip, int... candidates) {
+        Row row2 = sheet.getRow(1);
+        int firstData = (row2 != null && rowHasTimeSlotLabels(row2)) ? 2 : 1;
+        int lastSample = Math.min(sheet.getLastRowNum(), firstData + 50);
+
+        int bestCol = candidates[0];
+        int bestScore = -1;
+        for (int cand : candidates) {
+            if (skip != null && skip.contains(cand)) continue;
+            int score = 0;
+            for (int r = firstData; r <= lastSample; r++) {
+                Row row = sheet.getRow(r);
+                if (row == null) continue;
+                String v = ExcelCellUtil.getString(row.getCell(cand));
+                if (v == null) continue;
+                String u = v.trim().toUpperCase();
+                for (String tok : SECTION_TOKENS) {
+                    if (u.startsWith(tok)) { score++; break; }
+                }
+            }
+            if (score > bestScore) { bestScore = score; bestCol = cand; }
+        }
+        return bestCol;
     }
 
     /** Test helper: parse a value as a time-slot label. */
