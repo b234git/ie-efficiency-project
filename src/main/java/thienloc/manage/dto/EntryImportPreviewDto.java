@@ -20,6 +20,9 @@ public class EntryImportPreviewDto {
     private int totalRows;
     private int validRows;
     private int errorRows;
+    /** Of the valid rows, how many are new inserts vs updates of an existing (date,section,line). */
+    private int newCount;
+    private int updateCount;
 
     @Builder.Default
     private List<RowPreview> rows = new ArrayList<>();
@@ -46,5 +49,6 @@ public class EntryImportPreviewDto {
 
         private boolean valid;
         private String errorMessage;
+        private String status; // "NEW" or "UPDATE" (only meaningful for valid rows)
     }
 }

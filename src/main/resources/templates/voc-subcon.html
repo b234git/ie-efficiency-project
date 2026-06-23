@@ -28,12 +28,30 @@
             <a th:href="@{/voc/}" class="btn btn-outline-secondary btn-sm" th:text="#{voc.nav.report}">Report</a>
             <a th:href="@{/voc/entry}" class="btn btn-outline-secondary btn-sm" th:text="#{voc.nav.entry}">Entry</a>
             <a th:href="@{/voc/subcon/template}" class="btn btn-outline-success btn-sm">Template</a>
+            <a th:href="@{/voc/subcon/export(month=${report != null ? report.selectedMonth : null})}"
+               class="btn btn-outline-success btn-sm" th:text="#{voc.subcon.export}">Export Excel</a>
             <button class="btn btn-outline-primary btn-sm" onclick="vocOpenImport()" th:text="#{voc.import.title}">Import Excel</button>
         </div>
     </div>
 
     <div th:if="${success}" class="alert alert-success voc-fade" th:text="${success}"></div>
     <div th:if="${error}"   class="alert alert-danger"  th:text="${error}"></div>
+
+    <!-- Duplicate chemicals already recorded — ask before overwriting -->
+    <div th:if="${duplicateConflict}" class="alert" style="background:#fff3cd; border:1px solid #ffe69c;">
+        <div style="margin-bottom:8px;">
+            ⚠ <strong th:text="#{voc.duplicate.title}">Some chemicals already exist:</strong>
+            <span th:text="${duplicateConflict}"></span>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <form th:action="@{/voc/subcon/save-batch/confirm}" method="post" style="display:inline;">
+                <button type="submit" class="btn btn-primary" th:text="#{voc.duplicate.overwrite}">Overwrite existing</button>
+            </form>
+            <form th:action="@{/voc/subcon/save-batch/cancel}" method="post" style="display:inline;">
+                <button type="submit" class="btn" style="background:#6c757d; color:#fff;" th:text="#{voc.duplicate.cancel}">Cancel</button>
+            </form>
+        </div>
+    </div>
     <div th:replace="~{fragments/voc-fragments :: importResult(${importResult})}"></div>
 
     <!-- Month picker -->

@@ -7,7 +7,19 @@ package thienloc.manage.exception;
  */
 public class DuplicateRecordException extends ApplicationException {
 
+    /** Id of the already-existing record that this operation collided with (may be null). */
+    private final Long existingId;
+
     public DuplicateRecordException(String message) {
+        this(message, null);
+    }
+
+    public DuplicateRecordException(String message, Long existingId) {
         super(message);
+        this.existingId = existingId;
+    }
+
+    public Long getExistingId() {
+        return existingId;
     }
 }

@@ -17,6 +17,9 @@ public class SplitEntryImportPreviewDto implements Serializable {
     private int totalRows;
     private int validRows;
     private int errorRows;
+    /** Of the valid rows, how many target a new (date,section,line) vs an existing one. */
+    private int newCount;
+    private int updateCount;
 
     @Builder.Default
     private List<RowPreview> rows = new ArrayList<>();
@@ -43,5 +46,6 @@ public class SplitEntryImportPreviewDto implements Serializable {
 
         private boolean valid;
         private String errorMessage;
+        private String status; // "NEW" or "UPDATE" (valid rows only)
     }
 }

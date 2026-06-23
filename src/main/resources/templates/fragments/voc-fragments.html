@@ -15,7 +15,8 @@
             </div>
             <input type="file" name="file" accept=".xlsx,.xls" required style="display:none;"/>
             <div style="margin-top:18px; display:flex; gap:8px; justify-content:flex-end;">
-                <button type="button" class="btn btn-outline-secondary" onclick="vocCloseImport()"
+                <button type="button" class="btn btn-outline-secondary"
+                        onclick="vocCloseImport(this.closest('.voc-modal-backdrop').id)"
                         th:text="#{voc.import.cancel}">Cancel</button>
                 <button type="submit" class="btn btn-primary"
                         th:attr="data-loading=#{voc.import.loading}" th:text="#{voc.import.submit}">Import</button>

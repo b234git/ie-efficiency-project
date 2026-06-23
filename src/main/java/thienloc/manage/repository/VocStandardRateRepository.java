@@ -16,6 +16,9 @@ public interface VocStandardRateRepository extends JpaRepository<VocStandardRate
 
     Optional<VocStandardRate> findByArticleNoAndChemicalCode(String articleNo, String chemicalCode);
 
+    Optional<VocStandardRate> findBySectionAndArticleNoAndChemicalCode(
+            String section, String articleNo, String chemicalCode);
+
     // Paged search by article or chemical (LIMIT/OFFSET at the DB — never loads the whole table)
     Page<VocStandardRate> findByArticleNoContainingIgnoreCaseOrChemicalCodeContainingIgnoreCase(
             String articleNo, String chemicalCode, Pageable pageable);
@@ -26,4 +29,11 @@ public interface VocStandardRateRepository extends JpaRepository<VocStandardRate
     // Chemical codes actually used across the recipe — the matrix columns
     @Query("SELECT DISTINCT r.chemicalCode FROM VocStandardRate r ORDER BY r.chemicalCode")
     List<String> findDistinctChemicalCodes();
+
+    @Query("SELECT DISTINCT r.chemicalCode FROM VocStandardRate r WHERE r.section = :section ORDER BY r.chemicalCode")
+    List<String> findDistinctChemicalCodesBySection(String section);
+
+    // Sections that actually have a recipe (SEW/ASSY/SF) — for the recipe-page selector
+    @Query("SELECT DISTINCT r.section FROM VocStandardRate r ORDER BY r.section")
+    List<String> findDistinctSections();
 }

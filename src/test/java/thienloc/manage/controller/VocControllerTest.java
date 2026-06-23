@@ -22,6 +22,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -44,6 +45,9 @@ class VocControllerTest {
 
     @MockitoBean
     private VocService vocService;
+
+    @MockitoBean
+    private thienloc.manage.service.VocExcelExportService vocExcelExportService;
 
     @MockitoBean
     private NotificationService notificationService;
@@ -182,7 +186,8 @@ class VocControllerTest {
     /** §6: batch consumption save delegates to the service and redirects to Entry. */
     @Test
     void saveBatchEntryRedirects() throws Exception {
-        when(vocService.saveConsumptionBatch(any(), any(), any(), any(), any(), any())).thenReturn(2);
+        when(vocService.saveConsumptionBatch(any(), any(), any(), any(), any(), any(), anyBoolean()))
+                .thenReturn(new VocService.BatchResult(2, List.of()));
 
         mockMvc.perform(post("/voc/entry/save-batch").with(csrf()).with(user("u").roles("ADMIN"))
                         .param("date", "2026-04-01").param("section", "SEW").param("line", "1A")
@@ -192,13 +197,14 @@ class VocControllerTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrlPattern("/voc/entry*"));
 
-        verify(vocService).saveConsumptionBatch(any(), any(), any(), any(), any(), any());
+        verify(vocService).saveConsumptionBatch(any(), any(), any(), any(), any(), any(), anyBoolean());
     }
 
     /** §6: batch subcon save delegates to the service and redirects to Subcon. */
     @Test
     void saveBatchSubconRedirects() throws Exception {
-        when(vocService.saveSubconBatch(any(), any(), any(), any(), any(), any(), any())).thenReturn(1);
+        when(vocService.saveSubconBatch(any(), any(), any(), any(), any(), any(), any(), anyBoolean()))
+                .thenReturn(new VocService.BatchResult(1, List.of()));
 
         mockMvc.perform(post("/voc/subcon/save-batch").with(csrf()).with(user("u").roles("ADMIN"))
                         .param("date", "2026-04-01").param("subcontractor", "1A").param("articleNo", "ART1")
@@ -207,6 +213,6 @@ class VocControllerTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrlPattern("/voc/subcon*"));
 
-        verify(vocService).saveSubconBatch(any(), any(), any(), any(), any(), any(), any());
+        verify(vocService).saveSubconBatch(any(), any(), any(), any(), any(), any(), any(), anyBoolean());
     }
 }

@@ -30,11 +30,28 @@
             <a th:href="@{/voc/recipe}" class="btn btn-outline-secondary btn-sm" th:text="#{voc.nav.recipe}">Recipe</a>
             <a th:href="@{/voc/consumption/template}" class="btn btn-outline-success btn-sm">Template</a>
             <button class="btn btn-outline-primary btn-sm" onclick="vocOpenImport()" th:text="#{voc.import.title}">Import Excel</button>
+            <button class="btn btn-outline-primary btn-sm" onclick="vocOpenImport('vocProdImportModal')" th:text="#{voc.import.production}">Import Production</button>
         </div>
     </div>
 
     <div th:if="${success}" class="alert alert-success voc-fade" th:text="${success}"></div>
     <div th:if="${error}"   class="alert alert-danger"  th:text="${error}"></div>
+
+    <!-- Duplicate chemicals already recorded — ask before overwriting -->
+    <div th:if="${duplicateConflict}" class="alert" style="background:#fff3cd; border:1px solid #ffe69c;">
+        <div style="margin-bottom:8px;">
+            ⚠ <strong th:text="#{voc.duplicate.title}">Some chemicals already exist:</strong>
+            <span th:text="${duplicateConflict}"></span>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <form th:action="@{/voc/entry/save-batch/confirm}" method="post" style="display:inline;">
+                <button type="submit" class="btn btn-primary" th:text="#{voc.duplicate.overwrite}">Overwrite existing</button>
+            </form>
+            <form th:action="@{/voc/entry/save-batch/cancel}" method="post" style="display:inline;">
+                <button type="submit" class="btn" style="background:#6c757d; color:#fff;" th:text="#{voc.duplicate.cancel}">Cancel</button>
+            </form>
+        </div>
+    </div>
     <div th:replace="~{fragments/voc-fragments :: importResult(${importResult})}"></div>
 
     <!-- Date / section / line picker -->
@@ -169,6 +186,7 @@
 
 <!-- Shared import modal + delete-confirm modal -->
 <div th:replace="~{fragments/voc-fragments :: importModal('vocImportModal', @{/voc/consumption/import}, #{voc.import.cols.consumption})}"></div>
+<div th:replace="~{fragments/voc-fragments :: importModal('vocProdImportModal', @{/voc/production/import}, #{voc.import.cols.production})}"></div>
 <div th:replace="~{fragments/voc-fragments :: confirmModal}"></div>
 </body>
 </html>

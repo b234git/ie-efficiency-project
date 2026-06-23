@@ -141,6 +141,8 @@
                    th:value="${selectedLine}" placeholder="Line"/>
 
             <button type="submit" class="btn btn-primary" th:text="#{salary.view}">View</button>
+            <a th:href="@{/incentive/export(month=${selectedMonth},section=${selectedSection},line=${selectedLine})}"
+               class="btn" style="background:#1d6f42; color:#fff;" th:text="#{incentive.export}">Export Excel</a>
         </form>
     </div>
 

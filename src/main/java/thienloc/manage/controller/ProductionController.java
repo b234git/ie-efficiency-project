@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import thienloc.manage.dto.DailyProductionDto;
 import thienloc.manage.service.IProductionService;
@@ -146,12 +147,16 @@ public class ProductionController {
         return "entry";
     }
 
+    /** Session key holding a submitted entry that collided with an existing record, awaiting confirm. */
+    private static final String DUP_PENDING = "entryDuplicatePending";
+
     /* ── Save Entry ───────────────────────────────────────────── */
     @PostMapping("/save")
     public String saveEntry(@Valid @ModelAttribute DailyProductionDto dto,
                             BindingResult result,
                             RedirectAttributes redirectAttributes,
                             Principal principal,
+                            HttpSession session,
                             HttpServletRequest request) {
         if (result.hasErrors()) {
             meterRegistry.counter("validation.errors", "form", "entry").increment();
@@ -166,10 +171,46 @@ public class ProductionController {
         } catch (org.springframework.security.access.AccessDeniedException ex) {
             redirectAttributes.addFlashAttribute("validationError", ex.getMessage());
             return "redirect:/entry/?error";
+        } catch (thienloc.manage.exception.DuplicateRecordException ex) {
+            // A record for this (date, section, line) already exists — stash the
+            // submission and ask the user whether to overwrite it.
+            session.setAttribute(DUP_PENDING, dto);
+            redirectAttributes.addFlashAttribute("duplicateConflict", ex.getMessage());
+            return "redirect:/entry/?duplicate";
         }
         systemLogService.logAction("ADD_ENTRY",
                 "Section=" + dto.getSection() + ", Article=" + dto.getArticle(), request);
         return "redirect:/entry/?success";
+    }
+
+    /* ── Confirm overwrite of a duplicate (date, section, line) ── */
+    @PostMapping("/save/confirm")
+    public String confirmDuplicateSave(RedirectAttributes redirectAttributes,
+                                       Principal principal,
+                                       HttpSession session,
+                                       HttpServletRequest request) {
+        DailyProductionDto dto = (DailyProductionDto) session.getAttribute(DUP_PENDING);
+        session.removeAttribute(DUP_PENDING);
+        if (dto == null) {
+            return "redirect:/entry/";
+        }
+        try {
+            productionService.saveDailyProduction(dto, principal.getName(), true);
+        } catch (org.springframework.security.access.AccessDeniedException ex) {
+            redirectAttributes.addFlashAttribute("validationError", ex.getMessage());
+            return "redirect:/entry/?error";
+        }
+        systemLogService.logAction("EDIT_ENTRY",
+                "Overwrite duplicate | Date=" + dto.getProductionDate()
+                        + ", Section=" + dto.getSection() + ", Line=" + dto.getLine(), request);
+        return "redirect:/entry/?edited";
+    }
+
+    /* ── Cancel a pending duplicate overwrite ─────────────────── */
+    @PostMapping("/save/cancel")
+    public String cancelDuplicateSave(HttpSession session) {
+        session.removeAttribute(DUP_PENDING);
+        return "redirect:/entry/";
     }
 
     /* ── Edit Entry (MANAGER / ADMIN only) ────────────────────── */

@@ -5,6 +5,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -29,6 +30,8 @@ public class DailyProductionDto {
     private String line;
 
     private String article;
+
+    @PositiveOrZero(message = "Sản lượng (Output) không được âm")
     private Integer output;
 
     @NotNull(message = "Manpower (MP) không được để trống")
@@ -42,6 +45,8 @@ public class DailyProductionDto {
     @Positive(message = "Working Time (WT) phải lớn hơn 0")
     private Double wt; // Working Time
 
+    @DecimalMin(value = "0.0", message = "RFT phải từ 0 đến 100%")
+    @DecimalMax(value = "100.0", message = "RFT phải từ 0 đến 100%")
     private Double rft; // Right First Time (%)
     private String patternNo; // Pattern #
     private String shoeName; // Style

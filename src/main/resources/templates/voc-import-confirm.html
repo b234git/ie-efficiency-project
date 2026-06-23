@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title th:text="#{voc.import.confirm.title}">Confirm VOC Import</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <style>
+        .summary-cards { display:flex; gap:16px; margin:20px 0; flex-wrap:wrap; }
+        .summary-card { padding:16px 24px; border-radius:8px; border:1px solid #dee2e6; min-width:130px; text-align:center; }
+        .summary-card .number { font-size:2rem; font-weight:700; display:block; }
+        .summary-card .label { font-size:0.85rem; color:#6c757d; }
+        .card-new { background:#d1e7dd; border-color:#badbcc; }
+        .card-update { background:#cfe2ff; border-color:#b6d4fe; }
+        .card-skip { background:#fff3cd; border-color:#ffe69c; }
+        .card-error { background:#f8d7da; border-color:#f5c2c7; }
+        .action-bar { display:flex; gap:10px; flex-wrap:wrap; margin-top:20px; }
+        .btn-lg { padding:10px 24px; font-size:1rem; border:none; border-radius:6px; cursor:pointer; font-weight:600; }
+        .err-list { margin-top:16px; color:#842029; background:#f8d7da; border:1px solid #f5c2c7; border-radius:6px; padding:12px; }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/layout :: navbar}"></div>
+
+    <div class="container-lg" style="padding:20px;">
+        <h2 th:text="#{voc.import.confirm.title}">Confirm VOC Import</h2>
+        <p style="color:#6c757d;">
+            <span th:text="#{masterdb.import.confirm.file}">File</span>:
+            <strong th:text="${filename}">file.xlsx</strong>
+            &nbsp;·&nbsp; <span th:text="${importType}">type</span>
+        </p>
+        <p style="color:#6c757d;" th:text="#{voc.import.confirm.prompt}">
+            Preview only — nothing has been saved yet. Review the counts and confirm.
+        </p>
+
+        <div class="summary-cards">
+            <div class="summary-card card-new">
+                <span class="number" th:text="${result.inserted}">0</span>
+                <span class="label" th:text="#{voc.import.inserted}">New</span>
+            </div>
+            <div class="summary-card card-update">
+                <span class="number" th:text="${result.updated}">0</span>
+                <span class="label" th:text="#{voc.import.updated}">Update</span>
+            </div>
+            <div class="summary-card card-skip">
+                <span class="number" th:text="${result.skipped}">0</span>
+                <span class="label" th:text="#{voc.import.skipped}">Skipped</span>
+            </div>
+            <div class="summary-card card-error" th:if="${!result.errors.isEmpty()}">
+                <span class="number" th:text="${result.errors.size()}">0</span>
+                <span class="label">Errors</span>
+            </div>
+        </div>
+
+        <div class="err-list" th:if="${!result.errors.isEmpty()}">
+            <div th:each="e : ${result.errors}" th:text="${e}"></div>
+        </div>
+
+        <div class="action-bar">
+            <form th:action="@{/voc/import/commit}" method="post" style="display:inline;">
+                <button type="submit" class="btn-lg" style="background:#0d6efd; color:white;"
+                        th:text="#{voc.import.confirm.commit}">Confirm Import</button>
+            </form>
+            <form th:action="@{/voc/import/cancel}" method="post" style="display:inline;">
+                <button type="submit" class="btn-lg" style="background:#6c757d; color:white;"
+                        th:text="#{voc.import.confirm.cancel}">Cancel</button>
+            </form>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -116,7 +116,23 @@ public class SplitEntryImportService {
             preview.setErrorRows(errors);
         }
 
+        classifyNewUpdate(preview);
         return preview;
+    }
+
+    /** Tag each valid row NEW/UPDATE against an existing (date,section,line) split entry. */
+    private void classifyNewUpdate(SplitEntryImportPreviewDto preview) {
+        int newCount = 0, updateCount = 0;
+        for (RowPreview rp : preview.getRows()) {
+            if (!rp.isValid()) continue;
+            boolean update = rp.getProductionDate() != null && rp.getSection() != null && rp.getLine() != null
+                    && splitEntryService.getByDateSectionLine(
+                            rp.getProductionDate(), rp.getSection(), rp.getLine()).isPresent();
+            rp.setStatus(update ? "UPDATE" : "NEW");
+            if (update) updateCount++; else newCount++;
+        }
+        preview.setNewCount(newCount);
+        preview.setUpdateCount(updateCount);
     }
 
     // ─── Parse Articles Excel ───────────────────────────────────────────
@@ -215,6 +231,7 @@ public class SplitEntryImportService {
             preview.setErrorRows(errors);
         }
 
+        classifyNewUpdate(preview);
         return preview;
     }
 

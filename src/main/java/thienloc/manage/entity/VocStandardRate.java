@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "voc_standard_rate",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"article_no", "chemical_code"}),
+        uniqueConstraints = @UniqueConstraint(columnNames = {"section", "article_no", "chemical_code"}),
         indexes = @Index(name = "idx_voc_std_rate_article", columnList = "article_no"))
 @Data
 @Builder
@@ -26,6 +26,10 @@ public class VocStandardRate {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Builder.Default
+    @Column(nullable = false, length = 20)
+    private String section = "SEW";
 
     @Column(name = "article_no", nullable = false, length = 40)
     private String articleNo;

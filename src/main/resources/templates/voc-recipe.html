@@ -111,6 +111,9 @@
     <!-- Search + count -->
     <div class="filter-bar">
         <form method="get" th:action="@{/voc/recipe}" style="display:flex; gap:8px;">
+            <select class="form-control" name="section" onchange="this.form.submit()" title="Section">
+                <option th:each="s : ${sections}" th:value="${s}" th:text="${s}" th:selected="${s == section}"></option>
+            </select>
             <input class="form-control" type="text" name="q" th:value="${q}"
                    th:placeholder="#{voc.recipe.search}" placeholder="Article or model..."/>
             <button class="btn btn-primary btn-sm" type="submit" th:text="#{voc.recipe.searchbtn}">Search</button>
@@ -218,6 +221,7 @@
         <form th:action="@{/voc/recipe/save}" method="post">
             <input type="hidden" name="page" th:value="${currentPage}"/>
             <input type="hidden" name="q" th:value="${q}"/>
+            <input type="hidden" name="section" th:value="${section}"/>
             <label th:text="#{voc.col.article}">Article</label>
             <input class="form-control" name="articleNo" id="c-article" required/>
             <label th:text="#{voc.col.chemical}">Chemical</label>
@@ -252,6 +256,7 @@
         <form th:action="@{/voc/recipe/model/save}" method="post">
             <input type="hidden" name="page" th:value="${currentPage}"/>
             <input type="hidden" name="q" th:value="${q}"/>
+            <input type="hidden" name="section" th:value="${section}"/>
             <div class="id-grid">
                 <div><label th:text="#{voc.col.article}">Article</label>
                     <input class="form-control" name="articleNo" id="m-article" required/></div>

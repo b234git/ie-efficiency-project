@@ -24,6 +24,7 @@ import thienloc.manage.entity.User;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import thienloc.manage.exception.DuplicateRecordException;
 import thienloc.manage.exception.ResourceNotFoundException;
 import thienloc.manage.exception.ServiceUnavailableException;
 import thienloc.manage.mapper.ProductionMapper;
@@ -62,6 +63,11 @@ public class ProductionService implements IProductionService {
 
     @Transactional
     public Long saveDailyProduction(DailyProductionDto dto, String username) {
+        return saveDailyProduction(dto, username, false);
+    }
+
+    @Transactional
+    public Long saveDailyProduction(DailyProductionDto dto, String username, boolean overwrite) {
         User user = userService.findByUsername(username);
         if (user == null) {
             throw new ResourceNotFoundException("User not found: " + username);
@@ -74,6 +80,26 @@ public class ProductionService implements IProductionService {
 
         // Row-level scope: block users who aren't assigned this section/line.
         lineAssignmentService.assertCanWrite(username, section, dto.getLine());
+
+        // Upsert-with-confirmation: for a NEW entry that collides with an existing
+        // (date, section, line), either reject (so the controller can ask the user) or,
+        // when confirmed, route into the in-place update branch. Must run AFTER
+        // applyAssemblyLine so the key matches a stored "ASSEMBLY SMALL" row.
+        if (dto.getId() == null) {
+            DailyProduction dup = productionRepository
+                    .findFirstByProductionDateAndSectionAndLine(
+                            dto.getProductionDate(), section, dto.getLine())
+                    .orElse(null);
+            if (dup != null) {
+                if (!overwrite) {
+                    throw new DuplicateRecordException(
+                            "Đã tồn tại dữ liệu cho ngày " + dto.getProductionDate()
+                                    + " — " + section + " line " + dto.getLine(),
+                            dup.getId());
+                }
+                dto.setId(dup.getId());
+            }
+        }
 
         double allowanceVal = NormalizationUtil.normalizeAllowance(dto.getAllowance());
 

@@ -13,16 +13,17 @@ import org.springframework.mock.web.MockMultipartFile;
 import thienloc.manage.dto.VocReportDto;
 import thienloc.manage.dto.VocReportFilter;
 import thienloc.manage.dto.VocSubconReportDto;
-import thienloc.manage.entity.DailyProduction;
-import thienloc.manage.entity.DailyProductionDetail;
 import thienloc.manage.entity.VocChemical;
 import thienloc.manage.entity.VocConsumption;
+import thienloc.manage.entity.VocProduction;
+import thienloc.manage.entity.VocRecipeArticle;
 import thienloc.manage.entity.VocStandardRate;
 import thienloc.manage.entity.VocSubconDetail;
 import thienloc.manage.entity.VocSubconEntry;
 import thienloc.manage.repository.DailyProductionRepository;
 import thienloc.manage.repository.VocChemicalRepository;
 import thienloc.manage.repository.VocConsumptionRepository;
+import thienloc.manage.repository.VocProductionRepository;
 import thienloc.manage.repository.VocRecipeArticleRepository;
 import thienloc.manage.repository.VocStandardRateRepository;
 import thienloc.manage.repository.VocSubconEntryRepository;
@@ -52,6 +53,7 @@ class VocServiceTest {
     @Mock private VocStandardRateRepository rateRepo;
     @Mock private VocRecipeArticleRepository recipeArticleRepo;
     @Mock private VocSubconEntryRepository subconRepo;
+    @Mock private VocProductionRepository vocProductionRepo;
     @Mock private DailyProductionRepository productionRepo;
     @Mock private SystemLogService systemLogService;
 
@@ -63,14 +65,11 @@ class VocServiceTest {
     void perSlotAllowanceAndConsumptionRanking() {
         LocalDate d = LocalDate.of(2026, 4, 1);
 
-        DailyProduction p = new DailyProduction();
-        p.setProductionDate(d);
-        p.setSection("SEW");
-        p.setLine("1A");
-        p.setTotalOutput(300);
-        p.setDetails(List.of(
-                DailyProductionDetail.builder().timeSlot("08:00").articleNo("ART1").output(100).build(),
-                DailyProductionDetail.builder().timeSlot("09:00").articleNo("ART2").output(200).build()));
+        // voc_production: one row per (date, section, line, article), output already
+        // apportioned from the "Data" sheet (here ART1=100, ART2=200 on line 1A).
+        List<VocProduction> prod = List.of(
+                VocProduction.builder().productionDate(d).section("SEW").line("1A").articleNo("ART1").output(100.0).build(),
+                VocProduction.builder().productionDate(d).section("SEW").line("1A").articleNo("ART2").output(200.0).build());
 
         when(consumptionRepo.findDistinctMonths()).thenReturn(List.of("2026-04"));
         when(consumptionRepo.findByProductionDateBetweenOrderByProductionDateAscLineAscChemicalCodeAsc(any(), any()))
@@ -84,9 +83,7 @@ class VocServiceTest {
         when(chemicalRepo.findAll()).thenReturn(List.of(
                 VocChemical.builder().code("HCA").materialType("SOLVENT").vocFactor(0.5).build(),
                 VocChemical.builder().code("HCB").materialType("SOLVENT").vocFactor(0.5).build()));
-        when(productionRepo.sumOutputByDateSectionLine(any(), any())).thenReturn(List.of());
-        when(productionRepo.findByProductionDateBetweenOrderByProductionDateAscSectionAscLineAsc(any(), any()))
-                .thenReturn(List.of(p));
+        when(vocProductionRepo.findByProductionDateBetween(any(), any())).thenReturn(prod);
         when(rateRepo.findAll()).thenReturn(List.of(
                 VocStandardRate.builder().articleNo("ART1").chemicalCode("HCA").kgPerPair(0.01).build(),
                 VocStandardRate.builder().articleNo("ART1").chemicalCode("HCB").kgPerPair(0.02).build(),
@@ -117,12 +114,9 @@ class VocServiceTest {
         LocalDate d1 = LocalDate.of(2026, 4, 5);   // week 1
         LocalDate d2 = LocalDate.of(2026, 4, 9);   // week 2
 
-        DailyProduction p1 = new DailyProduction();
-        p1.setProductionDate(d1); p1.setSection("SEW"); p1.setLine("1A"); p1.setTotalOutput(100);
-        p1.setDetails(List.of(DailyProductionDetail.builder().timeSlot("08:00").articleNo("ART1").output(100).build()));
-        DailyProduction p2 = new DailyProduction();
-        p2.setProductionDate(d2); p2.setSection("SEW"); p2.setLine("1A"); p2.setTotalOutput(80);
-        p2.setDetails(List.of(DailyProductionDetail.builder().timeSlot("08:00").articleNo("ART2").output(80).build()));
+        List<VocProduction> prod = List.of(
+                VocProduction.builder().productionDate(d1).section("SEW").line("1A").articleNo("ART1").output(100.0).build(),
+                VocProduction.builder().productionDate(d2).section("SEW").line("1A").articleNo("ART2").output(80.0).build());
 
         when(consumptionRepo.findDistinctMonths()).thenReturn(List.of("2026-04"));
         when(consumptionRepo.findByProductionDateBetweenOrderByProductionDateAscLineAscChemicalCodeAsc(any(), any()))
@@ -133,9 +127,7 @@ class VocServiceTest {
                                 .chemicalCode("HCA").quantityKg(9.0).reuseKg(0.0).build()));
         when(chemicalRepo.findAll()).thenReturn(List.of(
                 VocChemical.builder().code("HCA").materialType("SOLVENT").vocFactor(0.5).build()));
-        when(productionRepo.sumOutputByDateSectionLine(any(), any())).thenReturn(List.of());
-        when(productionRepo.findByProductionDateBetweenOrderByProductionDateAscSectionAscLineAsc(any(), any()))
-                .thenReturn(List.of(p1, p2));
+        when(vocProductionRepo.findByProductionDateBetween(any(), any())).thenReturn(prod);
         when(rateRepo.findAll()).thenReturn(List.of(
                 VocStandardRate.builder().articleNo("ART1").chemicalCode("HCA").kgPerPair(0.05).build(),
                 VocStandardRate.builder().articleNo("ART2").chemicalCode("HCA").kgPerPair(0.05).build(),
@@ -181,29 +173,25 @@ class VocServiceTest {
     void filtersNarrowDataBeforeAggregation() {
         LocalDate d = LocalDate.of(2026, 4, 2);   // week 1
 
-        DailyProduction p1 = new DailyProduction();
-        p1.setProductionDate(d); p1.setSection("SEW"); p1.setLine("1A"); p1.setTotalOutput(100);
-        p1.setDetails(List.of(DailyProductionDetail.builder().timeSlot("08:00").articleNo("ART1").output(100).build()));
-        DailyProduction p2 = new DailyProduction();
-        p2.setProductionDate(d); p2.setSection("ASSEMBLY"); p2.setLine("2B"); p2.setTotalOutput(50);
-        p2.setDetails(List.of(DailyProductionDetail.builder().timeSlot("08:00").articleNo("ART2").output(50).build()));
+        // voc_production carries the VOC section directly (SEW, ASSY) — no EFF→VOC mapping.
+        List<VocProduction> prod = List.of(
+                VocProduction.builder().productionDate(d).section("SEW").line("1A").articleNo("ART1").output(100.0).build(),
+                VocProduction.builder().productionDate(d).section("ASSY").line("2B").articleNo("ART2").output(50.0).build());
 
         when(consumptionRepo.findDistinctMonths()).thenReturn(List.of("2026-04"));
         when(consumptionRepo.findByProductionDateBetweenOrderByProductionDateAscLineAscChemicalCodeAsc(any(), any()))
                 .thenReturn(List.of(
                         VocConsumption.builder().productionDate(d).section("SEW").line("1A")
                                 .chemicalCode("HCA").quantityKg(6.0).reuseKg(0.0).build(),
-                        VocConsumption.builder().productionDate(d).section("ASSEMBLY").line("2B")
+                        VocConsumption.builder().productionDate(d).section("ASSY").line("2B")
                                 .chemicalCode("HCB").quantityKg(2.0).reuseKg(0.0).build()));
         when(chemicalRepo.findAll()).thenReturn(List.of(
                 VocChemical.builder().code("HCA").materialType("SOLVENT").vocFactor(0.5).build(),
                 VocChemical.builder().code("HCB").materialType("SOLVENT").vocFactor(1.0).build()));
-        when(productionRepo.sumOutputByDateSectionLine(any(), any())).thenReturn(List.of());
-        when(productionRepo.findByProductionDateBetweenOrderByProductionDateAscSectionAscLineAsc(any(), any()))
-                .thenReturn(List.of(p1, p2));
+        when(vocProductionRepo.findByProductionDateBetween(any(), any())).thenReturn(prod);
         when(rateRepo.findAll()).thenReturn(List.of(
-                VocStandardRate.builder().articleNo("ART1").chemicalCode("HCA").kgPerPair(0.01).build(),
-                VocStandardRate.builder().articleNo("ART2").chemicalCode("HCB").kgPerPair(0.02).build()));
+                VocStandardRate.builder().section("SEW").articleNo("ART1").chemicalCode("HCA").kgPerPair(0.01).build(),
+                VocStandardRate.builder().section("ASSY").articleNo("ART2").chemicalCode("HCB").kgPerPair(0.02).build()));
 
         // line=1A (the $A$1 case): only 1A's actual + allowance + output remain
         VocReportDto byLine = vocService.getMonthlyReport(
@@ -213,12 +201,12 @@ class VocServiceTest {
         assertEquals(100, byLine.getReconcileTotal().getOutput()); // p2's 50 excluded
         // option lists still cover the whole month
         assertEquals(List.of("1A", "2B"), byLine.getAllLines());
-        assertEquals(List.of("ASSEMBLY", "SEW"), byLine.getAllSections());
+        assertEquals(List.of("ASSY", "SEW"), byLine.getAllSections());
         assertEquals(List.of("HCA", "HCB"), byLine.getAllChemCodes());
 
-        // section=ASSEMBLY: the mirror slice
+        // section=ASSY: the mirror slice (filter is the VOC section, mapped from ASSEMBLY BIG)
         VocReportDto bySection = vocService.getMonthlyReport(
-                new VocReportFilter("2026-04", null, null, null, "ASSEMBLY", null, null));
+                new VocReportFilter("2026-04", null, null, null, "ASSY", null, null));
         assertEquals(List.of("HCB"), bySection.getReconcileChemicals());
         assertEquals(2.0, bySection.getTotalVocKg(), 1e-9);
 
@@ -315,12 +303,9 @@ class VocServiceTest {
     @Test
     void perLinePivotGroupsByLine() {
         LocalDate d = LocalDate.of(2026, 4, 1);
-        DailyProduction a = new DailyProduction();
-        a.setProductionDate(d); a.setSection("SEW"); a.setLine("1A"); a.setTotalOutput(100);
-        a.setDetails(List.of(DailyProductionDetail.builder().timeSlot("08:00").articleNo("ART1").output(100).build()));
-        DailyProduction b = new DailyProduction();
-        b.setProductionDate(d); b.setSection("SEW"); b.setLine("2A"); b.setTotalOutput(100);
-        b.setDetails(List.of(DailyProductionDetail.builder().timeSlot("08:00").articleNo("ART1").output(100).build()));
+        List<VocProduction> prod = List.of(
+                VocProduction.builder().productionDate(d).section("SEW").line("1A").articleNo("ART1").output(100.0).build(),
+                VocProduction.builder().productionDate(d).section("SEW").line("2A").articleNo("ART1").output(100.0).build());
 
         when(consumptionRepo.findDistinctMonths()).thenReturn(List.of("2026-04"));
         when(consumptionRepo.findByProductionDateBetweenOrderByProductionDateAscLineAscChemicalCodeAsc(any(), any()))
@@ -331,9 +316,7 @@ class VocServiceTest {
                                 .chemicalCode("HCA").quantityKg(1.0).reuseKg(0.0).build()));
         when(chemicalRepo.findAll()).thenReturn(List.of(
                 VocChemical.builder().code("HCA").materialType("SOLVENT").vocFactor(0.5).build()));
-        when(productionRepo.sumOutputByDateSectionLine(any(), any())).thenReturn(List.of());
-        when(productionRepo.findByProductionDateBetweenOrderByProductionDateAscSectionAscLineAsc(any(), any()))
-                .thenReturn(List.of(a, b));
+        when(vocProductionRepo.findByProductionDateBetween(any(), any())).thenReturn(prod);
         when(rateRepo.findAll()).thenReturn(List.of(
                 VocStandardRate.builder().articleNo("ART1").chemicalCode("HCA").kgPerPair(0.01).build()));
 
@@ -393,5 +376,210 @@ class VocServiceTest {
         assertEquals(2, e.getDetails().size());
         assertTrue(e.getDetails().stream().anyMatch(d -> d.getChemicalCode().equals("HCA") && d.getActualKg() == 8.0));
         assertTrue(e.getDetails().stream().anyMatch(d -> d.getChemicalCode().equals("GH-705AN") && d.getActualKg() == 3.8));
+    }
+
+    /** A3: batch save with overwrite=false reports an existing key as a conflict (no save). */
+    @Test
+    void saveConsumptionBatch_conflictReportedWhenNotOverwrite() {
+        LocalDate d = LocalDate.of(2026, 4, 1);
+        when(consumptionRepo.findByProductionDateAndSectionAndLineAndChemicalCode(d, "SEW", "1A", "577NT3"))
+                .thenReturn(Optional.of(new VocConsumption()));
+
+        VocService.BatchResult r = vocService.saveConsumptionBatch(
+                d, "SEW", "1A", List.of("577NT3"), List.of(0.9), List.of(0.0), false);
+
+        assertEquals(0, r.saved());
+        assertEquals(List.of("577NT3"), r.conflicts());
+    }
+
+    /** A3: batch save with overwrite=true updates the existing row (no conflict reported). */
+    @Test
+    void saveConsumptionBatch_overwriteUpdatesExisting() {
+        LocalDate d = LocalDate.of(2026, 4, 1);
+        when(consumptionRepo.findByProductionDateAndSectionAndLineAndChemicalCode(any(), any(), any(), any()))
+                .thenReturn(Optional.of(new VocConsumption()));
+        when(consumptionRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        VocService.BatchResult r = vocService.saveConsumptionBatch(
+                d, "SEW", "1A", List.of("577NT3"), List.of(0.9), List.of(0.0), true);
+
+        assertEquals(1, r.saved());
+        assertTrue(r.conflicts().isEmpty());
+    }
+
+    /** C1: the DB-sheet recipe parser is header-driven and matches the workbook's own join key.
+     *  For the SF ("OS VOC") layout — REF in column A, chemicals from column H, and the matrix
+     *  repeated in a second block — it keys on column A (DB!$A) and reads only the first block. */
+    @Test
+    void importRecipeReadsShiftedOsLayout() throws Exception {
+        byte[] bytes;
+        try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+            Sheet s = wb.createSheet("DB");
+            Row r0 = s.createRow(0);   // anchor: manufacturer tier + key-column labels
+            r0.createCell(0).setCellValue("REF");
+            r0.createCell(1).setCellValue("Pattern #");
+            r0.createCell(2).setCellValue("Article #");
+            r0.createCell(3).setCellValue("OS Code");
+            r0.createCell(4).setCellValue("Pattern #");
+            r0.createCell(5).setCellValue("Style");
+            r0.createCell(6).setCellValue("Quota");
+            r0.createCell(7).setCellValue("Nanpao");
+            r0.createCell(8).setCellValue("Nanpao");
+            r0.createCell(10).setCellValue("Nanpao");   // second (duplicate) block
+            r0.createCell(11).setCellValue("Nanpao");
+            Row r1 = s.createRow(1);   // base tier
+            r1.createCell(7).setCellValue("Solvent Base");
+            r1.createCell(8).setCellValue("Solvent Base");
+            r1.createCell(10).setCellValue("Solvent Base");
+            r1.createCell(11).setCellValue("Solvent Base");
+            Row r2 = s.createRow(2);   // classification tier
+            r2.createCell(7).setCellValue("Cleaner");
+            r2.createCell(8).setCellValue("Primer");
+            r2.createCell(10).setCellValue("Cleaner");
+            r2.createCell(11).setCellValue("Primer");
+            Row r3 = s.createRow(3);   // chemical-code row (anchor + 3): block 1 then duplicate block 2
+            r3.createCell(7).setCellValue("NO.29");
+            r3.createCell(8).setCellValue("NUV-24N");
+            r3.createCell(10).setCellValue("NO.29");     // duplicate (block 2) — must be ignored
+            r3.createCell(11).setCellValue("NUV-24N");
+            Row r4 = s.createRow(4);   // first data row (anchor + 4)
+            r4.createCell(0).setCellValue("376682");      // REF = the recipe key (DB col A)
+            r4.createCell(1).setCellValue("PM-1940");
+            r4.createCell(2).setCellValue("376682-01");   // Article # — NOT the key
+            r4.createCell(5).setCellValue("MB. 01");
+            r4.createCell(6).setCellValue(1500);
+            r4.createCell(8).setCellValue(0.0074);        // NUV-24N dosage, block 1 (NO.29 blank)
+            r4.createCell(11).setCellValue(0.0299);       // NUV-24N dosage, block 2 — must be ignored
+            wb.write(bos);
+            bytes = bos.toByteArray();
+        }
+
+        when(chemicalRepo.findByCodeIgnoreCase(any())).thenReturn(Optional.empty());
+        when(rateRepo.findBySectionAndArticleNoAndChemicalCode(any(), any(), any())).thenReturn(Optional.empty());
+        when(recipeArticleRepo.findById(any())).thenReturn(Optional.empty());
+        ArgumentCaptor<VocStandardRate> rateCaptor = ArgumentCaptor.forClass(VocStandardRate.class);
+        when(rateRepo.save(rateCaptor.capture())).thenAnswer(inv -> inv.getArgument(0));
+        ArgumentCaptor<VocRecipeArticle> artCaptor = ArgumentCaptor.forClass(VocRecipeArticle.class);
+        when(recipeArticleRepo.save(artCaptor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+        vocService.importRecipe(new MockMultipartFile("file", "OS.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", bytes));
+
+        // exactly one dosage captured: keyed by REF (col A = DB!$A), chemical from block 1 only
+        assertEquals(1, rateCaptor.getAllValues().size());
+        VocStandardRate rate = rateCaptor.getValue();
+        assertEquals("376682", rate.getArticleNo());     // DB col A (REF), not Article # (col C)
+        assertEquals("NUV-24N", rate.getChemicalCode());
+        assertEquals("SEW", rate.getSection());          // no Data sheet → default section
+        assertEquals(0.0074, rate.getKgPerPair(), 1e-9); // block 1 value; block 2 (0.0299) ignored
+        // identity row resolved by header label, not by fixed C/D/E/F columns
+        VocRecipeArticle art = artCaptor.getValue();
+        assertEquals("376682", art.getArticleNo());
+        assertEquals("PM-1940", art.getModelCode());   // Pattern # (col B)
+        assertEquals("MB. 01", art.getModelName());     // Style (col F)
+        assertEquals(1500.0, art.getBaseE(), 1e-9);     // Quota (col G)
+    }
+
+    /** Section keying: the same (article, chemical) carries a different dosage per section
+     *  (e.g. 98NH1/577NT differ 30x between SEW and ASSY). Reconciliation must use the
+     *  PRODUCTION row's section, not collide into one global rate. */
+    @Test
+    void allowanceUsesProductionSectionRecipe() {
+        LocalDate d = LocalDate.of(2026, 4, 1);
+        List<VocProduction> prod = List.of(
+                VocProduction.builder().productionDate(d).section("ASSY").line("1A").articleNo("ART1").output(100.0).build());
+
+        when(consumptionRepo.findDistinctMonths()).thenReturn(List.of("2026-04"));
+        when(consumptionRepo.findByProductionDateBetweenOrderByProductionDateAscLineAscChemicalCodeAsc(any(), any()))
+                .thenReturn(List.of(VocConsumption.builder().productionDate(d).section("ASSY").line("1A")
+                        .chemicalCode("577NT").quantityKg(3.0).reuseKg(0.0).build()));
+        when(chemicalRepo.findAll()).thenReturn(List.of(
+                VocChemical.builder().code("577NT").materialType("SOLVENT").vocFactor(0.5).build()));
+        when(vocProductionRepo.findByProductionDateBetween(any(), any())).thenReturn(prod);
+        when(rateRepo.findAll()).thenReturn(List.of(
+                VocStandardRate.builder().section("SEW").articleNo("ART1").chemicalCode("577NT").kgPerPair(0.001).build(),
+                VocStandardRate.builder().section("ASSY").articleNo("ART1").chemicalCode("577NT").kgPerPair(0.04).build()));
+
+        VocReportDto report = vocService.getMonthlyReport(VocReportFilter.ofMonth("2026-04"));
+
+        var row = report.getReconcileWeeks().get(0).getRows().get(0);
+        // ASSY production → 100 * 0.04 = 4.0, NOT the SEW rate (100 * 0.001 = 0.1)
+        assertEquals(4.0, row.getCells().get("577NT").getAllowanceKg(), 1e-9);
+    }
+
+    /** C2: re-importing a section whose R sheet leaves VOC=0 must NOT wipe an existing real factor. */
+    @Test
+    void importChemicalsDoesNotOverwriteRealFactorWithZero() throws Exception {
+        byte[] bytes;
+        try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+            Sheet s = wb.createSheet("R");
+            Row h = s.createRow(0);
+            String[] headers = {"Code", "Material Type", "Classification", "Manufacturer", "VOC",
+                    "UNIT", "kg", "Container", "Price", "$ / KG", "Date"};
+            for (int i = 0; i < headers.length; i++) h.createCell(i).setCellValue(headers[i]);
+            Row r = s.createRow(1);
+            r.createCell(0).setCellValue("577NT");
+            r.createCell(1).setCellValue("Solvent Base");
+            r.createCell(2).setCellValue("Adhesive");
+            r.createCell(3).setCellValue("Greco");
+            r.createCell(4).setCellValue(0);          // VOC = 0 (ASSY/OS R sheets leave it 0)
+            // price columns intentionally left blank
+            wb.write(bos);
+            bytes = bos.toByteArray();
+        }
+
+        VocChemical existing = VocChemical.builder().code("577NT").vocFactor(0.745).pricePerKg(2.5)
+                .materialType("SOLVENT").active(true).build();
+        when(chemicalRepo.findByCodeIgnoreCase("577NT")).thenReturn(Optional.of(existing));
+        ArgumentCaptor<VocChemical> captor = ArgumentCaptor.forClass(VocChemical.class);
+        when(chemicalRepo.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+        vocService.importChemicalsFromExcel(new MockMultipartFile("file", "R.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", bytes));
+
+        VocChemical saved = captor.getValue();
+        assertEquals(0.745, saved.getVocFactor(), 1e-9);   // real factor preserved
+        assertEquals(2.5, saved.getPricePerKg(), 1e-9);    // real price preserved
+        assertEquals("Greco", saved.getManufacturer());     // present text still updates
+    }
+
+    /** C3: the full 11-col "Actual" sheet reads reuse from column 6 (Reuse), not column 5 (Throw),
+     *  and the Section column drives the section (here SF). */
+    @Test
+    void importConsumptionFullActualReadsReuseFromColumnSix() throws Exception {
+        byte[] bytes;
+        try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+            Sheet s = wb.createSheet("Actual");
+            Row h = s.createRow(0);
+            String[] headers = {"Date", "Section", "Line", "Chemicals", "Production", "Throw", "Reuse",
+                    "Material Type", "Classification", "Manufacturer", "VOC"};
+            for (int i = 0; i < headers.length; i++) h.createCell(i).setCellValue(headers[i]);
+            Row r = s.createRow(1);
+            r.createCell(0).setCellValue("2026-05-04");
+            r.createCell(1).setCellValue("SF");
+            r.createCell(2).setCellValue("1");
+            r.createCell(3).setCellValue("NP-72KMN");
+            r.createCell(4).setCellValue(20.0);   // Production = consumed qty
+            r.createCell(5).setCellValue(7.0);    // Throw — must be ignored
+            r.createCell(6).setCellValue(3.0);    // Reuse — the real reuse
+            wb.write(bos);
+            bytes = bos.toByteArray();
+        }
+
+        when(consumptionRepo.findByProductionDateAndSectionAndLineAndChemicalCode(any(), any(), any(), any()))
+                .thenReturn(Optional.empty());
+        ArgumentCaptor<VocConsumption> captor = ArgumentCaptor.forClass(VocConsumption.class);
+        when(consumptionRepo.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+        vocService.importConsumptionFromExcel(new MockMultipartFile("file", "Actual.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", bytes));
+
+        VocConsumption c = captor.getValue();
+        assertEquals(LocalDate.of(2026, 5, 4), c.getProductionDate());
+        assertEquals("SF", c.getSection());
+        assertEquals("1", c.getLine());
+        assertEquals("NP-72KMN", c.getChemicalCode());
+        assertEquals(20.0, c.getQuantityKg(), 1e-9);
+        assertEquals(3.0, c.getReuseKg(), 1e-9);   // column 6 (Reuse), NOT column 5 (Throw=7.0)
     }
 }

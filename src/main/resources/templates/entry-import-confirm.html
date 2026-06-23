@@ -35,6 +35,10 @@
         .card-total { background: #f8f9fa; }
         .card-valid { background: #d1e7dd; border-color: #badbcc; }
         .card-error { background: #f8d7da; border-color: #f5c2c7; }
+        .card-new { background: #d1e7dd; border-color: #badbcc; }
+        .card-update { background: #cfe2ff; border-color: #b6d4fe; }
+        .badge-new { background: #198754; color:white; padding:2px 8px; border-radius:10px; font-size:0.8rem; }
+        .badge-update { background: #0d6efd; color:white; padding:2px 8px; border-radius:10px; font-size:0.8rem; }
 
         .table-wrapper {
             overflow-x: auto;
@@ -108,6 +112,14 @@
                 <span class="number" th:text="${preview.validRows}">0</span>
                 <span class="label" th:text="#{entry.import.valid}">Valid</span>
             </div>
+            <div class="summary-card card-new">
+                <span class="number" th:text="${preview.newCount}">0</span>
+                <span class="label" th:text="#{masterdb.import.confirm.new}">New records</span>
+            </div>
+            <div class="summary-card card-update" th:if="${preview.updateCount > 0}">
+                <span class="number" th:text="${preview.updateCount}">0</span>
+                <span class="label" th:text="#{masterdb.import.confirm.update}">Update</span>
+            </div>
             <div class="summary-card card-error" th:if="${preview.errorRows > 0}">
                 <span class="number" th:text="${preview.errorRows}">0</span>
                 <span class="label" th:text="#{entry.import.errors}">Errors</span>
@@ -162,7 +174,8 @@
                     <tr th:each="row, stat : ${preview.rows}" th:classappend="${!row.valid ? 'row-error' : ''}">
                         <td th:text="${stat.index + 1}" style="color:#6c757d;"></td>
                         <td>
-                            <span th:if="${row.valid}" class="badge-valid">OK</span>
+                            <span th:if="${row.valid and row.status == 'NEW'}" class="badge-new">NEW</span>
+                            <span th:if="${row.valid and row.status == 'UPDATE'}" class="badge-update">UPDATE</span>
                             <span th:unless="${row.valid}" class="badge-error">ERROR</span>
                         </td>
                         <td th:text="${row.productionDate}"></td>

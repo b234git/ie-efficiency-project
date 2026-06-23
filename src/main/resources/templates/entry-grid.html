@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title th:text="#{entrygrid.title}">Fast Grid Entry</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <style>
+        .grid-table { border-collapse: collapse; width: 100%; font-size: 0.86rem; }
+        .grid-table th, .grid-table td { border: 1px solid #dee2e6; padding: 4px 6px; white-space: nowrap; }
+        .grid-table th { background: #f1f3f5; position: sticky; top: 0; }
+        .grid-table input, .grid-table select { width: 100%; box-sizing: border-box; border: 1px solid #ced4da; padding: 3px 4px; font-size: 0.85rem; }
+        .grid-table input.num { width: 64px; text-align: right; }
+        .grid-table .eff-cell { font-weight: 600; text-align: right; min-width: 60px; }
+        .eff-hi { color: #28a745; } .eff-low { color: #dc3545; }
+        .grid-toolbar { display: flex; gap: 10px; align-items: center; margin: 14px 0; flex-wrap: wrap; }
+        .row-del { background: #f8d7da; border: none; cursor: pointer; border-radius: 4px; padding: 2px 8px; color: #b02a37; }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{fragments/layout :: navbar}"></div>
+
+    <div class="container-xl" style="padding:20px;">
+        <h2 th:text="#{entrygrid.title}">Fast Grid Entry</h2>
+        <p style="color:#6c757d;" th:text="#{entrygrid.subtitle}">Enter many production lines for one day at once.</p>
+
+        <div th:if="${gridSaved != null}" style="color:green; margin-bottom:10px;">
+            <span th:text="${gridSaved}">0</span> <span th:text="#{entrygrid.saved}">row(s) saved.</span>
+        </div>
+        <div th:if="${gridErrors}" style="color:#dc3545; margin-bottom:10px; padding:10px; background:#f8d7da; border-radius:4px;">
+            <div th:each="e : ${gridErrors}" th:text="${e}"></div>
+        </div>
+
+        <!-- Date picker (reloads the grid for the chosen day) -->
+        <form method="get" th:action="@{/entry/grid}" class="grid-toolbar">
+            <label th:text="#{table.date}">Date</label>
+            <input type="date" name="date" th:value="${date}" onchange="this.form.submit()"/>
+            <a th:href="@{/entry}" style="margin-left:auto; color:#007bff;">&larr; <span th:text="#{entry.title}">Entry</span></a>
+        </form>
+
+        <form method="post" th:action="@{/entry/grid/save-batch}" id="gridForm">
+            <input type="hidden" name="date" th:value="${date}"/>
+            <div style="overflow-x:auto;">
+                <table class="grid-table">
+                    <thead>
+                        <tr>
+                            <th th:text="#{table.section}">Section</th>
+                            <th th:text="#{table.line}">Line</th>
+                            <th>Article</th>
+                            <th>DL/MP</th>
+                            <th>DLI</th>
+                            <th>IDL</th>
+                            <th th:text="#{table.output}">Output</th>
+                            <th th:text="#{table.wt}">WT</th>
+                            <th>RFT%</th>
+                            <th th:text="#{entry.label.allowance}">Allowance%</th>
+                            <th>EFF-KPI</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="gridBody">
+                        <tr th:each="r : ${rows}" class="grid-row">
+                            <td>
+                                <input type="hidden" name="id" th:value="${r.id}"/>
+                                <select name="section">
+                                    <option value=""></option>
+                                    <option th:each="s : ${sectionOptions}" th:value="${s}" th:text="${s}"
+                                            th:selected="${s == r.section}"></option>
+                                </select>
+                            </td>
+                            <td><input name="line" list="lineList" th:value="${r.line}" style="width:60px;"/></td>
+                            <td><input name="article" th:value="${r.article}" style="width:90px;"/></td>
+                            <td><input class="num" name="mp" th:value="${r.mp}"/></td>
+                            <td><input class="num" name="dli" th:value="${r.dli}"/></td>
+                            <td><input class="num" name="idl" th:value="${r.idl}"/></td>
+                            <td><input class="num" name="output" th:value="${r.output}"/></td>
+                            <td><input class="num" name="wt" th:value="${r.wt}"/></td>
+                            <td><input class="num" name="rft" th:value="${r.rft}"/></td>
+                            <td><input class="num" name="allowance"
+                                       th:value="${r.allowance != null ? (r.allowance <= 1 ? r.allowance*100 : r.allowance) : 100}"/></td>
+                            <td class="eff-cell"
+                                th:text="${r.effKpi != null ? #numbers.formatDecimal(r.effKpi*100,1,1)+'%' : '—'}">—</td>
+                            <td><button type="button" class="row-del" onclick="delRow(this)">✕</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <datalist id="lineList">
+                <option th:each="l : ${lines}" th:value="${l}"></option>
+            </datalist>
+
+            <div class="grid-toolbar">
+                <button type="button" class="btn" onclick="addRow()" th:text="#{entrygrid.addrow}">+ Add row</button>
+                <button type="submit" class="btn btn-primary" th:text="#{entrygrid.save}">Save all</button>
+            </div>
+        </form>
+
+        <!-- Hidden blank-row template for cloning -->
+        <table style="display:none;">
+            <tbody id="rowTemplate">
+                <tr class="grid-row">
+                    <td>
+                        <input type="hidden" name="id" value=""/>
+                        <select name="section">
+                            <option value=""></option>
+                            <option th:each="s : ${sectionOptions}" th:value="${s}" th:text="${s}"></option>
+                        </select>
+                    </td>
+                    <td><input name="line" list="lineList" style="width:60px;"/></td>
+                    <td><input name="article" style="width:90px;"/></td>
+                    <td><input class="num" name="mp"/></td>
+                    <td><input class="num" name="dli"/></td>
+                    <td><input class="num" name="idl"/></td>
+                    <td><input class="num" name="output"/></td>
+                    <td><input class="num" name="wt"/></td>
+                    <td><input class="num" name="rft"/></td>
+                    <td><input class="num" name="allowance" value="100"/></td>
+                    <td class="eff-cell">—</td>
+                    <td><button type="button" class="row-del" onclick="delRow(this)">✕</button></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script th:inline="javascript">
+        var DATE = /*[[${date != null ? date.toString() : ''}]]*/ '';
+        var CSRF = document.querySelector('meta[name=_csrf]').content;
+        var CSRF_HEADER = document.querySelector('meta[name=_csrf_header]').content;
+
+        function addRow() {
+            var tpl = document.getElementById('rowTemplate').firstElementChild.cloneNode(true);
+            document.getElementById('gridBody').appendChild(tpl);
+            wireRow(tpl);
+        }
+        function delRow(btn) {
+            var tr = btn.closest('tr');
+            tr.parentNode.removeChild(tr);
+        }
+        function wireRow(tr) {
+            var inputs = tr.querySelectorAll('input, select');
+            inputs.forEach(function (el) {
+                el.addEventListener('change', function () { previewEff(tr); });
+            });
+        }
+        var debounce;
+        function previewEff(tr) {
+            clearTimeout(debounce);
+            debounce = setTimeout(function () { doPreview(tr); }, 350);
+        }
+        function val(tr, name) {
+            var el = tr.querySelector('[name="' + name + '"]');
+            return el ? el.value : '';
+        }
+        function doPreview(tr) {
+            var section = val(tr, 'section');
+            var mp = val(tr, 'mp'), wt = val(tr, 'wt'), output = val(tr, 'output');
+            if (!section || !mp || !wt || !output) return;
+            var params = new URLSearchParams();
+            params.append('date', DATE);
+            params.append('section', section);
+            params.append('article', val(tr, 'article'));
+            params.append('mp', mp);
+            params.append('dli', val(tr, 'dli'));
+            params.append('wt', wt);
+            params.append('output', output);
+            params.append('allowance', val(tr, 'allowance'));
+            var headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+            headers[CSRF_HEADER] = CSRF;
+            fetch(/*[[@{/entry/grid/preview-eff}]]*/ '/entry/grid/preview-eff', {
+                method: 'POST', headers: headers, body: params.toString()
+            }).then(function (r) { return r.json(); }).then(function (d) {
+                var cell = tr.querySelector('.eff-cell');
+                if (d.effKpi != null) {
+                    var pct = (d.effKpi * 100).toFixed(1);
+                    cell.textContent = pct + '%';
+                    cell.className = 'eff-cell ' + (d.effKpi >= 0.85 ? 'eff-hi' : 'eff-low');
+                } else {
+                    cell.textContent = '—';
+                    cell.className = 'eff-cell';
+                }
+            }).catch(function () {});
+        }
+        document.querySelectorAll('#gridBody .grid-row').forEach(wireRow);
+    </script>
+</body>
+
+</html>

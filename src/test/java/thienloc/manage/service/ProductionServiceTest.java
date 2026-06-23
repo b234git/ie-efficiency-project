@@ -43,6 +43,9 @@ class ProductionServiceTest {
     @Mock
     private EfficiencyCalculatorService efficiencyCalculator;
 
+    @Mock
+    private LineAssignmentService lineAssignmentService;
+
     // Real mapper (dependency-free, field-mapping only) so convertToDto tests
     // exercise actual mapping logic instead of a null mock.
     @Spy
@@ -102,6 +105,42 @@ class ProductionServiceTest {
         verify(productionRepository).findById(1L);
         verify(productionRepository).flush();
         assertEquals(35.0, existing.getMp(), 0.001);
+    }
+
+    @Test
+    void testSaveDailyProduction_DuplicateRejectedWhenNotOverwrite() {
+        when(userService.findByUsername("admin")).thenReturn(testUser);
+        DailyProduction existing = TestDataFactory.createDailyProduction("SEW", "1A", 500, 20.0, 7.0);
+        existing.setId(5L);
+        when(productionRepository.findFirstByProductionDateAndSectionAndLine(any(), any(), any()))
+                .thenReturn(Optional.of(existing));
+
+        DailyProductionDto dto = TestDataFactory.createDailyProductionDto();
+        dto.setId(null);
+
+        assertThrows(thienloc.manage.exception.DuplicateRecordException.class,
+                () -> productionService.saveDailyProduction(dto, "admin", false));
+        verify(productionRepository, never()).save(any());
+    }
+
+    @Test
+    void testSaveDailyProduction_DuplicateOverwriteUpdatesInPlace() {
+        when(userService.findByUsername("admin")).thenReturn(testUser);
+        DailyProduction existing = TestDataFactory.createDailyProduction("SEW", "1A", 500, 20.0, 7.0);
+        existing.setId(5L);
+        when(productionRepository.findFirstByProductionDateAndSectionAndLine(any(), any(), any()))
+                .thenReturn(Optional.of(existing));
+        when(productionRepository.findById(5L)).thenReturn(Optional.of(existing));
+
+        DailyProductionDto dto = TestDataFactory.createDailyProductionDto();
+        dto.setId(null);     // submitted as new, but collides → overwrite routes to in-place update
+        dto.setMp(42.0);
+
+        Long id = productionService.saveDailyProduction(dto, "admin", true);
+
+        assertEquals(5L, id);                               // existing row updated, id unchanged
+        assertEquals(42.0, existing.getMp(), 0.001);
+        verify(productionRepository, never()).save(any());  // edit path, no insert
     }
 
     @Test

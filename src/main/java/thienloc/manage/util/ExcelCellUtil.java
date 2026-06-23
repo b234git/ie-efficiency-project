@@ -87,7 +87,9 @@ public final class ExcelCellUtil {
      */
     public static Integer getInteger(Cell cell) {
         if (cell == null) return null;
-        return switch (cell.getCellType()) {
+        CellType type = cell.getCellType();
+        if (type == CellType.FORMULA) type = cell.getCachedFormulaResultType();
+        return switch (type) {
             case NUMERIC -> (int) cell.getNumericCellValue();
             case STRING -> {
                 try {
@@ -107,10 +109,14 @@ public final class ExcelCellUtil {
     public static LocalDate parseDateCell(Cell cell) {
         if (cell == null) return null;
         try {
-            if (cell.getCellType() == CellType.NUMERIC) {
+            CellType type = cell.getCellType();
+            // Date columns in the EFF workbooks are often fill-down formulas (=C3+1);
+            // resolve to the cached result type so numeric/string dates still parse.
+            if (type == CellType.FORMULA) type = cell.getCachedFormulaResultType();
+            if (type == CellType.NUMERIC) {
                 Date javaDate = DateUtil.getJavaDate(cell.getNumericCellValue());
                 return javaDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-            } else if (cell.getCellType() == CellType.STRING) {
+            } else if (type == CellType.STRING) {
                 String val = cell.getStringCellValue().trim();
                 return val.isEmpty() ? null : LocalDate.parse(val);
             }

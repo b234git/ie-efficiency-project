@@ -20,17 +20,17 @@ import thienloc.manage.dto.VocReportFilter;
 import thienloc.manage.dto.VocReportRowDto;
 import thienloc.manage.dto.VocSubconReportDto;
 import thienloc.manage.dto.WeeklyImportResultDto;
-import thienloc.manage.entity.DailyProduction;
-import thienloc.manage.entity.DailyProductionDetail;
 import thienloc.manage.entity.VocChemical;
 import thienloc.manage.entity.VocConsumption;
 import thienloc.manage.entity.VocRecipeArticle;
 import thienloc.manage.entity.VocStandardRate;
 import thienloc.manage.entity.VocSubconDetail;
 import thienloc.manage.entity.VocSubconEntry;
+import thienloc.manage.entity.VocProduction;
 import thienloc.manage.repository.DailyProductionRepository;
 import thienloc.manage.repository.VocChemicalRepository;
 import thienloc.manage.repository.VocConsumptionRepository;
+import thienloc.manage.repository.VocProductionRepository;
 import thienloc.manage.repository.VocRecipeArticleRepository;
 import thienloc.manage.repository.VocStandardRateRepository;
 import thienloc.manage.repository.VocSubconEntryRepository;
@@ -57,10 +57,48 @@ public class VocService {
     @Autowired private VocStandardRateRepository rateRepo;
     @Autowired private VocRecipeArticleRepository recipeArticleRepo;
     @Autowired private VocSubconEntryRepository subconRepo;
+    @Autowired private VocProductionRepository vocProductionRepo;
     @Autowired private DailyProductionRepository productionRepo;
     @Autowired private SystemLogService systemLogService;
+    @Autowired private org.springframework.transaction.PlatformTransactionManager txManager;
 
     public static final String DEFAULT_SECTION = "SEW";
+
+    /**
+     * Dry-run an import to get exact NEW(inserted)/UPDATE(updated)/skipped/error counts
+     * WITHOUT persisting — runs the real importer inside a rolled-back transaction so the
+     * preview→confirm screen reuses the exact same parser as commit (no duplicated parsing).
+     * {@code type} = consumption | chemicals | recipe | subcon.
+     */
+    public WeeklyImportResultDto previewImport(MultipartFile file, String type, String section) {
+        org.springframework.transaction.support.TransactionTemplate tt =
+                new org.springframework.transaction.support.TransactionTemplate(txManager);
+        return tt.execute(status -> {
+            status.setRollbackOnly();   // never persist a preview
+            try {
+                return runImport(file, type, section);
+            } catch (IOException e) {
+                throw new IllegalArgumentException("Không đọc được file: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    /** Commit the real import (persists, atomically). Used after the user confirms the preview. */
+    @Transactional
+    public WeeklyImportResultDto commitImport(MultipartFile file, String type, String section) throws IOException {
+        return runImport(file, type, section);
+    }
+
+    private WeeklyImportResultDto runImport(MultipartFile file, String type, String section) throws IOException {
+        return switch (type) {
+            case "consumption" -> importConsumptionFromExcel(file);
+            case "chemicals"   -> importChemicalsFromExcel(file);
+            case "recipe"      -> importRecipe(file, section);   // section: null → auto-detect from Data sheet
+            case "subcon"      -> importSubconFromExcel(file);
+            case "production"  -> importVocProduction(file);     // "Data" sheet → allowance source
+            default -> throw new IllegalArgumentException("Loại import không hợp lệ: " + type);
+        };
+    }
 
     /** Chemical-code aliases: the CEMENT sheets abbreviate some master codes
      *  (e.g. "705AN" vs the master/recipe "GH-705AN"). Without this they land in a
@@ -202,12 +240,33 @@ public class VocService {
         });
     }
 
-    /** Batch upsert: one submit saves every chemical entered for a (date, section, line).
-     *  Rows with neither quantity nor reuse are skipped. Returns the number saved. */
+    /** Result of a confirm-aware batch save: how many were written + which natural keys
+     *  already existed and were skipped (so the caller can ask before overwriting). */
+    public record BatchResult(int saved, List<String> conflicts) {}
+
+    /** True if a consumption row already exists for this (date, section, line, chemical). */
+    public boolean consumptionExists(LocalDate date, String section, String line, String chem) {
+        String sec = (section == null || section.isBlank()) ? DEFAULT_SECTION : section.trim();
+        return consumptionRepo.findByProductionDateAndSectionAndLineAndChemicalCode(
+                date, sec, line != null ? line.trim() : null, chem != null ? chem.trim() : null).isPresent();
+    }
+
+    /** Batch upsert (legacy: always overwrites). Returns the number saved. */
     @Transactional
     public int saveConsumptionBatch(LocalDate date, String section, String line,
                                     List<String> chemicalCode, List<Double> quantityKg, List<Double> reuseKg) {
-        if (date == null || line == null || line.isBlank() || chemicalCode == null) return 0;
+        return saveConsumptionBatch(date, section, line, chemicalCode, quantityKg, reuseKg, true).saved();
+    }
+
+    /** Batch save with confirm-before-overwrite. New rows are saved immediately; rows whose
+     *  natural key already exists are skipped and reported as conflicts unless {@code overwrite}.
+     *  Rows with neither quantity nor reuse are skipped entirely. */
+    @Transactional
+    public BatchResult saveConsumptionBatch(LocalDate date, String section, String line,
+                                    List<String> chemicalCode, List<Double> quantityKg, List<Double> reuseKg,
+                                    boolean overwrite) {
+        List<String> conflicts = new ArrayList<>();
+        if (date == null || line == null || line.isBlank() || chemicalCode == null) return new BatchResult(0, conflicts);
         String sec = (section == null || section.isBlank()) ? DEFAULT_SECTION : section.trim();
         String ln = line.trim();
         int saved = 0;
@@ -217,17 +276,22 @@ public class VocService {
             Double qty = (quantityKg != null && i < quantityKg.size()) ? quantityKg.get(i) : null;
             Double reuse = (reuseKg != null && i < reuseKg.size()) ? reuseKg.get(i) : null;
             if ((qty == null || qty == 0.0) && (reuse == null || reuse == 0.0)) continue;   // blank row
+            String chemT = chem.trim();
+            if (!overwrite && consumptionExists(date, sec, ln, chemT)) {
+                conflicts.add(chemT);
+                continue;
+            }
             VocConsumption c = new VocConsumption();
             c.setProductionDate(date);
             c.setSection(sec);
             c.setLine(ln);
-            c.setChemicalCode(chem.trim());
+            c.setChemicalCode(chemT);
             c.setQuantityKg(qty != null ? qty : 0.0);
             c.setReuseKg(reuse != null ? reuse : 0.0);
             saveConsumption(c);
             saved++;
         }
-        return saved;
+        return new BatchResult(saved, conflicts);
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -244,6 +308,7 @@ public class VocService {
     /** Upsert on (articleNo, chemicalCode). When a reciprocal formula is supplied
      *  it drives kgPerPair; otherwise the submitted kgPerPair is kept as-is. */
     public VocStandardRate saveRate(VocStandardRate r) {
+        if (r.getSection() == null || r.getSection().isBlank()) r.setSection(DEFAULT_SECTION);
         r.setArticleNo(r.getArticleNo() != null ? r.getArticleNo().trim() : null);
         r.setChemicalCode(r.getChemicalCode() != null ? r.getChemicalCode().trim() : null);
         String formula = normalizeFormula(r.getFormula());
@@ -256,7 +321,7 @@ public class VocService {
 
         if (r.getId() == null) {
             Optional<VocStandardRate> existing =
-                    rateRepo.findByArticleNoAndChemicalCode(r.getArticleNo(), r.getChemicalCode());
+                    rateRepo.findBySectionAndArticleNoAndChemicalCode(r.getSection(), r.getArticleNo(), r.getChemicalCode());
             if (existing.isPresent()) {
                 VocStandardRate e = existing.get();
                 e.setKgPerPair(r.getKgPerPair());
@@ -348,15 +413,12 @@ public class VocService {
     /** Header tiers {manufacturer, base, type} for a chemical, or null if unknown. */
     public String[] getChemicalMeta(String code) { return CHEM_META.get(code); }
 
-    /** Columns: the 22 canonical workbook chemicals first (Excel order), then any
-     *  extra chemical added to the master ("R"), then any present only in recipe rows. */
-    private List<String> orderedChemicalColumns() {
-        List<String> cols = new ArrayList<>(CHEM_ORDER);
-        for (VocChemical c : chemicalRepo.findAllByOrderByCodeAsc()) {
-            String code = c.getCode() != null ? c.getCode().trim() : null;
-            if (code != null && !cols.contains(code)) cols.add(code);
-        }
-        for (String code : rateRepo.findDistinctChemicalCodes()) {
+    /** Columns for one section: SEW leads with the 22 canonical workbook chemicals (Excel
+     *  order); every section then appends the codes its own recipe rows actually use. */
+    private List<String> orderedChemicalColumns(String section) {
+        List<String> cols = new ArrayList<>();
+        if (DEFAULT_SECTION.equalsIgnoreCase(section)) cols.addAll(CHEM_ORDER);
+        for (String code : rateRepo.findDistinctChemicalCodesBySection(section)) {
             if (!cols.contains(code)) cols.add(code);
         }
         return cols;
@@ -372,8 +434,8 @@ public class VocService {
 
     /** Build the wide matrix for the given page of articles: chemical codes as the
      *  columns, each cell carrying the evaluated kg/pair and its raw formula. */
-    public VocRecipeGridDto buildRecipeGrid(List<VocRecipeArticle> articles) {
-        List<String> chemicals = orderedChemicalColumns();
+    public VocRecipeGridDto buildRecipeGrid(List<VocRecipeArticle> articles, String section) {
+        List<String> chemicals = orderedChemicalColumns(section);
 
         // Upper header tiers (manufacturer → base → type) and unit price per column.
         // The canonical 22 use the static maps (guaranteed to match Excel); any extra
@@ -403,6 +465,7 @@ public class VocService {
         if (!articles.isEmpty()) {
             List<String> ids = articles.stream().map(VocRecipeArticle::getArticleNo).toList();
             Map<String, List<VocStandardRate>> byArticle = rateRepo.findByArticleNoIn(ids).stream()
+                    .filter(r -> section.equalsIgnoreCase(r.getSection()))
                     .collect(Collectors.groupingBy(VocStandardRate::getArticleNo));
             for (VocRecipeArticle a : articles) {
                 Map<String, VocRecipeGridDto.Cell> cells = new HashMap<>();
@@ -437,12 +500,13 @@ public class VocService {
      *  formula. A blank formula removes that chemical's rate; a non-blank one upserts
      *  it (the reciprocal expression drives kg/pair). Mirrors editing a DB-sheet row. */
     @Transactional
-    public void saveRecipeModel(String articleNo, String modelCode, String modelName,
+    public void saveRecipeModel(String section, String articleNo, String modelCode, String modelName,
                                 Double baseE, Double baseF,
                                 List<String> codes, List<String> formulas) {
         if (articleNo == null || articleNo.isBlank())
             throw new IllegalArgumentException("Article # is required");
         String art = articleNo.trim();
+        String sec = (section == null || section.isBlank()) ? DEFAULT_SECTION : section.trim();
         upsertArticle(VocRecipeArticle.builder()
                 .articleNo(art).modelCode(modelCode).modelName(modelName)
                 .baseE(baseE).baseF(baseF).build());
@@ -452,12 +516,12 @@ public class VocService {
                 String code = codes.get(i) == null ? null : codes.get(i).trim();
                 if (code == null || code.isBlank()) continue;
                 String norm = normalizeFormula(formulas != null && i < formulas.size() ? formulas.get(i) : null);
-                Optional<VocStandardRate> existing = rateRepo.findByArticleNoAndChemicalCode(art, code);
+                Optional<VocStandardRate> existing = rateRepo.findBySectionAndArticleNoAndChemicalCode(sec, art, code);
                 if (norm == null) {
                     existing.ifPresent(rateRepo::delete);          // cleared → remove the rate
                 } else {
                     VocStandardRate r = existing.orElseGet(() -> VocStandardRate.builder()
-                            .articleNo(art).chemicalCode(code).build());
+                            .section(sec).articleNo(art).chemicalCode(code).build());
                     r.setFormula(norm);
                     r.setKgPerPair(evalFormula(norm));
                     rateRepo.save(r);
@@ -538,24 +602,48 @@ public class VocService {
     // Duplicate (article, chemical) pairs are averaged (matches Excel AVERAGEIFS).
     // ════════════════════════════════════════════════════════════════════════
 
-    private static final int RECIPE_CHEM_COL_START = 6;   // column G (0-based)
-
-    @Transactional
     public WeeklyImportResultDto importRecipe(MultipartFile file) throws IOException {
+        return importRecipe(file, null);
+    }
+
+    /** Section for these rows: {@code sectionOverride} if given, else the workbook's "Data"
+     *  sheet Section column (each VOC file is one section), else SEW. Recipe is section-keyed. */
+    @Transactional
+    public WeeklyImportResultDto importRecipe(MultipartFile file, String sectionOverride) throws IOException {
         WeeklyImportResultDto result = new WeeklyImportResultDto();
         try (Workbook wb = WorkbookFactory.create(file.getInputStream())) {
             Sheet sheet = wb.getSheetAt(0);
+            String section = recipeSection(wb, sectionOverride);
 
-            // Detect WIDE layout: an "Article #" anchor with a chemical header row 3 below
+            // Detect WIDE layout by finding a header cell containing "article" within the first
+            // rows/columns; the chemical-code row then sits 3 rows below that anchor. Generalised
+            // across sections (SEW/ASSY/SF) — the recipe key and chemical block are resolved below.
             int anchor = -1;
+            outer:
             for (int i = 0; i <= Math.min(sheet.getLastRowNum(), 20); i++) {
                 Row r = sheet.getRow(i);
-                String a = r != null ? getString(r.getCell(0)) : null;
-                if (a != null && a.toLowerCase().contains("article")) { anchor = i; break; }
+                if (r == null) continue;
+                for (int c = 0; c <= 7; c++) {
+                    if (headerContains(r.getCell(c), "article")) { anchor = i; break outer; }
+                }
             }
-            Row chemRow = anchor >= 0 ? sheet.getRow(anchor + 3) : null;
-            boolean wide = chemRow != null
-                    && getString(chemRow.getCell(RECIPE_CHEM_COL_START)) != null;
+            Row headerRow = anchor >= 0 ? sheet.getRow(anchor) : null;
+            Row chemRow   = anchor >= 0 ? sheet.getRow(anchor + 3) : null;
+
+            // Chemical columns = the code row's populated cells, de-duplicated to the FIRST
+            // occurrence of each code. The "DB" sheet repeats the chemical matrix in a second
+            // block with different dosages, but the workbook's own per-chemical sheets read only
+            // the first block (their AVERAGEIFS point at DB!G/H…), so block 2 must be ignored.
+            Map<Integer, String> chemCols = new LinkedHashMap<>();
+            Set<String> seenCodes = new HashSet<>();
+            if (chemRow != null) {
+                for (int c = 0; c < chemRow.getLastCellNum(); c++) {
+                    String name = getString(chemRow.getCell(c));
+                    if (name != null && !name.isBlank() && seenCodes.add(name.trim()))
+                        chemCols.put(c, name.trim());
+                }
+            }
+            boolean wide = anchor >= 0 && !chemCols.isEmpty();
 
             // Accumulate sum + count per (article, chemical) for averaging
             Map<String, double[]> agg = new LinkedHashMap<>();   // key -> {sum, count}
@@ -564,15 +652,13 @@ public class VocService {
             Map<String, VocRecipeArticle> articleMeta = new LinkedHashMap<>(); // article -> identity row
 
             if (wide) {
-                Map<Integer, String> chemCols = new LinkedHashMap<>();
-                for (int c = RECIPE_CHEM_COL_START; c < chemRow.getLastCellNum(); c++) {
-                    String name = getString(chemRow.getCell(c));
-                    if (name != null && !name.isBlank()) chemCols.put(c, name.trim());
-                }
-                if (chemCols.isEmpty()) {
-                    result.getErrors().add("No chemical columns found in the DB header row.");
-                    return result;
-                }
+                int chemStart = chemCols.keySet().stream().min(Integer::compareTo).orElse(Integer.MAX_VALUE);
+                // Identity columns resolved by header label so shifted layouts still map correctly.
+                int patternCol = headerCol(headerRow, "pattern", 0, chemStart);
+                int styleCol   = headerCol(headerRow, "style", 0, chemStart);
+                int quotaCol   = headerCol(headerRow, "quota", 0, chemStart);
+                int baseFCol   = (quotaCol >= 0 && quotaCol + 1 < chemStart) ? quotaCol + 1 : -1;
+
                 // Register any new chemical column in the master, reading its header tiers
                 // (manufacturer = anchor row, base = anchor+1, type = anchor+2).
                 Row manuRow = sheet.getRow(anchor);
@@ -592,18 +678,19 @@ public class VocService {
                 for (int i = anchor + 4; i <= sheet.getLastRowNum(); i++) {
                     Row row = sheet.getRow(i);
                     if (row == null) continue;
-                    // Column B holds the literal article; column A is a "=B" mirror formula.
-                    String article = getString(row.getCell(1));
-                    if (article == null || article.isBlank()) article = getString(row.getCell(0));
-                    if (article == null || article.isBlank()) continue;
+                    // Recipe key = column A. The workbook joins production to the recipe on DB!$A,
+                    // a per-section formula ("=B" for SEW, LEFT(B,11)/REF for ASSY/SF) whose result
+                    // Excel caches; we read that cached value. Blank rows cache as "0".
+                    String article = getString(row.getCell(0));
+                    if (article == null || article.isBlank() || article.equals("0")) continue;
                     article = article.trim();
-                    // Identity columns C/D/E/F (model code, model name, E/F bases)
+                    // Identity columns (model code / name / base counts) by resolved header label.
                     articleMeta.computeIfAbsent(article, k -> VocRecipeArticle.builder()
                             .articleNo(k)
-                            .modelCode(getString(row.getCell(2)))
-                            .modelName(getString(row.getCell(3)))
-                            .baseE(getDouble(row.getCell(4)))
-                            .baseF(getDouble(row.getCell(5)))
+                            .modelCode(patternCol >= 0 ? getString(row.getCell(patternCol)) : null)
+                            .modelName(styleCol >= 0 ? getString(row.getCell(styleCol)) : null)
+                            .baseE(quotaCol >= 0 ? getDouble(row.getCell(quotaCol)) : null)
+                            .baseF(baseFCol >= 0 ? getDouble(row.getCell(baseFCol)) : null)
                             .build());
                     for (Map.Entry<Integer, String> e : chemCols.entrySet()) {
                         Cell cell = row.getCell(e.getKey());
@@ -639,8 +726,9 @@ public class VocService {
                 String[] parts = keyParts.get(e.getKey());
                 double avg = e.getValue()[0] / e.getValue()[1];
                 Optional<VocStandardRate> existing =
-                        rateRepo.findByArticleNoAndChemicalCode(parts[0], parts[1]);
+                        rateRepo.findBySectionAndArticleNoAndChemicalCode(section, parts[0], parts[1]);
                 VocStandardRate r = existing.orElseGet(VocStandardRate::new);
+                r.setSection(section);
                 r.setArticleNo(parts[0]);
                 r.setChemicalCode(parts[1]);
                 r.setKgPerPair(avg);
@@ -669,6 +757,44 @@ public class VocService {
         keyParts.putIfAbsent(key, new String[]{article, chemical});
     }
 
+    /** Section for a recipe import: explicit override, else the workbook's "Data" sheet
+     *  Section column (each VOC file is one section), else the default. */
+    private String recipeSection(Workbook wb, String override) {
+        if (override != null && !override.isBlank()) return override.trim();
+        Sheet data = wb.getSheet("Data");
+        if (data != null) {
+            for (int i = 1; i <= Math.min(data.getLastRowNum(), 50); i++) {
+                Row r = data.getRow(i);
+                String s = r != null ? getString(r.getCell(1)) : null;   // col B = Section
+                if (s != null && !s.isBlank()) return s.trim();
+            }
+        }
+        return DEFAULT_SECTION;
+    }
+
+    /** Recipe map key: section + cleaned article, both lower-cased. */
+    private static String recipeKey(String section, String cleanedArticle) {
+        return (section == null ? DEFAULT_SECTION : section).toLowerCase() + "|" + cleanedArticle.toLowerCase();
+    }
+
+    /** True if the cell's text contains {@code keyword} (case-insensitive). */
+    private boolean headerContains(Cell cell, String keyword) {
+        String s = getString(cell);
+        return s != null && s.toLowerCase().contains(keyword);
+    }
+
+    /** First column (left of the chemical block, excluding the article column) whose header
+     *  contains {@code keyword}; -1 if none. Lets identity columns be found regardless of layout. */
+    private int headerCol(Row header, String keyword, int excludeCol, int before) {
+        if (header == null) return -1;
+        int max = Math.min(before, header.getLastCellNum());
+        for (int c = 0; c < max; c++) {
+            if (c == excludeCol) continue;
+            if (headerContains(header.getCell(c), keyword)) return c;
+        }
+        return -1;
+    }
+
     // ════════════════════════════════════════════════════════════════════════
     // Monthly report
     // ════════════════════════════════════════════════════════════════════════
@@ -685,6 +811,13 @@ public class VocService {
             fallback.add(DEFAULT_SECTION);
             return fallback;
         }
+        return sections;
+    }
+
+    /** Sections that actually own a recipe (SEW/ASSY/SF) — feeds the recipe-page selector. */
+    public List<String> getRecipeSections() {
+        List<String> sections = rateRepo.findDistinctSections();
+        if (sections.isEmpty()) sections = new ArrayList<>(List.of(DEFAULT_SECTION));
         return sections;
     }
 
@@ -778,15 +911,17 @@ public class VocService {
             chemMap.put(c.getCode().toLowerCase(), c);
         }
 
-        // Output per (date, section, line)
-        Map<String, Integer> outputMap = new HashMap<>();
-        for (Object[] o : productionRepo.sumOutputByDateSectionLine(from, to)) {
-            LocalDate d = (LocalDate) o[0];
-            String sec = (String) o[1];
-            String ln = (String) o[2];
-            long out = o[3] != null ? ((Number) o[3]).longValue() : 0L;
-            outputMap.put(outputKey(d, sec, ln), (int) out);
+        // Output per (date, section, line) from the VOC "Data" sheet (voc_production),
+        // the same source the workbook uses. Article shares within a line sum to the line
+        // total, so accumulate as double then round once per (date, section, line).
+        List<VocProduction> vocProd = vocProductionRepo.findByProductionDateBetween(from, to);
+        Map<String, Double> outputAccum = new HashMap<>();
+        for (VocProduction p : vocProd) {
+            outputAccum.merge(outputKey(p.getProductionDate(), p.getSection(), p.getLine()),
+                    p.getOutput() != null ? p.getOutput() : 0.0, Double::sum);
         }
+        Map<String, Integer> outputMap = new HashMap<>();
+        outputAccum.forEach((k, v) -> outputMap.put(k, (int) Math.round(v)));
 
         Map<String, VocReportRowDto> rowMap = new LinkedHashMap<>();
         Map<String, VocChemicalSummaryDto> chemSummary = new LinkedHashMap<>();
@@ -844,7 +979,7 @@ public class VocService {
         report.setRows(new ArrayList<>(rowMap.values()));
         report.setChemicals(new ArrayList<>(chemSummary.values()));
 
-        buildReconciliation(report, consumptions, chemMap, from, to, filter, chemFilter);
+        buildReconciliation(report, consumptions, vocProd, chemMap, from, to, filter, chemFilter);
         return report;
     }
 
@@ -874,48 +1009,44 @@ public class VocService {
     // ════════════════════════════════════════════════════════════════════════
 
     private void buildReconciliation(VocReportDto report, List<VocConsumption> consumptions,
+                                     List<VocProduction> production,
                                      Map<String, VocChemical> chemMap, LocalDate from, LocalDate to,
                                      VocReportFilter filter, Set<String> chemFilter) {
         // Sections that VOC actually tracks this month
         Set<String> consSections = new HashSet<>();
         for (VocConsumption c : consumptions) consSections.add(c.getSection());
 
-        // ── Allowance + output per date, from production (output × recipe, no markup) ──
-        List<DailyProduction> production =
-                productionRepo.findByProductionDateBetweenOrderByProductionDateAscSectionAscLineAsc(from, to);
-
+        // ── Allowance + output per date, from VOC production (output × recipe, no markup) ──
+        // voc_production (the workbook's "Data" sheet) already carries the VOC section
+        // (SEW/ASSY/SF) and the per-article output share apportioned from the sheet's slot
+        // weights, so allowance is a plain Σ output × recipe — matching the numbered sheets.
         Map<String, Map<String, Double>> recipe = loadRecipeMap();
 
-        Map<LocalDate, Integer> outputByDate = new TreeMap<>();
+        Map<LocalDate, Double> outputByDate = new TreeMap<>();
         Map<LocalDate, Map<String, Double>> allowance = new TreeMap<>();
-        Map<String, Map<String, Double>> allowanceByLine = new TreeMap<>();   // EFF per-line pivot
+        Map<String, Map<String, Double>> allowanceByLine = new TreeMap<>();   // per-line pivot
         Set<String> chemsPresent = new TreeSet<>();
 
-        for (DailyProduction p : production) {
-            if (!consSections.contains(p.getSection())) continue;
-            if (filter.hasSection() && !filter.section().equals(p.getSection())) continue;
+        for (VocProduction p : production) {
+            String sec = p.getSection();
+            if (!consSections.contains(sec)) continue;
+            if (filter.hasSection() && !filter.section().equals(sec)) continue;
             if (filter.hasLine() && !filter.line().equals(p.getLine())) continue;
             LocalDate d = p.getProductionDate();
-            outputByDate.merge(d, p.getTotalOutput() != null ? p.getTotalOutput() : 0, Integer::sum);
+            double out = p.getOutput() != null ? p.getOutput() : 0.0;
+            outputByDate.merge(d, out, Double::sum);
 
-            // Allowance weighted per time slot: Σ slot.output × recipe(slot.article, chem),
-            // matching the workbook numbered sheets. A slot whose article has no recipe
-            // contributes 0 (intended — no silent fallback to the day's first article).
-            if (p.getDetails() == null) continue;
-            for (DailyProductionDetail slot : p.getDetails()) {
-                if (slot.getArticleNo() == null || slot.getArticleNo().trim().isEmpty()
-                        || slot.getOutput() == null) continue;
-                String a = SectionMetrics.ArticleKey.parse(slot.getArticleNo()).cleanedArticle();
-                Map<String, Double> rec = a != null ? recipe.get(a.toLowerCase()) : null;
-                if (rec == null) continue;
-                for (Map.Entry<String, Double> e : rec.entrySet()) {
-                    if (!chemFilter.isEmpty() && !chemFilter.contains(e.getKey().toLowerCase())) continue;
-                    String chem = canonicalChem(e.getKey(), chemMap);
-                    double allowKg = slot.getOutput() * e.getValue();
-                    allowance.computeIfAbsent(d, k -> new HashMap<>()).merge(chem, allowKg, Double::sum);
-                    allowanceByLine.computeIfAbsent(p.getLine(), k -> new HashMap<>()).merge(chem, allowKg, Double::sum);
-                    chemsPresent.add(chem);
-                }
+            // A produced article with no recipe contributes 0 (intended — no silent fallback).
+            String a = SectionMetrics.ArticleKey.parse(p.getArticleNo()).cleanedArticle();
+            Map<String, Double> rec = a != null ? recipe.get(recipeKey(sec, a)) : null;
+            if (rec == null) continue;
+            for (Map.Entry<String, Double> e : rec.entrySet()) {
+                if (!chemFilter.isEmpty() && !chemFilter.contains(e.getKey().toLowerCase())) continue;
+                String chem = canonicalChem(e.getKey(), chemMap);
+                double allowKg = out * e.getValue();
+                allowance.computeIfAbsent(d, k -> new HashMap<>()).merge(chem, allowKg, Double::sum);
+                allowanceByLine.computeIfAbsent(p.getLine(), k -> new HashMap<>()).merge(chem, allowKg, Double::sum);
+                chemsPresent.add(chem);
             }
         }
 
@@ -949,7 +1080,7 @@ public class VocService {
         for (LocalDate d : allDates) {
             VocReconcileRowDto row = new VocReconcileRowDto();
             row.setDate(d);
-            row.setOutput(outputByDate.getOrDefault(d, 0));
+            row.setOutput((int) Math.round(outputByDate.getOrDefault(d, 0.0)));
             row.setVocGrams(netVocByDate.getOrDefault(d, 0.0) * 1000.0);
 
             Map<String, Double> dayActual = actual.getOrDefault(d, Map.of());
@@ -1105,7 +1236,7 @@ public class VocService {
         for (VocStandardRate r : rateRepo.findAll()) {
             String a = SectionMetrics.ArticleKey.parse(r.getArticleNo()).cleanedArticle();
             if (a == null) continue;
-            recipe.computeIfAbsent(a.toLowerCase(), k -> new HashMap<>())
+            recipe.computeIfAbsent(recipeKey(r.getSection(), a), k -> new HashMap<>())
                     .put(r.getChemicalCode(), r.getKgPerPair());
         }
         return recipe;
@@ -1143,7 +1274,8 @@ public class VocService {
         List<VocSubconReportDto.Row> rows = new ArrayList<>();
         for (VocSubconEntry e : entries) {
             String art = SectionMetrics.ArticleKey.parse(e.getArticleNo()).cleanedArticle();
-            Map<String, Double> rec = art != null ? recipe.get(art.toLowerCase()) : null;
+            // ponytail: subcon (CEMENT) is SEW's; key its recipe to SEW.
+            Map<String, Double> rec = art != null ? recipe.get(recipeKey(DEFAULT_SECTION, art)) : null;
             int out = e.getOutput() != null ? e.getOutput() : 0;
 
             // actual + reuse per chemical from the detail rows
@@ -1231,13 +1363,23 @@ public class VocService {
         systemLogService.logAction("SAVE_VOC_SUBCON", date + " | " + subcon + " | " + article + " | " + chem);
     }
 
-    /** Batch upsert: one submit saves every chemical actual for a (date, subcontractor,
-     *  article). Builds the header once. Rows with neither actual nor reuse are skipped. */
+    /** Batch upsert (legacy: always overwrites). Returns the number saved. */
     @Transactional
     public int saveSubconBatch(LocalDate date, String subcontractor, String articleNo, Integer output,
                                List<String> chemicalCode, List<Double> actualKg, List<Double> reuseKg) {
+        return saveSubconBatch(date, subcontractor, articleNo, output, chemicalCode, actualKg, reuseKg, true).saved();
+    }
+
+    /** Batch save with confirm-before-overwrite. A chemical whose detail already exists on the
+     *  (date, subcontractor, article) header is skipped + reported as a conflict unless
+     *  {@code overwrite}. New chemicals are added. Builds the header once. */
+    @Transactional
+    public BatchResult saveSubconBatch(LocalDate date, String subcontractor, String articleNo, Integer output,
+                               List<String> chemicalCode, List<Double> actualKg, List<Double> reuseKg,
+                               boolean overwrite) {
+        List<String> conflicts = new ArrayList<>();
         if (date == null || subcontractor == null || subcontractor.isBlank()
-                || articleNo == null || articleNo.isBlank() || chemicalCode == null) return 0;
+                || articleNo == null || articleNo.isBlank() || chemicalCode == null) return new BatchResult(0, conflicts);
         final String subF = subcontractor.trim(), artF = articleNo.trim();
         VocSubconEntry entry = subconRepo
                 .findByProductionDateAndSubcontractorAndArticleNo(date, subF, artF)
@@ -1259,15 +1401,18 @@ public class VocService {
                 entry.getDetails().add(VocSubconDetail.builder()
                         .entry(entry).chemicalCode(chemF)
                         .actualKg(act != null ? act : 0.0).reuseKg(reuse != null ? reuse : 0.0).build());
-            } else {
+                saved++;
+            } else if (overwrite) {
                 detail.setActualKg(act != null ? act : 0.0);
                 detail.setReuseKg(reuse != null ? reuse : 0.0);
+                saved++;
+            } else {
+                conflicts.add(chemF);
             }
-            saved++;
         }
         subconRepo.save(entry);
         systemLogService.logAction("SAVE_VOC_SUBCON_BATCH", date + " | " + subF + " | " + artF + " | " + saved + " chem");
-        return saved;
+        return new BatchResult(saved, conflicts);
     }
 
     public void deleteSubconEntry(Long id) {
@@ -1457,19 +1602,24 @@ public class VocService {
                 Optional<VocChemical> existing = chemicalRepo.findByCodeIgnoreCase(code);
                 VocChemical c = existing.orElseGet(VocChemical::new);
                 c.setCode(code);
-                c.setMaterialType(normalizeMaterialType(getString(row.getCell(1))));
-                c.setClassification(getString(row.getCell(2)));
-                c.setManufacturer(getString(row.getCell(3)));
-                c.setVocFactor(factor != null ? factor : 0.0);
+                // A chemical code is shared across sections; a section's R sheet may leave VOC/price
+                // blank or 0 (ASSY/OS do). Only overwrite when the incoming value is present, so one
+                // section's blanks never wipe another section's real factor/price.
+                setIfPresent(getString(row.getCell(1)), v -> c.setMaterialType(normalizeMaterialType(v)));
+                setIfPresent(getString(row.getCell(2)), c::setClassification);
+                setIfPresent(getString(row.getCell(3)), c::setManufacturer);
+                if (factor != null && factor > 0) c.setVocFactor(factor);
+                else if (c.getVocFactor() == null) c.setVocFactor(0.0);
                 if (fullR) {
-                    c.setUnit(getString(row.getCell(5)));
-                    c.setContainerSizeKg(getDouble(row.getCell(6)));
-                    c.setContainerPrice(getDouble(row.getCell(8)));
-                    c.setPricePerKg(getDouble(row.getCell(9)));      // $/KG
-                    c.setPriceRefNote(getString(row.getCell(10)));   // "Date" — date or text
+                    setIfPresent(getString(row.getCell(5)), c::setUnit);
+                    setIfPositive(getDouble(row.getCell(6)), c::setContainerSizeKg);
+                    setIfPositive(getDouble(row.getCell(8)), c::setContainerPrice);
+                    setIfPositive(getDouble(row.getCell(9)), c::setPricePerKg);   // $/KG
+                    setIfPresent(getString(row.getCell(10)), c::setPriceRefNote); // "Date" — date or text
                 } else {
-                    c.setPricePerKg(getDouble(row.getCell(5)));      // legacy 6-col template
+                    setIfPositive(getDouble(row.getCell(5)), c::setPricePerKg);   // legacy 6-col template
                 }
+                if (c.getMaterialType() == null) c.setMaterialType("SOLVENT");
                 if (c.getActive() == null) c.setActive(true);
                 chemicalRepo.save(c);
 
@@ -1481,16 +1631,34 @@ public class VocService {
         return result;
     }
 
+    /** Apply {@code value} via {@code setter} only when it is non-blank (preserves existing data). */
+    private static void setIfPresent(String value, java.util.function.Consumer<String> setter) {
+        if (value != null && !value.isBlank()) setter.accept(value);
+    }
+
+    /** Apply {@code value} via {@code setter} only when it is a positive number. */
+    private static void setIfPositive(Double value, java.util.function.Consumer<Double> setter) {
+        if (value != null && value > 0) setter.accept(value);
+    }
+
     // ════════════════════════════════════════════════════════════════════════
-    // Excel import — consumption ("Actual" sheet layout)
-    // Columns: Date | Section | Line | Chemical | Quantity Kg | Reuse Kg
+    // Excel import — consumption ("Actual" sheet). Two layouts, auto-detected by width:
+    //   FULL "Actual" (≥10 cols): Date|Section|Line|Chemical|Production|Throw|Reuse|MatType|Class|Mfr|VOC
+    //   LEGACY template (6 cols): Date|Section|Line|Chemical|Quantity Kg|Reuse Kg
+    // Consumed qty = Production/Quantity (col 4); reuse = col 6 (full) or col 5 (legacy).
     // ════════════════════════════════════════════════════════════════════════
 
     @Transactional
     public WeeklyImportResultDto importConsumptionFromExcel(MultipartFile file) throws IOException {
         WeeklyImportResultDto result = new WeeklyImportResultDto();
         try (Workbook wb = WorkbookFactory.create(file.getInputStream())) {
-            Sheet sheet = wb.getSheetAt(0);
+            // Raw VOC workbook keeps actual consumption on the "Actual" sheet; the app's own
+            // template (GET /voc/consumption/template) puts it on sheet 0.
+            Sheet sheet = wb.getSheet("Actual") != null ? wb.getSheet("Actual") : wb.getSheetAt(0);
+            Row header = sheet.getRow(0);
+            // 7+ cols = wide "Actual" (Date|Section|Line|Chemical|Production|Throw|Reuse) → reuse col 6;
+            // 6-col legacy template (Date|Section|Line|Chemical|Quantity|Reuse) → reuse col 5.
+            int reuseCol = (header != null && header.getLastCellNum() >= 7) ? 6 : 5;
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
                 if (row == null) { result.setSkipped(result.getSkipped() + 1); continue; }
@@ -1524,7 +1692,7 @@ public class VocService {
                 chemical = chemical.trim();
 
                 Double qty = getDouble(row.getCell(4));
-                Double reuse = getDouble(row.getCell(5));
+                Double reuse = getDouble(row.getCell(reuseCol));
                 if (qty != null && qty < 0) {
                     result.getErrors().add("Row " + (i + 1) + ": Quantity cannot be negative");
                     continue;
@@ -1546,6 +1714,83 @@ public class VocService {
             }
         }
         systemLogService.logAction("IMPORT_VOC_CONSUMPTION", result.toFlashMessage());
+        return result;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // Excel import — production ("Data" sheet). This is the allowance source the
+    // workbook itself uses: allowance = output × recipe. A line that runs several
+    // styles in a day is split per article by the sheet's per-slot weights
+    //   (AB..AP, cols 27..41) against the slot articles (K..Y, cols 10..24),
+    // so we store one row per (date, section, line, article) with output already
+    // apportioned: share = H × Σweight(article) / Σweight(line). Reconciliation
+    // then sums output × recipe — matching the workbook's weighted formula.
+    // Layout (0-based): Date 0 | Section 1 | Line 2 (+ subline 3) | Output H 7.
+    // ════════════════════════════════════════════════════════════════════════
+
+    private static final int DATA_SLOT_FIRST = 10;   // K
+    private static final int DATA_SLOT_COUNT = 15;   // K..Y
+    private static final int DATA_WEIGHT_FIRST = 27; // AB..AP
+
+    @Transactional
+    public WeeklyImportResultDto importVocProduction(MultipartFile file) throws IOException {
+        WeeklyImportResultDto result = new WeeklyImportResultDto();
+        try (Workbook wb = WorkbookFactory.create(file.getInputStream())) {
+            Sheet sheet = wb.getSheet("Data");
+            if (sheet == null) {
+                result.getErrors().add("Không tìm thấy sheet 'Data' trong file");
+                return result;
+            }
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) { result.setSkipped(result.getSkipped() + 1); continue; }
+
+                LocalDate date = getDate(row.getCell(0));
+                if (date == null) { result.setSkipped(result.getSkipped() + 1); continue; }   // header/blank rows
+
+                String section = getString(row.getCell(1));
+                section = (section == null || section.isBlank()) ? DEFAULT_SECTION : section.trim();
+                String line = getString(row.getCell(2));
+                if (line == null || line.isBlank()) { result.setSkipped(result.getSkipped() + 1); continue; }
+                String sub = getString(row.getCell(3));
+                line = (sub != null && !sub.isBlank()) ? line.trim() + sub.trim() : line.trim();
+
+                Double output = getDouble(row.getCell(7));
+                if (output == null || output == 0.0) { result.setSkipped(result.getSkipped() + 1); continue; }
+
+                // Sum each article's slot weights (default weight 1 when the sheet leaves it blank).
+                Map<String, Double> weightByArticle = new LinkedHashMap<>();
+                double totalWeight = 0.0;
+                for (int s = 0; s < DATA_SLOT_COUNT; s++) {
+                    String art = getString(row.getCell(DATA_SLOT_FIRST + s));
+                    if (art == null || art.isBlank()) continue;
+                    Double w = getDouble(row.getCell(DATA_WEIGHT_FIRST + s));
+                    double weight = (w != null && w > 0) ? w : 1.0;
+                    weightByArticle.merge(art.trim(), weight, Double::sum);
+                    totalWeight += weight;
+                }
+                if (weightByArticle.isEmpty() || totalWeight == 0.0) {
+                    result.setSkipped(result.getSkipped() + 1);
+                    continue;
+                }
+
+                for (Map.Entry<String, Double> e : weightByArticle.entrySet()) {
+                    double share = output * (e.getValue() / totalWeight);   // apportion H by slot weight
+                    Optional<VocProduction> existing = vocProductionRepo
+                            .findByProductionDateAndSectionAndLineAndArticleNo(date, section, line, e.getKey());
+                    VocProduction p = existing.orElseGet(VocProduction::new);
+                    p.setProductionDate(date);
+                    p.setSection(section);
+                    p.setLine(line);
+                    p.setArticleNo(e.getKey());
+                    p.setOutput(share);
+                    vocProductionRepo.save(p);
+                    if (existing.isPresent()) result.setUpdated(result.getUpdated() + 1);
+                    else                      result.setInserted(result.getInserted() + 1);
+                }
+            }
+        }
+        systemLogService.logAction("IMPORT_VOC_PRODUCTION", result.toFlashMessage());
         return result;
     }
 

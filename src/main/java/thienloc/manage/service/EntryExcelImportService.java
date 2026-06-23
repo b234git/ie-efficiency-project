@@ -29,9 +29,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Imports the daily-production Excel file. Accepts both:
@@ -165,7 +167,83 @@ public class EntryExcelImportService {
             }
         }
 
-        productionRepository.saveAll(productions);
+        upsertAll(productions);
+    }
+
+    /**
+     * Upsert parsed rows on the natural key (date, section, line): existing rows are
+     * updated in place (scalars + slot details replaced), new rows inserted. Mirrors
+     * the confirm-before-overwrite contract of manual entry — re-importing a day
+     * updates instead of duplicating.
+     */
+    private void upsertAll(List<DailyProduction> parsed) {
+        if (parsed.isEmpty()) return;
+
+        Map<String, DailyProduction> existing = loadExistingByKey(parsed);
+        List<DailyProduction> toInsert = new ArrayList<>();
+
+        for (DailyProduction p : parsed) {
+            DailyProduction ex = existing.get(naturalKey(p.getProductionDate(), p.getSection(), p.getLine()));
+            if (ex == null) {
+                toInsert.add(p);
+                continue;
+            }
+            ex.setMp(p.getMp());
+            ex.setDli(p.getDli());
+            ex.setIdl(p.getIdl());
+            ex.setWt(p.getWt());
+            ex.setRft(p.getRft());
+            ex.setAllowance(p.getAllowance());
+            ex.setTotalOutput(p.getTotalOutput());
+            ex.getDetails().clear();
+            // Force orphan-removal DELETEs before re-INSERTs (unique daily_production_id, time_slot).
+            productionRepository.flush();
+            for (DailyProductionDetail d : p.getDetails()) {
+                ex.getDetails().add(DailyProductionDetail.builder()
+                        .dailyProduction(ex)
+                        .timeSlot(d.getTimeSlot())
+                        .articleNo(d.getArticleNo())
+                        .output(0)
+                        .build());
+            }
+        }
+        productionRepository.saveAll(toInsert);
+    }
+
+    /** Load existing rows (with details) for the parsed date range, keyed by natural key. */
+    private Map<String, DailyProduction> loadExistingByKey(List<DailyProduction> parsed) {
+        LocalDate min = parsed.get(0).getProductionDate();
+        LocalDate max = min;
+        for (DailyProduction p : parsed) {
+            if (p.getProductionDate().isBefore(min)) min = p.getProductionDate();
+            if (p.getProductionDate().isAfter(max)) max = p.getProductionDate();
+        }
+        Map<String, DailyProduction> map = new java.util.HashMap<>();
+        for (DailyProduction e : productionRepository
+                .findByProductionDateBetweenOrderByProductionDateAscSectionAscLineAsc(min, max)) {
+            map.putIfAbsent(naturalKey(e.getProductionDate(), e.getSection(), e.getLine()), e);
+        }
+        return map;
+    }
+
+    private static String naturalKey(LocalDate date, String section, String line) {
+        return date + "|" + section + "|" + line;
+    }
+
+    /** Existing (date, section, line) keys in the date range covered by the valid preview rows. */
+    private Set<String> existingKeysFor(List<EntryImportPreviewDto.RowPreview> rows) {
+        LocalDate min = null, max = null;
+        for (EntryImportPreviewDto.RowPreview r : rows) {
+            if (!r.isValid() || r.getProductionDate() == null) continue;
+            if (min == null || r.getProductionDate().isBefore(min)) min = r.getProductionDate();
+            if (max == null || r.getProductionDate().isAfter(max)) max = r.getProductionDate();
+        }
+        if (min == null) return Set.of();
+        Set<String> keys = new HashSet<>();
+        for (Object[] row : productionRepository.sumOutputByDateSectionLine(min, max)) {
+            keys.add(naturalKey((LocalDate) row[0], (String) row[1], (String) row[2]));
+        }
+        return keys;
     }
 
     public EntryImportPreviewDto parseForPreview(MultipartFile file) throws IOException {
@@ -255,11 +333,25 @@ public class EntryExcelImportService {
 
         int validCount = (int) rows.stream().filter(EntryImportPreviewDto.RowPreview::isValid).count();
 
+        // Tag each valid row NEW/UPDATE against existing (date, section, line) so the
+        // confirm screen tells the user how many rows will overwrite vs insert.
+        Set<String> existingKeys = existingKeysFor(rows);
+        int newCount = 0, updateCount = 0;
+        for (EntryImportPreviewDto.RowPreview r : rows) {
+            if (!r.isValid()) continue;
+            boolean update = existingKeys.contains(
+                    naturalKey(r.getProductionDate(), r.getSection(), r.getLine()));
+            r.setStatus(update ? "UPDATE" : "NEW");
+            if (update) updateCount++; else newCount++;
+        }
+
         EntryImportPreviewDto result = EntryImportPreviewDto.builder()
                 .filename(file.getOriginalFilename())
                 .totalRows(rows.size())
                 .validRows(validCount)
                 .errorRows(rows.size() - validCount)
+                .newCount(newCount)
+                .updateCount(updateCount)
                 .rows(rows)
                 .build();
         meterRegistry.timer("excel.entry.parse").record(System.nanoTime() - t0, TimeUnit.NANOSECONDS);

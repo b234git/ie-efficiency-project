@@ -82,10 +82,14 @@
 .pivot .t1 { display:block; line-height:1.15; }
 .pivot .t2 { display:block; line-height:1.1; font-size:.74em; font-weight:400; opacity:.75; }
 
-/* Week bands + ranking chips + total rows */
-.week-band td { background:#eef3fb; border-top:2px solid #cfe0f7; padding:6px 10px; position:sticky; left:0; }
-.band-wrap { position:sticky; left:10px; display:inline-flex; gap:14px; align-items:center; flex-wrap:wrap; }
-.band-label { font-weight:700; color:#1c4e9d; }
+/* Per-week blocks (each = header strip + its own table) + ranking chips + total rows */
+.week-block { margin:0 0 22px; }
+.week-head { display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap;
+             background:#eef3fb; border:1px solid #cfe0f7; border-bottom:none;
+             border-radius:8px 8px 0 0; padding:10px 12px; }
+.week-block .table-wrapper { border:1px solid #cfe0f7; border-top:none; border-radius:0 0 8px 8px; }
+.band-label { font-weight:700; color:#1c4e9d; font-size:.92rem; padding:5px 12px;
+              background:#dbe7fb; border:1px solid #c3d7f4; border-radius:6px; white-space:nowrap; }
 .band-rank { font-size:.78rem; color:#6c757d; font-weight:600; }
 .chip { display:inline-block; padding:1px 8px; border-radius:10px; font-size:.75rem;
         font-weight:700; margin-left:4px; white-space:nowrap; }
@@ -95,6 +99,32 @@
 .row-total td:first-child { background:#f1f3f5; }
 .row-grand td { background:#e9ecef; font-weight:700; border-top:2px solid #adb5bd; }
 .row-grand td:first-child { background:#e9ecef; }
+
+/* ── DIFFERENCE centerpiece: primary section + folded secondary ──────────── */
+.voc-primary { margin-top:14px; }
+.voc-primary .primary-head { display:flex; align-items:center; gap:18px; flex-wrap:wrap; margin-bottom:8px; }
+.voc-primary .primary-head h3 { margin:0; }
+.voc-secondary { margin-top:24px; border:1px solid #e9ecef; border-radius:8px; padding:0 14px 14px; }
+.voc-secondary > summary { cursor:pointer; font-weight:700; padding:12px 2px; color:#495057; list-style:none; }
+.voc-secondary > summary::before { content:'▸ '; }
+.voc-secondary[open] > summary::before { content:'▾ '; }
+
+/* Heatmap cells (bg set inline by JS from data-ratio; text normalised to dark) */
+.pivot.heatmap td[data-ratio] { color:#212529; }
+.pivot .t2-neg { color:#dc3545; opacity:1; }
+.heat-over  { background:rgba(220,53,69,.45); }
+.heat-under { background:rgba(13,110,253,.35); }
+
+/* Per-week HIGH/LOW ranking panels (% sheet AC/AF) — compact 5-row TYPE | % tables */
+.rank-tables { display:flex; gap:12px; }
+.rank-mini { border-collapse:collapse; font-size:.7rem; background:#fff; white-space:nowrap;
+             box-shadow:0 1px 3px rgba(0,0,0,.10); border-radius:5px; overflow:hidden; }
+.rank-mini th, .rank-mini td { border:1px solid #e6e6e6; padding:2px 10px; text-align:left; line-height:1.5; }
+.rank-mini thead tr:first-child th { color:#fff; text-align:center; letter-spacing:.3px; padding:3px 8px; }
+.rank-high thead tr:first-child th { background:#dc3545; }
+.rank-low  thead tr:first-child th { background:#198754; }
+.rank-mini thead tr:nth-child(2) th { background:#f3f4f6; color:#666; font-size:.64rem; }
+.rank-mini tbody td:last-child { text-align:right; font-variant-numeric:tabular-nums; font-weight:700; }
 
 /* ── "Actual" sheet faithful table (entry) ───────────────────────────────── */
 .actual-tbl { border-collapse:collapse; width:100%; font-size:.9rem; }

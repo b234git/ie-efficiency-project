@@ -10,6 +10,7 @@ import thienloc.manage.entity.DailyProduction;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -53,6 +54,10 @@ public interface DailyProductionRepository extends JpaRepository<DailyProduction
         // ─── Distinct months ───────────────────────────────────────────────────────
         @Query("SELECT DISTINCT TO_CHAR(p.productionDate, 'YYYY-MM') FROM DailyProduction p ORDER BY 1 DESC")
         List<String> findDistinctMonths();
+
+        // ─── Natural-key lookup for upsert-with-confirmation (manual entry + import) ──
+        Optional<DailyProduction> findFirstByProductionDateAndSectionAndLine(
+                        LocalDate productionDate, String section, String line);
 
         // ─── Output sums per (date, section, line) — feeds the VOC g/pair report ─────
         @Query("SELECT p.productionDate, p.section, p.line, SUM(p.totalOutput) FROM DailyProduction p " +

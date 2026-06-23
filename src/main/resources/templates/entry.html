@@ -32,6 +32,11 @@
     <div class="container">
         <h2 th:text="#{entry.title}">Enter Production Data</h2>
 
+        <div style="margin-bottom:12px;">
+            <a th:href="@{/entry/grid}" class="btn btn-primary" style="padding:8px 15px; text-decoration:none;"
+               th:text="#{entrygrid.link}">Fast entry (grid)</a>
+        </div>
+
         <!-- Flash messages -->
         <div th:if="${param.success}" style="color:green; margin-bottom:10px;" th:text="#{entry.save.success}">Entry saved successfully!</div>
         <div th:if="${param.edited}" style="color:green; margin-bottom:10px;" th:text="#{entry.edit.success}">Entry updated successfully!</div>
@@ -39,6 +44,24 @@
         <div th:if="${param.requestSent}" style="color:#17a2b8; margin-bottom:10px;" th:text="#{entry.request.sent}">Edit request sent to manager/admin!</div>
         <div th:if="${validationError}" style="color:#dc3545; margin-bottom:10px; padding:10px; background:#f8d7da; border:1px solid #f5c2c7; border-radius:4px;">
             ⚠ <span th:text="${validationError}"></span>
+        </div>
+
+        <!-- Duplicate (date, section, line) — ask before overwriting -->
+        <div th:if="${duplicateConflict}" style="margin-bottom:14px; padding:12px 14px; background:#fff3cd; border:1px solid #ffe69c; border-radius:6px;">
+            <div style="margin-bottom:8px;">
+                ⚠ <strong th:text="#{entry.duplicate.title}">A record already exists.</strong>
+                <span th:text="${duplicateConflict}"></span>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <form th:action="@{/entry/save/confirm}" method="post" style="display:inline;">
+                    <button type="submit" class="btn btn-primary" style="padding:6px 14px;"
+                            th:text="#{entry.duplicate.overwrite}">Update existing</button>
+                </form>
+                <form th:action="@{/entry/save/cancel}" method="post" style="display:inline;">
+                    <button type="submit" class="btn" style="padding:6px 14px; background:#6c757d; color:#fff;"
+                            th:text="#{entry.duplicate.cancel}">Cancel</button>
+                </form>
+            </div>
         </div>
 
         <!-- EXCEL IMPORT SECTION -->

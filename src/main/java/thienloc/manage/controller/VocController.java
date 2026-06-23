@@ -1,5 +1,6 @@
 package thienloc.manage.controller;
 
+import jakarta.servlet.http.HttpSession;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +24,7 @@ import thienloc.manage.entity.VocConsumption;
 import thienloc.manage.entity.VocRecipeArticle;
 import thienloc.manage.entity.VocStandardRate;
 import thienloc.manage.service.VocService;
+import thienloc.manage.util.BytesMultipartFile;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -37,6 +39,92 @@ public class VocController {
 
     @Autowired
     private VocService vocService;
+
+    @Autowired
+    private thienloc.manage.service.VocExcelExportService vocExcelExportService;
+
+    // Session keys + holders for confirm-before-overwrite on batch saves.
+    private static final String CONS_PENDING = "vocConsumptionPending";
+    private static final String SUBCON_PENDING = "vocSubconPending";
+
+    private static class ConsPending {
+        LocalDate date; String section; String line;
+        List<String> chemicalCode; List<String> quantityKg; List<String> reuseKg;
+    }
+
+    private static class SubconPending {
+        LocalDate date; String subcontractor; String articleNo; Integer output; String month;
+        List<String> chemicalCode; List<String> actualKg; List<String> reuseKg;
+    }
+
+    // Import preview→confirm (all 4 VOC imports share one flow + one confirm page).
+    private static final String IMPORT_PENDING = "vocImportPending";
+
+    private static class ImportPending implements java.io.Serializable {
+        String type; String section; String filename; byte[] bytes; WeeklyImportResultDto result;
+    }
+
+    private String previewImportFlow(MultipartFile file, String type, HttpSession session,
+                                     org.springframework.ui.Model model, RedirectAttributes ra) {
+        return previewImportFlow(file, type, null, session, model, ra);
+    }
+
+    /** Parse-only preview: dry-run the import (rolled back) and hold the file for commit. */
+    private String previewImportFlow(MultipartFile file, String type, String section, HttpSession session,
+                                     org.springframework.ui.Model model, RedirectAttributes ra) {
+        if (file.isEmpty()) {
+            ra.addFlashAttribute("error", "Please select an Excel file.");
+            return "redirect:" + redirectFor(type);
+        }
+        try {
+            byte[] bytes = file.getBytes();
+            WeeklyImportResultDto result = vocService.previewImport(
+                    new BytesMultipartFile("file", file.getOriginalFilename(), bytes), type, section);
+            ImportPending p = new ImportPending();
+            p.type = type; p.section = section; p.filename = file.getOriginalFilename(); p.bytes = bytes; p.result = result;
+            session.setAttribute(IMPORT_PENDING, p);
+            model.addAttribute("result", result);
+            model.addAttribute("filename", p.filename);
+            model.addAttribute("importType", type);
+            return "voc-import-confirm";
+        } catch (RuntimeException | IOException e) {
+            ra.addFlashAttribute("error", "Import error: " + e.getMessage());
+            return "redirect:" + redirectFor(type);
+        }
+    }
+
+    @PostMapping("/import/commit")
+    public String commitImport(HttpSession session, RedirectAttributes ra) {
+        ImportPending p = (ImportPending) session.getAttribute(IMPORT_PENDING);
+        session.removeAttribute(IMPORT_PENDING);
+        if (p == null) return "redirect:/voc/";
+        try {
+            WeeklyImportResultDto result = vocService.commitImport(
+                    new BytesMultipartFile("file", p.filename, p.bytes), p.type, p.section);
+            ra.addFlashAttribute(result.getErrors().isEmpty() ? "success" : "error", result.toFlashMessage());
+            ra.addFlashAttribute("importResult", result);
+        } catch (RuntimeException | IOException e) {
+            ra.addFlashAttribute("error", "Import error: " + e.getMessage());
+        }
+        return "redirect:" + redirectFor(p.type);
+    }
+
+    @PostMapping("/import/cancel")
+    public String cancelImport(HttpSession session) {
+        ImportPending p = (ImportPending) session.getAttribute(IMPORT_PENDING);
+        session.removeAttribute(IMPORT_PENDING);
+        return "redirect:" + (p != null ? redirectFor(p.type) : "/voc/");
+    }
+
+    private static String redirectFor(String type) {
+        return switch (type) {
+            case "consumption" -> "/voc/entry";
+            case "chemicals" -> "/voc/chemicals";
+            case "recipe" -> "/voc/recipe";
+            case "subcon" -> "/voc/subcon";
+            default -> "/voc/";
+        };
+    }
 
     // ════════════════════════════════════════════════════════════════════════
     // Report
@@ -55,6 +143,26 @@ public class VocController {
         VocReportDto report = vocService.getMonthlyReport(filter);
         model.addAttribute("report", report);
         return "voc";
+    }
+
+    /** Download the VOC monthly report (incl. SF/SP VOC-index rollup) as .xlsx. */
+    @GetMapping("/export")
+    public ResponseEntity<InputStreamResource> exportReport(
+            @RequestParam(required = false) String month,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) Integer week,
+            @RequestParam(required = false) String section,
+            @RequestParam(required = false) String line,
+            @RequestParam(required = false) List<String> chems) throws IOException {
+        VocReportFilter filter = new VocReportFilter(month, from, to, week, section, line, chems);
+        VocReportDto report = vocService.getMonthlyReport(filter);
+        ByteArrayInputStream stream = vocExcelExportService.exportMonthlyReport(report);
+        String fname = "VOC_Report_" + (report.getSelectedMonth() != null ? report.getSelectedMonth() : "all") + ".xlsx";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fname)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(new InputStreamResource(stream));
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -86,19 +194,9 @@ public class VocController {
     }
 
     @PostMapping("/chemicals/import")
-    public String importChemicals(@RequestParam("file") MultipartFile file, RedirectAttributes ra) {
-        if (file.isEmpty()) {
-            ra.addFlashAttribute("error", "Please select an Excel file.");
-            return "redirect:/voc/chemicals";
-        }
-        try {
-            WeeklyImportResultDto result = vocService.importChemicalsFromExcel(file);
-            ra.addFlashAttribute(result.getErrors().isEmpty() ? "success" : "error", result.toFlashMessage());
-            ra.addFlashAttribute("importResult", result);
-        } catch (IOException | IllegalArgumentException e) {
-            ra.addFlashAttribute("error", "Import error: " + e.getMessage());
-        }
-        return "redirect:/voc/chemicals";
+    public String importChemicals(@RequestParam("file") MultipartFile file, HttpSession session,
+                                  org.springframework.ui.Model model, RedirectAttributes ra) {
+        return previewImportFlow(file, "chemicals", session, model, ra);
     }
 
     @GetMapping("/chemicals/template")
@@ -155,7 +253,8 @@ public class VocController {
         return "redirect:/voc/entry";
     }
 
-    /** Save every chemical entered for a (date, section, line) in one submit. */
+    /** Save every chemical entered for a (date, section, line) in one submit.
+     *  New rows save immediately; any whose key already exists are held for a confirm step. */
     @PostMapping("/entry/save-batch")
     public String saveConsumptionBatch(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
                                        @RequestParam(required = false, defaultValue = VocService.DEFAULT_SECTION) String section,
@@ -163,17 +262,52 @@ public class VocController {
                                        @RequestParam(required = false) List<String> chemicalCode,
                                        @RequestParam(required = false) List<String> quantityKg,
                                        @RequestParam(required = false) List<String> reuseKg,
+                                       HttpSession session,
                                        RedirectAttributes ra) {
         try {
-            int n = vocService.saveConsumptionBatch(date, section, line, chemicalCode,
-                    parseDoubles(quantityKg), parseDoubles(reuseKg));
-            ra.addFlashAttribute("success", "Saved " + n + " chemical(s)");
+            VocService.BatchResult r = vocService.saveConsumptionBatch(date, section, line, chemicalCode,
+                    parseDoubles(quantityKg), parseDoubles(reuseKg), false);
+            if (r.saved() > 0) ra.addFlashAttribute("success", "Saved " + r.saved() + " chemical(s)");
+            if (!r.conflicts().isEmpty()) {
+                ConsPending p = new ConsPending();
+                p.date = date; p.section = section; p.line = line;
+                p.chemicalCode = chemicalCode; p.quantityKg = quantityKg; p.reuseKg = reuseKg;
+                session.setAttribute(CONS_PENDING, p);
+                ra.addFlashAttribute("duplicateConflict", String.join(", ", r.conflicts()));
+            }
         } catch (RuntimeException e) {
             ra.addFlashAttribute("error", "Save failed: " + e.getMessage());
         }
         ra.addAttribute("date", date);
         ra.addAttribute("section", section);
         ra.addAttribute("line", line);
+        return "redirect:/voc/entry";
+    }
+
+    /** Confirm: overwrite the existing consumption rows that the batch save flagged. */
+    @PostMapping("/entry/save-batch/confirm")
+    public String confirmConsumptionBatch(HttpSession session, RedirectAttributes ra) {
+        ConsPending p = (ConsPending) session.getAttribute(CONS_PENDING);
+        session.removeAttribute(CONS_PENDING);
+        if (p == null) return "redirect:/voc/entry";
+        int n = vocService.saveConsumptionBatch(p.date, p.section, p.line, p.chemicalCode,
+                parseDoubles(p.quantityKg), parseDoubles(p.reuseKg), true).saved();
+        ra.addFlashAttribute("success", "Updated " + n + " chemical(s)");
+        ra.addAttribute("date", p.date);
+        ra.addAttribute("section", p.section);
+        ra.addAttribute("line", p.line);
+        return "redirect:/voc/entry";
+    }
+
+    @PostMapping("/entry/save-batch/cancel")
+    public String cancelConsumptionBatch(HttpSession session, RedirectAttributes ra) {
+        ConsPending p = (ConsPending) session.getAttribute(CONS_PENDING);
+        session.removeAttribute(CONS_PENDING);
+        if (p != null) {
+            ra.addAttribute("date", p.date);
+            ra.addAttribute("section", p.section);
+            ra.addAttribute("line", p.line);
+        }
         return "redirect:/voc/entry";
     }
 
@@ -192,19 +326,16 @@ public class VocController {
     }
 
     @PostMapping("/consumption/import")
-    public String importConsumption(@RequestParam("file") MultipartFile file, RedirectAttributes ra) {
-        if (file.isEmpty()) {
-            ra.addFlashAttribute("error", "Please select an Excel file.");
-            return "redirect:/voc/entry";
-        }
-        try {
-            WeeklyImportResultDto result = vocService.importConsumptionFromExcel(file);
-            ra.addFlashAttribute(result.getErrors().isEmpty() ? "success" : "error", result.toFlashMessage());
-            ra.addFlashAttribute("importResult", result);
-        } catch (IOException | IllegalArgumentException e) {
-            ra.addFlashAttribute("error", "Import error: " + e.getMessage());
-        }
-        return "redirect:/voc/entry";
+    public String importConsumption(@RequestParam("file") MultipartFile file, HttpSession session,
+                                    org.springframework.ui.Model model, RedirectAttributes ra) {
+        return previewImportFlow(file, "consumption", session, model, ra);
+    }
+
+    /** Import the VOC workbook's "Data" sheet → production output (allowance source). */
+    @PostMapping("/production/import")
+    public String importProduction(@RequestParam("file") MultipartFile file, HttpSession session,
+                                   org.springframework.ui.Model model, RedirectAttributes ra) {
+        return previewImportFlow(file, "production", session, model, ra);
     }
 
     @GetMapping("/consumption/template")
@@ -228,6 +359,19 @@ public class VocController {
         model.addAttribute("subcontractors", vocService.getSubcontractors());
         model.addAttribute("chemicals", vocService.getActiveChemicals());
         return "voc-subcon";
+    }
+
+    /** Download the subcon report (CEMENT/ACTUAL CEMENT) as .xlsx. */
+    @GetMapping("/subcon/export")
+    public ResponseEntity<InputStreamResource> exportSubcon(@RequestParam(required = false) String month)
+            throws IOException {
+        VocSubconReportDto report = vocService.getSubconReport(month);
+        ByteArrayInputStream stream = vocExcelExportService.exportSubcon(report);
+        String fname = "VOC_Subcon_" + (report.getSelectedMonth() != null ? report.getSelectedMonth() : "all") + ".xlsx";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fname)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(new InputStreamResource(stream));
     }
 
     @PostMapping("/subcon/save")
@@ -260,15 +404,44 @@ public class VocController {
                                   @RequestParam(required = false) List<String> actualKg,
                                   @RequestParam(required = false) List<String> reuseKg,
                                   @RequestParam(required = false) String month,
+                                  HttpSession session,
                                   RedirectAttributes ra) {
         try {
-            int n = vocService.saveSubconBatch(date, subcontractor, articleNo, output, chemicalCode,
-                    parseDoubles(actualKg), parseDoubles(reuseKg));
-            ra.addFlashAttribute("success", "Saved " + n + " chemical(s)");
+            VocService.BatchResult r = vocService.saveSubconBatch(date, subcontractor, articleNo, output, chemicalCode,
+                    parseDoubles(actualKg), parseDoubles(reuseKg), false);
+            if (r.saved() > 0) ra.addFlashAttribute("success", "Saved " + r.saved() + " chemical(s)");
+            if (!r.conflicts().isEmpty()) {
+                SubconPending p = new SubconPending();
+                p.date = date; p.subcontractor = subcontractor; p.articleNo = articleNo; p.output = output;
+                p.chemicalCode = chemicalCode; p.actualKg = actualKg; p.reuseKg = reuseKg; p.month = month;
+                session.setAttribute(SUBCON_PENDING, p);
+                ra.addFlashAttribute("duplicateConflict", String.join(", ", r.conflicts()));
+            }
         } catch (RuntimeException e) {
             ra.addFlashAttribute("error", "Save failed: " + e.getMessage());
         }
         if (month != null && !month.isBlank()) ra.addAttribute("month", month);
+        return "redirect:/voc/subcon";
+    }
+
+    /** Confirm: overwrite the existing subcon chemical actuals the batch save flagged. */
+    @PostMapping("/subcon/save-batch/confirm")
+    public String confirmSubconBatch(HttpSession session, RedirectAttributes ra) {
+        SubconPending p = (SubconPending) session.getAttribute(SUBCON_PENDING);
+        session.removeAttribute(SUBCON_PENDING);
+        if (p == null) return "redirect:/voc/subcon";
+        int n = vocService.saveSubconBatch(p.date, p.subcontractor, p.articleNo, p.output, p.chemicalCode,
+                parseDoubles(p.actualKg), parseDoubles(p.reuseKg), true).saved();
+        ra.addFlashAttribute("success", "Updated " + n + " chemical(s)");
+        if (p.month != null && !p.month.isBlank()) ra.addAttribute("month", p.month);
+        return "redirect:/voc/subcon";
+    }
+
+    @PostMapping("/subcon/save-batch/cancel")
+    public String cancelSubconBatch(HttpSession session, RedirectAttributes ra) {
+        SubconPending p = (SubconPending) session.getAttribute(SUBCON_PENDING);
+        session.removeAttribute(SUBCON_PENDING);
+        if (p != null && p.month != null && !p.month.isBlank()) ra.addAttribute("month", p.month);
         return "redirect:/voc/subcon";
     }
 
@@ -283,19 +456,9 @@ public class VocController {
     }
 
     @PostMapping("/subcon/import")
-    public String importSubcon(@RequestParam("file") MultipartFile file, RedirectAttributes ra) {
-        if (file.isEmpty()) {
-            ra.addFlashAttribute("error", "Please select an Excel file.");
-            return "redirect:/voc/subcon";
-        }
-        try {
-            WeeklyImportResultDto result = vocService.importSubconFromExcel(file);
-            ra.addFlashAttribute(result.getErrors().isEmpty() ? "success" : "error", result.toFlashMessage());
-            ra.addFlashAttribute("importResult", result);
-        } catch (IOException | IllegalArgumentException e) {
-            ra.addFlashAttribute("error", "Import error: " + e.getMessage());
-        }
-        return "redirect:/voc/subcon";
+    public String importSubcon(@RequestParam("file") MultipartFile file, HttpSession session,
+                               org.springframework.ui.Model model, RedirectAttributes ra) {
+        return previewImportFlow(file, "subcon", session, model, ra);
     }
 
     @GetMapping("/subcon/template")
@@ -315,13 +478,16 @@ public class VocController {
     @GetMapping("/recipe")
     public String recipe(@RequestParam(defaultValue = "0") int page,
                          @RequestParam(required = false) String q,
+                         @RequestParam(defaultValue = "SEW") String section,
                          Model model) {
         Page<VocRecipeArticle> articles = vocService.getRecipeArticlesPage(page, q);
-        model.addAttribute("grid", vocService.buildRecipeGrid(articles.getContent()));
+        model.addAttribute("grid", vocService.buildRecipeGrid(articles.getContent(), section));
         model.addAttribute("currentPage", articles.getNumber());
         model.addAttribute("totalPages", articles.getTotalPages());
         model.addAttribute("totalElements", articles.getTotalElements());
         model.addAttribute("q", q);
+        model.addAttribute("section", section);
+        model.addAttribute("sections", vocService.getRecipeSections());
         model.addAttribute("chemicals", vocService.getActiveChemicals());
         return "voc-recipe";
     }
@@ -351,16 +517,18 @@ public class VocController {
                                   @RequestParam(required = false) Double baseF,
                                   @RequestParam(required = false) List<String> chemicalCode,
                                   @RequestParam(required = false) List<String> formula,
+                                  @RequestParam(defaultValue = "SEW") String section,
                                   @RequestParam(defaultValue = "0") int page,
                                   @RequestParam(required = false) String q,
                                   RedirectAttributes ra) {
         try {
-            vocService.saveRecipeModel(articleNo, modelCode, modelName, baseE, baseF, chemicalCode, formula);
+            vocService.saveRecipeModel(section, articleNo, modelCode, modelName, baseE, baseF, chemicalCode, formula);
             ra.addFlashAttribute("success", "Saved model " + articleNo);
         } catch (RuntimeException e) {
             ra.addFlashAttribute("error", "Save failed: " + e.getMessage());
         }
         ra.addAttribute("page", page);
+        ra.addAttribute("section", section);
         if (q != null && !q.isBlank()) ra.addAttribute("q", q);
         return "redirect:/voc/recipe";
     }
@@ -418,19 +586,11 @@ public class VocController {
     }
 
     @PostMapping("/recipe/import")
-    public String importRecipe(@RequestParam("file") MultipartFile file, RedirectAttributes ra) {
-        if (file.isEmpty()) {
-            ra.addFlashAttribute("error", "Please select an Excel file.");
-            return "redirect:/voc/recipe";
-        }
-        try {
-            WeeklyImportResultDto result = vocService.importRecipe(file);
-            ra.addFlashAttribute(result.getErrors().isEmpty() ? "success" : "error", result.toFlashMessage());
-            ra.addFlashAttribute("importResult", result);
-        } catch (IOException | IllegalArgumentException e) {
-            ra.addFlashAttribute("error", "Import error: " + e.getMessage());
-        }
-        return "redirect:/voc/recipe";
+    public String importRecipe(@RequestParam("file") MultipartFile file,
+                               @RequestParam(required = false) String section,
+                               HttpSession session,
+                               org.springframework.ui.Model model, RedirectAttributes ra) {
+        return previewImportFlow(file, "recipe", section, session, model, ra);  // blank → auto-detect from Data sheet
     }
 
     @GetMapping("/recipe/template")

@@ -16,6 +16,14 @@ public interface IProductionService {
 
     Long saveDailyProduction(DailyProductionDto dto, String username);
 
+    /**
+     * Same as {@link #saveDailyProduction(DailyProductionDto, String)} but, for a NEW entry
+     * (no id) that collides with an existing (date, section, line), behaviour depends on
+     * {@code overwrite}: false → throw {@link thienloc.manage.exception.DuplicateRecordException};
+     * true → update the existing record in place. Used by the confirm-before-update flow.
+     */
+    Long saveDailyProduction(DailyProductionDto dto, String username, boolean overwrite);
+
     List<DailyProductionDto> getDashboardData(LocalDate date);
 
     List<DailyProductionDto> getDashboardDataRange(LocalDate from, LocalDate to);
