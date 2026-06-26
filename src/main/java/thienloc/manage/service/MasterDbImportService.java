@@ -5,7 +5,7 @@ import org.apache.poi.util.IOUtils;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.concurrent.TimeUnit;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import thienloc.manage.dto.ImportPreviewDto;
@@ -24,16 +24,14 @@ import java.util.stream.Collectors;
  * for MasterDb records. Extracted from MasterDbService to keep file sizes under 250 lines.
  */
 @Service
+@RequiredArgsConstructor
 public class MasterDbImportService {
 
-    @Autowired
-    private MasterDbRepository masterDbRepository;
+    private final MasterDbRepository masterDbRepository;
 
-    @Autowired
-    private MasterDbService masterDbService;
+    private final MasterDbService masterDbService;
 
-    @Autowired
-    private MeterRegistry meterRegistry;
+    private final MeterRegistry meterRegistry;
 
     // ─── Direct Import (backward compat) ────────────────────────────────────
 
@@ -43,7 +41,7 @@ public class MasterDbImportService {
 
     public int importFromExcel(MultipartFile file, String dataMonth) throws IOException {
         long t0 = System.nanoTime();
-        IOUtils.setByteArrayMaxOverride(100_000_000); // 100MB max
+        IOUtils.setByteArrayMaxOverride(256 * 1024 * 1024); // 256MB — match global cap (large EFF workbooks)
 
         // Pre-load all existing records once instead of querying per row
         Map<String, MasterDb> existingMap = loadExistingAsMap(dataMonth);
@@ -77,7 +75,7 @@ public class MasterDbImportService {
     // ─── Preview Import (Duplicate Detection) ───────────────────────────────
 
     public ImportPreviewDto previewImport(MultipartFile file, String dataMonth) throws IOException {
-        IOUtils.setByteArrayMaxOverride(100_000_000); // 100MB max
+        IOUtils.setByteArrayMaxOverride(256 * 1024 * 1024); // 256MB — match global cap (large EFF workbooks)
 
         ImportPreviewDto preview = ImportPreviewDto.builder()
                 .dataMonth(dataMonth)
@@ -90,6 +88,9 @@ public class MasterDbImportService {
 
         int newCount = 0, updateCount = 0;
 
+        // A source DB sheet can reuse the same REF for two different article rows; the
+        // (ref, data_month) unique key allows only one, so keep the first occurrence.
+        java.util.Set<String> seenRefs = new java.util.HashSet<>();
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
             Sheet sheet = getDbSheet(workbook);
 
@@ -102,6 +103,8 @@ public class MasterDbImportService {
 
                 String articleNo = getCellValueAsString(row.getCell(1));
                 if (articleNo == null || articleNo.trim().isEmpty()) continue;
+
+                if (!seenRefs.add(ref)) continue; // duplicate REF in file → keep first
 
                 MasterDb existing = existingMap.get(ref);
                 boolean isUpdate = existing != null;

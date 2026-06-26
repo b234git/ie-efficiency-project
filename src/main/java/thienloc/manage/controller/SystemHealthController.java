@@ -2,7 +2,7 @@ package thienloc.manage.controller;
 
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.info.InfoEndpoint;
 import org.springframework.stereotype.Controller;
@@ -24,16 +24,14 @@ import java.util.Map;
  */
 @Controller
 @RequestMapping("/admin/system")
+@RequiredArgsConstructor
 public class SystemHealthController {
 
-    @Autowired
-    private MeterRegistry meterRegistry;
+    private final MeterRegistry meterRegistry;
 
-    @Autowired
-    private DataSource dataSource;
+    private final DataSource dataSource;
 
-    @Autowired
-    private InfoEndpoint infoEndpoint;
+    private final InfoEndpoint infoEndpoint;
 
     @Value("${info.app.name:IE-Eff}")
     private String appName;

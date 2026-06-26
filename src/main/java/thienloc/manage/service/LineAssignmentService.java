@@ -1,6 +1,6 @@
 package thienloc.manage.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,25 +23,21 @@ import java.util.*;
  * governs WHICH section+line rows a user may write and view.
  */
 @Service
+@RequiredArgsConstructor
 public class LineAssignmentService {
 
     /** Roles that bypass line scoping entirely. */
     private static final Set<String> EXEMPT_ROLES = Set.of("ROLE_ADMIN", "ROLE_MANAGER");
 
-    @Autowired
-    private UserLineAssignmentRepository assignmentRepository;
+    private final UserLineAssignmentRepository assignmentRepository;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private DailyProductionRepository dailyProductionRepository;
+    private final DailyProductionRepository dailyProductionRepository;
 
-    @Autowired
-    private SplitEntryRepository splitEntryRepository;
+    private final SplitEntryRepository splitEntryRepository;
 
-    @Autowired
-    private SystemLogService systemLogService;
+    private final SystemLogService systemLogService;
 
     /** A user's effective scope: what (section, line) they may write/view. */
     public static final class LineScope {

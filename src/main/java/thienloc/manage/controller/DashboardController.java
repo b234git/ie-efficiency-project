@@ -1,6 +1,6 @@
 package thienloc.manage.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -15,10 +15,10 @@ import java.util.List;
 
 @Controller
 @RequestMapping("/dashboard")
+@RequiredArgsConstructor
 public class DashboardController {
 
-    @Autowired
-    private IProductionService productionService;
+    private final IProductionService productionService;
 
     @GetMapping("/")
     public String showDashboard(

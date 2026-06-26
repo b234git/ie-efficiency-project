@@ -3,7 +3,7 @@ package thienloc.manage.service;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -19,13 +19,13 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class MasterDbService {
 
     private static final Logger log = LoggerFactory.getLogger(MasterDbService.class);
     private static final int PAGE_SIZE = 10;
 
-    @Autowired
-    private MasterDbRepository masterDbRepository;
+    private final MasterDbRepository masterDbRepository;
 
     // ─── Migration: backfill dataMonth for existing records ──────────────────────
 

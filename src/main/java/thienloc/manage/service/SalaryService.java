@@ -5,7 +5,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import thienloc.manage.exception.ServiceUnavailableException;
@@ -29,6 +29,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class SalaryService implements ISalaryService {
 
     private static final Logger log = LoggerFactory.getLogger(SalaryService.class);
@@ -43,13 +44,13 @@ public class SalaryService implements ISalaryService {
         SECTION_GRADE_LABELS.put("BUFF", Arrays.asList("A","B","C","LL1","LL2","LL3","CB4","CB5","CB6"));
     }
 
-    @Autowired private MeterRegistry meterRegistry;
+    private final MeterRegistry meterRegistry;
 
-    @Autowired private IProductionService productionService;
-    @Autowired private WeeklyTrackingService weeklyTrackingService;
-    @Autowired private NewStyleEntryRepository newStyleRepo;
-    @Autowired private EffIncentiveRateRepository rateRepo;
-    @Autowired private EffMultiplierRepository multiplierRepo;
+    private final IProductionService productionService;
+    private final WeeklyTrackingService weeklyTrackingService;
+    private final NewStyleEntryRepository newStyleRepo;
+    private final EffIncentiveRateRepository rateRepo;
+    private final EffMultiplierRepository multiplierRepo;
 
     // ── Public API ────────────────────────────────────────────────────────────
 
@@ -183,9 +184,14 @@ public class SalaryService implements ISalaryService {
         for (DailyProductionDto dto : dtos) {
             DayRow row = new DayRow();
             row.setDate(dto.getProductionDate());
-            row.setMp(dto.getMp() != null ? dto.getMp().intValue() : 0);
+            // MP (Actual) = DLI (effective direct labor), matching Excel sheet S col F (=D!I)
+            // and the EFF-Salary denominator — NOT dto.getMp() (DL, the gross head-count).
+            row.setMp(dto.getDli() != null ? dto.getDli() : 0.0);
             row.setWt(dto.getWt() != null ? dto.getWt() : 0.0);
-            row.setTargetQuota(dto.getTarget() != null ? dto.getTarget() : 0.0);
+            // Excel sheet S "Quota" (target) = the WT-based standard quota, consistent with the
+            // EFF column (EFF = output / ((quota/MP)·DLI·allowance)). Not dto.getTarget(), which is
+            // the EFF-KPI target output used by the dashboards.
+            row.setTargetQuota(dto.getStdQuota() != null ? dto.getStdQuota() : 0.0);
             row.setOutput(dto.getOutput() != null ? dto.getOutput().doubleValue() : 0.0);
 
             // Target MP = standard MP resolved by the EFF calculator (same robust article

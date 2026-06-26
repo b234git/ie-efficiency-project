@@ -10,6 +10,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@SuppressWarnings("resource") // in-memory XSSFWorkbooks built for assertions; not worth lifecycle plumbing in tests
 class HeaderResolverTest {
 
     /** Build a sheet with row 1 = headers, row 2 = optional sub-headers. */

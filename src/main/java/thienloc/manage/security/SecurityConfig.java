@@ -2,7 +2,7 @@ package thienloc.manage.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
@@ -24,12 +24,12 @@ import java.io.IOException;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
         private static final ObjectMapper ERROR_MAPPER = new ObjectMapper();
 
-        @Autowired
-        private FeatureBasedAuthorizationManager featureBasedAuthorizationManager;
+        private final FeatureBasedAuthorizationManager featureBasedAuthorizationManager;
 
         @Bean
         public static PasswordEncoder passwordEncoder() {

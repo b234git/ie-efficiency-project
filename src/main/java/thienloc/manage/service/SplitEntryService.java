@@ -1,6 +1,6 @@
 package thienloc.manage.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import thienloc.manage.dto.DailyProductionDetailDto;
@@ -27,25 +27,20 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class SplitEntryService implements ISplitEntryService {
 
-    @Autowired
-    private SplitEntryRepository splitEntryRepository;
+    private final SplitEntryRepository splitEntryRepository;
 
-    @Autowired
-    private DailyProductionRepository dailyProductionRepository;
+    private final DailyProductionRepository dailyProductionRepository;
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
 
-    @Autowired
-    private IProductionService productionService;
+    private final IProductionService productionService;
 
-    @Autowired
-    private SplitEntryMapper splitEntryMapper;
+    private final SplitEntryMapper splitEntryMapper;
 
-    @Autowired
-    private LineAssignmentService lineAssignmentService;
+    private final LineAssignmentService lineAssignmentService;
 
     // ─── Page 1: Manpower ─────────────────────────────────────────────────────────
 

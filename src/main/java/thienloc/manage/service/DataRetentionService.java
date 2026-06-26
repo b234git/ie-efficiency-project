@@ -2,7 +2,7 @@ package thienloc.manage.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import thienloc.manage.entity.SplitEntry;
 import thienloc.manage.entity.SplitEntryStatus;
@@ -18,6 +18,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class DataRetentionService {
 
     private static final Logger log = LoggerFactory.getLogger(DataRetentionService.class);
@@ -25,26 +26,19 @@ public class DataRetentionService {
     private static final int GRACE_PERIOD_DAYS = 30;
     private static final int INCOMPLETE_DAYS = 3;
 
-    @Autowired
-    private MasterDbRepository masterDbRepository;
+    private final MasterDbRepository masterDbRepository;
 
-    @Autowired
-    private SplitEntryRepository splitEntryRepository;
+    private final SplitEntryRepository splitEntryRepository;
 
-    @Autowired
-    private DailyProductionRepository dailyProductionRepository;
+    private final DailyProductionRepository dailyProductionRepository;
 
-    @Autowired
-    private VocConsumptionRepository vocConsumptionRepository;
+    private final VocConsumptionRepository vocConsumptionRepository;
 
-    @Autowired
-    private SystemLogRepository systemLogRepository;
+    private final SystemLogRepository systemLogRepository;
 
-    @Autowired
-    private NotificationService notificationService;
+    private final NotificationService notificationService;
 
-    @Autowired
-    private SystemLogService systemLogService;
+    private final SystemLogService systemLogService;
 
     public void checkAndNotify() {
         LocalDate now = LocalDate.now();

@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import thienloc.manage.entity.User;
 import thienloc.manage.security.SecurityConfig;
 import thienloc.manage.service.AdminService;
+import thienloc.manage.service.LineAssignmentService;
 import thienloc.manage.service.NotificationService;
 import thienloc.manage.service.UserService;
 
@@ -42,6 +43,9 @@ class AdminApiControllerTest {
 
     @MockitoBean
     private AdminService adminService;
+
+    @MockitoBean
+    private LineAssignmentService lineAssignmentService;
 
     @MockitoBean
     private NotificationService notificationService;

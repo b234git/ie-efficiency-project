@@ -1,6 +1,6 @@
 package thienloc.manage.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -8,10 +8,10 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import thienloc.manage.service.NotificationService;
 
 @ControllerAdvice
+@RequiredArgsConstructor
 public class GlobalModelAdvice {
 
-    @Autowired
-    private NotificationService notificationService;
+    private final NotificationService notificationService;
 
     @ModelAttribute("notificationCount")
     public long notificationCount(Authentication auth) {

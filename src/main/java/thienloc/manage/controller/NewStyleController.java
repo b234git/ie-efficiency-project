@@ -2,7 +2,7 @@ package thienloc.manage.controller;
 
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -24,13 +24,12 @@ import java.time.format.DateTimeFormatter;
 
 @Controller
 @RequestMapping("/new-style")
+@RequiredArgsConstructor
 public class NewStyleController {
 
-    @Autowired
-    private NewStyleService service;
+    private final NewStyleService service;
 
-    @Autowired
-    private SystemLogService systemLogService;
+    private final SystemLogService systemLogService;
 
     @GetMapping({"", "/"})
     public String index(@RequestParam(required = false) String month, Model model) {

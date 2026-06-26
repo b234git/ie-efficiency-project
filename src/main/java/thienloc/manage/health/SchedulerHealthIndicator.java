@@ -1,6 +1,6 @@
 package thienloc.manage.health;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.stereotype.Component;
@@ -10,12 +10,12 @@ import java.time.Duration;
 import java.time.Instant;
 
 @Component("schedulerHealth")
+@RequiredArgsConstructor
 public class SchedulerHealthIndicator implements HealthIndicator {
 
     private static final Duration MAX_SILENCE = Duration.ofHours(25);
 
-    @Autowired
-    private DataRetentionScheduler scheduler;
+    private final DataRetentionScheduler scheduler;
 
     @Override
     public Health health() {

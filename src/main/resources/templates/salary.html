@@ -170,7 +170,7 @@
                                  data-effective=${block.effectivePct},
                                  data-new-style-count=${block.newStyleCount},
                                  data-new-style-incentive=${block.newStyleIncentive}"
-                        onclick="exportBlockToExcel(this)">
+                        onclick="openExportDialog(this)">
                     📊 Export to Excel
                 </button>
             </div>
@@ -269,11 +269,132 @@
 
 </div><!-- end container -->
 
+<style>
+    .export-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45);
+        display:flex; align-items:center; justify-content:center; z-index:1050; }
+    .export-modal { background:#fff; border-radius:10px; max-width:96vw; max-height:92vh;
+        display:flex; flex-direction:column; box-shadow:0 10px 40px rgba(0,0,0,.3); }
+    .export-modal h3 { margin:0; padding:14px 20px; border-bottom:1px solid #e5e7eb; font-size:1.05rem; }
+    .export-modal .hint { padding:8px 20px; color:#555; font-size:.85rem; background:#f8fafc;
+        border-bottom:1px solid #eef2f7; }
+    .export-modal .preview-wrap { overflow:auto; padding:12px 20px; }
+    .export-modal table { border-collapse:collapse; font-size:.85rem; }
+    .export-modal th, .export-modal td { border:1px solid #cbd5e1; padding:5px 10px;
+        white-space:nowrap; cursor:pointer; user-select:none; text-align:center; }
+    .export-modal th { background:#1f6a3e; color:#fff; }
+    .export-modal td.rowhead { background:#fff45a; color:#000; font-weight:600; }
+    .export-modal .hidden-mark { background:#fee2e2 !important; color:#b91c1c !important;
+        text-decoration:line-through; opacity:.55; }
+    .export-modal th.hidden-mark { background:#7f1d1d !important; color:#fecaca !important; }
+    .export-modal .modal-footer { padding:12px 20px; border-top:1px solid #e5e7eb;
+        display:flex; gap:10px; justify-content:flex-end; align-items:center; }
+    .export-modal .modal-footer .count { margin-right:auto; color:#64748b; font-size:.82rem; }
+    .export-modal .modal-footer button { padding:8px 16px; border-radius:6px; border:none;
+        cursor:pointer; font-weight:600; }
+    .export-modal .btn-cancel { background:#e5e7eb; color:#111; }
+    .export-modal .btn-reset  { background:#fff7ed; color:#9a3412; border:1px solid #fed7aa !important; }
+    .export-modal .btn-export { background:#1d6f42; color:#fff; }
+</style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script th:inline="javascript">
     var SELECTED_MONTH = /*[[${selectedMonth}]]*/ '';
 
-    function exportBlockToExcel(btn) {
+    function escHtml(s) {
+        return String(s).replace(/[&<>"]/g, function (ch) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch];
+        });
+    }
+
+    // Step 1: ask the user which columns / rows / cells to hide, then export.
+    // Click a column header → hide that column; click a date (row head) → hide that row;
+    // click any other cell → hide just that cell. Click again to un-hide.
+    function openExportDialog(btn) {
+        if (typeof XLSX === 'undefined') { alert('Không thể xuất Excel. Vui lòng thử lại.'); return; }
+        var block = document.getElementById(btn.getAttribute('data-block-id'));
+        var table = block && block.querySelector('.salary-table');
+        if (!table) return;
+
+        var headers = [];
+        var headerTr = table.querySelector('thead tr.col-row');
+        if (headerTr) headerTr.querySelectorAll('th').forEach(function (th) { headers.push(th.textContent.trim()); });
+        var bodyData = [];
+        table.querySelectorAll('tbody tr').forEach(function (tr) {
+            var r = [];
+            tr.querySelectorAll('td').forEach(function (td) { r.push(td.textContent.trim()); });
+            bodyData.push(r);
+        });
+        if (!headers.length || !bodyData.length) { exportBlockToExcel(btn); return; }
+
+        var hide = { cols: new Set(), rows: new Set(), cells: new Set() };
+
+        var thead = '<thead><tr>';
+        headers.forEach(function (h, c) { thead += '<th data-col="' + c + '" title="Ẩn/hiện cột">' + escHtml(h) + '</th>'; });
+        thead += '</tr></thead>';
+        var tbody = '<tbody>';
+        bodyData.forEach(function (row, r) {
+            tbody += '<tr>';
+            row.forEach(function (val, c) {
+                if (c === 0) tbody += '<td class="rowhead" data-row="' + r + '" data-col="0" title="Ẩn/hiện dòng">' + escHtml(val) + '</td>';
+                else tbody += '<td data-row="' + r + '" data-col="' + c + '" title="Ẩn/hiện ô">' + escHtml(val) + '</td>';
+            });
+            tbody += '</tr>';
+        });
+        tbody += '</tbody>';
+
+        var overlay = document.createElement('div');
+        overlay.className = 'export-modal-overlay';
+        overlay.innerHTML =
+            '<div class="export-modal">' +
+              '<h3>Chọn phần muốn ẩn khỏi file Excel</h3>' +
+              '<div class="hint">Bấm vào <b>tiêu đề cột</b> để ẩn cả cột, vào <b>ngày</b> để ẩn cả dòng, vào <b>ô bất kỳ</b> để ẩn riêng ô đó. Bấm lại để bỏ ẩn.</div>' +
+              '<div class="preview-wrap"><table>' + thead + tbody + '</table></div>' +
+              '<div class="modal-footer">' +
+                '<span class="count"></span>' +
+                '<button type="button" class="btn-reset">Bỏ chọn</button>' +
+                '<button type="button" class="btn-cancel">Hủy</button>' +
+                '<button type="button" class="btn-export">📊 Xuất Excel</button>' +
+              '</div>' +
+            '</div>';
+        document.body.appendChild(overlay);
+
+        var pv = overlay.querySelector('table');
+        var countEl = overlay.querySelector('.count');
+        function refresh() {
+            pv.querySelectorAll('th[data-col]').forEach(function (th) {
+                th.classList.toggle('hidden-mark', hide.cols.has(+th.dataset.col));
+            });
+            pv.querySelectorAll('td').forEach(function (td) {
+                var r = +td.dataset.row, c = +td.dataset.col;
+                var hidden = td.classList.contains('rowhead')
+                    ? (hide.rows.has(r) || hide.cols.has(c))
+                    : (hide.cols.has(c) || hide.rows.has(r) || hide.cells.has(r + ',' + c));
+                td.classList.toggle('hidden-mark', hidden);
+            });
+            var n = hide.cols.size + hide.rows.size + hide.cells.size;
+            countEl.textContent = n ? ('Đang ẩn: ' + hide.cols.size + ' cột, ' + hide.rows.size + ' dòng, ' + hide.cells.size + ' ô') : '';
+        }
+        function toggle(set, v) { if (set.has(v)) set.delete(v); else set.add(v); }
+
+        pv.addEventListener('click', function (e) {
+            var el = e.target.closest('th,td'); if (!el) return;
+            if (el.tagName === 'TH') toggle(hide.cols, +el.dataset.col);
+            else if (el.classList.contains('rowhead')) toggle(hide.rows, +el.dataset.row);
+            else toggle(hide.cells, el.dataset.row + ',' + el.dataset.col);
+            refresh();
+        });
+        function close() { overlay.remove(); }
+        overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+        overlay.querySelector('.btn-cancel').addEventListener('click', close);
+        overlay.querySelector('.btn-reset').addEventListener('click', function () {
+            hide.cols.clear(); hide.rows.clear(); hide.cells.clear(); refresh();
+        });
+        overlay.querySelector('.btn-export').addEventListener('click', function () {
+            close();
+            exportBlockToExcel(btn, hide);
+        });
+    }
+
+    function exportBlockToExcel(btn, hide) {
         var blockId = btn.getAttribute('data-block-id');
         var fileName = btn.getAttribute('data-file-name') || 'salary.xlsx';
         var sheetName = (btn.getAttribute('data-sheet-name') || 'Incentive').substring(0, 31);
@@ -290,7 +411,7 @@
         btn.disabled = true;
 
         try {
-            buildAndSave(btn, block, table, fileName, sheetName);
+            buildAndSave(btn, block, table, fileName, sheetName, hide);
         } catch (err) {
             console.error('Excel export failed', err);
             alert('Xuất Excel thất bại: ' + (err && err.message ? err.message : err));
@@ -300,7 +421,8 @@
         }
     }
 
-    function buildAndSave(btn, block, table, fileName, sheetName) {
+    function buildAndSave(btn, block, table, fileName, sheetName, hide) {
+        hide = hide || { cols: new Set(), rows: new Set(), cells: new Set() };
         var mParts = (SELECTED_MONTH || '').split('-');
         var year = Number(mParts[0]) || new Date().getFullYear();
         var month = Number(mParts[1]) || (new Date().getMonth() + 1);
@@ -315,10 +437,10 @@
         var numCols = headers.length;
 
         var bodyRows = [];
-        table.querySelectorAll('tbody tr').forEach(function (tr) {
+        table.querySelectorAll('tbody tr').forEach(function (tr, rIdx) {
             var r = [];
             tr.querySelectorAll('td').forEach(function (td) { r.push(td.textContent.trim().replace(/\s*₫\s*$/, '')); });
-            bodyRows.push(r);
+            bodyRows.push({ idx: rIdx, cells: r });
         });
 
         var footerRaw = [];
@@ -369,8 +491,9 @@
         aoa.push(headers);
 
         var bodyStart = aoa.length;
-        bodyRows.forEach(function (row) {
-            var parsed = row.slice();
+        bodyRows.forEach(function (rowObj) {
+            if (hide.rows.has(rowObj.idx)) return; // hidden row → removed from the file
+            var parsed = rowObj.cells.slice();
             var dm = /^(\d{1,2})\/(\d{1,2})$/.exec(parsed[0]);
             if (dm) parsed[0] = new Date(year, Number(dm[2]) - 1, Number(dm[1]));
             if (parsed[EFF_COL] != null) {
@@ -381,6 +504,10 @@
                 if (c === EFF_COL) continue;
                 var n = Number(String(parsed[c] || '').replace(/,/g, '').trim());
                 if (!isNaN(n) && parsed[c] !== '') parsed[c] = n;
+            }
+            // hidden cell / hidden column → blank the value (column also collapsed below)
+            for (var hc = 0; hc < parsed.length; hc++) {
+                if (hide.cols.has(hc) || hide.cells.has(rowObj.idx + ',' + hc)) parsed[hc] = '';
             }
             aoa.push(parsed);
         });
@@ -397,6 +524,7 @@
                 var n = Number(String(out[c]).replace(/,/g, '').trim());
                 if (!isNaN(n) && out[c] !== '') out[c] = n;
             }
+            for (var hc = 0; hc < out.length; hc++) { if (hide.cols.has(hc)) out[hc] = ''; }
             aoa.push(out);
             var currRow = aoa.length - 1;
             var cIdx = 0;
@@ -425,6 +553,10 @@
             else if (c === EFF_COL)  w = 9;   // EFF
             cols.push({ wch: w });
         }
+        // Hidden columns: collapse them in Excel (data already blanked above).
+        hide.cols.forEach(function (c) {
+            if (c < cols.length) cols[c].hidden = true; else cols[c] = { hidden: true };
+        });
         ws['!cols'] = cols;
         ws['!views'] = [{ state: 'frozen', ySplit: headerRowIdx + 1, xSplit: 1 }];
 

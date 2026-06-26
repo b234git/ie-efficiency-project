@@ -3,7 +3,7 @@ package thienloc.manage.controller;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
@@ -38,28 +38,22 @@ import java.util.Optional;
 
 @Controller
 @RequestMapping("/split-entry")
+@RequiredArgsConstructor
 public class SplitEntryController {
 
-    @Autowired
-    private ISplitEntryService splitEntryService;
+    private final ISplitEntryService splitEntryService;
 
-    @Autowired
-    private SystemLogService systemLogService;
+    private final SystemLogService systemLogService;
 
-    @Autowired
-    private MeterRegistry meterRegistry;
+    private final MeterRegistry meterRegistry;
 
-    @Autowired
-    private LineSummaryImportService lineSummaryImportService;
+    private final LineSummaryImportService lineSummaryImportService;
 
-    @Autowired
-    private SplitEntryImportService splitEntryImportService;
+    private final SplitEntryImportService splitEntryImportService;
 
-    @Autowired
-    private SplitEntryTemplateService splitEntryTemplateService;
+    private final SplitEntryTemplateService splitEntryTemplateService;
 
-    @Autowired
-    private thienloc.manage.service.LineAssignmentService lineAssignmentService;
+    private final thienloc.manage.service.LineAssignmentService lineAssignmentService;
 
     private static final List<String> SECTIONS = Arrays.asList(
             "SEW",

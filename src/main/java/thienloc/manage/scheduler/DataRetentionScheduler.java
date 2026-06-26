@@ -2,19 +2,19 @@ package thienloc.manage.scheduler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import thienloc.manage.service.DataRetentionService;
 
 import java.time.Instant;
 
 @Component
+@RequiredArgsConstructor
 public class DataRetentionScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(DataRetentionScheduler.class);
 
-    @Autowired
-    private DataRetentionService dataRetentionService;
+    private final DataRetentionService dataRetentionService;
 
     private volatile Instant lastRun;
 

@@ -141,7 +141,7 @@ public class VocExcelExportService {
         for (String ch : chems) cell(h, c++, ch, header);
         cell(h, c++, "g/pair", header);
         cell(h, c++, "Output", header);
-        cell(h, c, "VOC(g)", header);
+        cell(h, c, "VOC(kg)", header);
 
         for (VocReconcileRowDto lr : r.getByLineRows()) {
             row = writeReconcileRow(sheet, row, chems, lr.getLine() != null ? lr.getLine() : "", lr);
@@ -158,7 +158,7 @@ public class VocExcelExportService {
         for (String ch : chems) cell(h, c++, ch, header);
         cell(h, c++, "g/pair", header);
         cell(h, c++, "Output", header);
-        cell(h, c, "VOC(g)", header);
+        cell(h, c, "VOC(kg)", header);
         return row;
     }
 
@@ -171,7 +171,7 @@ public class VocExcelExportService {
         }
         numCell(d, c++, round(dr.getVocPerPair(), 2));
         numCell(d, c++, dr.getOutput());
-        numCell(d, c, round(dr.getVocGrams(), 1));
+        numCell(d, c, round(dr.getVocKg(), 2));
         return row;
     }
 

@@ -2,7 +2,7 @@ package thienloc.manage.controller;
 
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -25,13 +25,12 @@ import java.util.List;
 
 @Controller
 @RequestMapping("/weekly-tracking")
+@RequiredArgsConstructor
 public class WeeklyTrackingController {
 
-    @Autowired
-    private WeeklyTrackingService service;
+    private final WeeklyTrackingService service;
 
-    @Autowired
-    private SystemLogService systemLogService;
+    private final SystemLogService systemLogService;
 
     // ── GET: render page ──────────────────────────────────────────────────────
 

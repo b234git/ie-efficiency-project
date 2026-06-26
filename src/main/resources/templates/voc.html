@@ -100,6 +100,10 @@
                 </label>
             </div>
         </div>
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; white-space:nowrap; font-size:.8rem; color:#495057; align-self:center;">
+            <input type="checkbox" id="hideEmptyCols" onchange="toggleEmptyCols()"/>
+            <span th:text="#{voc.filter.hideempty}">Hide empty/NA columns</span>
+        </label>
         <button type="submit" class="btn btn-primary btn-sm" th:text="#{voc.filter.apply}">Apply</button>
         <a class="btn btn-outline-secondary btn-sm"
            th:href="@{/voc/(month=${report.selectedMonth})}" th:text="#{voc.filter.clear}">✕ Clear</a>
@@ -114,119 +118,7 @@
 
     <div th:if="${report.selectedMonth != null}">
 
-        <!-- ════════ PRIMARY: DIFFERENCE — mirrors the % sheet (week blocks, ratio/diff
-             heatmap cells, weekly Total + HIGH/LOW ranking panels, grand Total) ════════ -->
-        <section class="voc-primary">
-            <div class="primary-head">
-                <h3 th:text="#{voc.tab.reconcile}">Reconciliation (%)</h3>
-                <div class="mode-bar">
-                    <button type="button" class="mode-btn active" onclick="setCellMode('ratio', this)"
-                            th:text="#{voc.reconcile.mode.ratio}">% / Diff</button>
-                    <button type="button" class="mode-btn" onclick="setCellMode('actual', this)"
-                            th:text="#{voc.reconcile.mode.actual}">Actual (kg)</button>
-                    <button type="button" class="mode-btn" onclick="setCellMode('allow', this)"
-                            th:text="#{voc.reconcile.mode.allow}">Allowance (kg)</button>
-                </div>
-            </div>
-
-            <div th:if="${report.reconcileWeeks.isEmpty()}" class="alert alert-info"
-                 th:text="#{voc.reconcile.empty}">
-                No allowance to compare — import the recipe (DB) and make sure production has articles + output.
-            </div>
-            <div th:if="${!report.reconcileWeeks.isEmpty()}">
-                <div class="pivot-legend">
-                    <span th:text="#{voc.reconcile.ratiohint}">Cell = ratio % over diff kg</span>
-                    <span class="cell-nc" th:text="#{voc.reconcile.nc}">NC = no actual</span>
-                    <span class="cell-na" th:text="#{voc.reconcile.na}">NA = no recipe</span>
-                    <span class="heat-over" th:text="#{voc.reconcile.high}">OVER</span>
-                    <span class="heat-under" th:text="#{voc.reconcile.low}">UNDER</span>
-                </div>
-                <!-- One separated block per week: header strip (label + HIGH/LOW panels)
-                     above the week's OWN data table, each with its own Date header bar. -->
-                <div class="week-block" th:each="wk, wkStat : ${report.reconcileWeeks}">
-                    <div class="week-head">
-                        <span class="band-label"
-                              th:text="#{voc.reconcile.week(${wkStat.count})} + ' (' + ${wk.label} + ')'">Week 1</span>
-                        <div class="rank-tables">
-                            <table class="rank-mini rank-high">
-                                <thead>
-                                <tr><th colspan="2" th:text="#{voc.reconcile.highcons}">HIGH CONSUMPTION</th></tr>
-                                <tr><th th:text="#{voc.reconcile.type}">TYPE</th><th th:text="#{voc.reconcile.pct}">%</th></tr>
-                                </thead>
-                                <tbody>
-                                <tr th:each="r, st : ${wk.high}" th:if="${st.index < 5}">
-                                    <td th:text="${r.code}">311BSVN</td>
-                                    <td th:text="${#numbers.formatDecimal(r.ratio * 100, 1, 0)} + '%'">123%</td>
-                                </tr>
-                                <tr th:if="${wk.high.isEmpty()}"><td colspan="2" th:text="#{voc.reconcile.none}">—</td></tr>
-                                </tbody>
-                            </table>
-                            <table class="rank-mini rank-low">
-                                <thead>
-                                <tr><th colspan="2" th:text="#{voc.reconcile.lowcons}">LOW CONSUMPTION</th></tr>
-                                <tr><th th:text="#{voc.reconcile.type}">TYPE</th><th th:text="#{voc.reconcile.pct}">%</th></tr>
-                                </thead>
-                                <tbody>
-                                <tr th:each="r, st : ${wk.low}" th:if="${st.index < 5}">
-                                    <td th:text="${r.code}">GH-708</td>
-                                    <td th:text="${#numbers.formatDecimal(r.ratio * 100, 1, 0)} + '%'">71%</td>
-                                </tr>
-                                <tr th:if="${wk.low.isEmpty()}"><td colspan="2" th:text="#{voc.reconcile.none}">—</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="table-wrapper">
-                        <table class="table pivot mode-ratio heatmap reconcile-week">
-                            <thead>
-                            <tr>
-                                <th th:text="#{voc.col.date}">Date</th>
-                                <th class="num" th:each="chem : ${report.reconcileChemicals}" th:text="${chem}">577NT3</th>
-                                <th class="num" th:text="#{voc.col.gpair}">g/pair</th>
-                                <th class="num" th:text="#{voc.col.output}">Output</th>
-                                <th class="num" th:text="#{voc.col.vocgrams}">VOC (g)</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            <tr th:each="row : ${wk.rows}">
-                                <td th:text="${row.date}">2026-05-01</td>
-                                <th:block th:replace="~{:: rcells(${row})}"/>
-                            </tr>
-                            <tr class="row-total">
-                                <td th:text="#{voc.reconcile.total}">Total</td>
-                                <th:block th:replace="~{:: rcells(${wk.totalRow})}"/>
-                            </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Grand total over the filtered period — its own block -->
-                <div class="week-block" th:if="${report.reconcileTotal != null}">
-                    <div class="table-wrapper">
-                        <table class="table pivot mode-ratio heatmap reconcile-week">
-                            <thead>
-                            <tr>
-                                <th th:text="#{voc.col.date}">Date</th>
-                                <th class="num" th:each="chem : ${report.reconcileChemicals}" th:text="${chem}">577NT3</th>
-                                <th class="num" th:text="#{voc.col.gpair}">g/pair</th>
-                                <th class="num" th:text="#{voc.col.output}">Output</th>
-                                <th class="num" th:text="#{voc.col.vocgrams}">VOC (g)</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            <tr class="row-grand">
-                                <td th:text="#{voc.reconcile.grandtotal}">Total (period)</td>
-                                <th:block th:replace="~{:: rcells(${report.reconcileTotal})}"/>
-                            </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ════════ SECONDARY: summary cards + other views (folded) ════════ -->
+        <!-- ════════ SUMMARY cards + other views (now at the top) ════════ -->
         <details class="voc-secondary" open>
             <summary th:text="#{voc.secondary}">Summary &amp; other views</summary>
 
@@ -272,21 +164,17 @@
                     <tr>
                         <th th:text="#{voc.col.date}">Date</th>
                         <th th:text="#{voc.col.line}">Line</th>
-                        <th class="num" th:text="#{voc.col.output}">Output</th>
                         <th class="num" th:text="#{voc.col.vockg}">VOC (kg)</th>
-                        <th class="num" th:text="#{voc.col.vocgrams}">VOC (g)</th>
                         <th class="num" th:text="#{voc.col.gpair}">g/pair</th>
                         <th class="num" th:text="#{voc.col.water}">Water %</th>
                         <th class="num" th:text="#{voc.col.cost}">Cost ($)</th>
                     </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="bylineBody">
                     <tr th:each="r : ${report.rows}">
                         <td th:text="${r.date}">2026-05-01</td>
                         <td th:text="${r.line}">1A</td>
-                        <td class="num" th:text="${#numbers.formatInteger(r.output, 0, 'COMMA')}">0</td>
                         <td class="num" th:text="${#numbers.formatDecimal(r.vocKg, 1, 3)}">0</td>
-                        <td class="num" th:text="${#numbers.formatDecimal(r.vocGrams, 1, 1)}">0</td>
                         <td class="num" th:text="${#numbers.formatDecimal(r.vocPerPair, 1, 2)}">0</td>
                         <td class="num" th:text="${#numbers.formatDecimal(r.waterPct, 1, 1)} + '%'">0%</td>
                         <td class="num" th:text="${#numbers.formatDecimal(r.cost, 1, 2)}">0</td>
@@ -294,6 +182,7 @@
                     </tbody>
                 </table>
             </div>
+            <div class="pager" id="bylinePager" style="margin-top:10px; display:flex; gap:6px; align-items:center;"></div>
         </div>
 
         <!-- TAB: by chemical -->
@@ -380,6 +269,116 @@
             </div>
         </div>
         </details>
+
+        <!-- ════════ PRIMARY: DIFFERENCE — mirrors the % sheet (week blocks, ratio/diff
+             heatmap cells, weekly Total + HIGH/LOW ranking panels, grand Total) ════════ -->
+        <section class="voc-primary">
+            <div class="primary-head">
+                <h3 th:text="#{voc.tab.reconcile}">Reconciliation (%)</h3>
+                <div class="mode-bar">
+                    <button type="button" class="mode-btn active" onclick="setCellMode('ratio', this)"
+                            th:text="#{voc.reconcile.mode.ratio}">% / Diff</button>
+                    <button type="button" class="mode-btn" onclick="setCellMode('actual', this)"
+                            th:text="#{voc.reconcile.mode.actual}">Actual (kg)</button>
+                    <button type="button" class="mode-btn" onclick="setCellMode('allow', this)"
+                            th:text="#{voc.reconcile.mode.allow}">Allowance (kg)</button>
+                </div>
+            </div>
+
+            <div th:if="${report.reconcileWeeks.isEmpty()}" class="alert alert-info"
+                 th:text="#{voc.reconcile.empty}">
+                No allowance to compare — import the recipe (DB) and make sure production has articles + output.
+            </div>
+            <div th:if="${!report.reconcileWeeks.isEmpty()}">
+                <div class="pivot-legend">
+                    <span th:text="#{voc.reconcile.ratiohint}">Cell = ratio % over diff kg</span>
+                    <span class="cell-nc" th:text="#{voc.reconcile.nc}">NC = no actual</span>
+                    <span class="cell-na" th:text="#{voc.reconcile.na}">NA = no recipe</span>
+                    <span class="heat-over" th:text="#{voc.reconcile.high}">OVER</span>
+                    <span class="heat-under" th:text="#{voc.reconcile.low}">UNDER</span>
+                </div>
+                <!-- Period total over the filtered range — shown first, right under the summary -->
+                <div class="week-block" th:if="${report.reconcileTotal != null}">
+                    <div class="table-wrapper">
+                        <table class="table pivot mode-ratio heatmap reconcile-week">
+                            <thead>
+                            <tr>
+                                <th th:text="#{voc.col.date}">Date</th>
+                                <th class="num chem-col" th:each="chem : ${report.reconcileChemicals}" th:text="${chem}">577NT3</th>
+                                <th class="num" th:text="#{voc.col.gpair}">g/pair</th>
+                                <th class="num" th:text="#{voc.col.vockg}">VOC (kg)</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr class="row-grand">
+                                <td th:text="#{voc.reconcile.grandtotal}">Total (period)</td>
+                                <th:block th:replace="~{:: rcells(${report.reconcileTotal})}"/>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- One separated block per week: header strip (label + HIGH/LOW panels)
+                     above the week's OWN data table, each with its own Date header bar. -->
+                <div class="week-block" th:each="wk, wkStat : ${report.reconcileWeeks}">
+                    <div class="week-head">
+                        <span class="band-label"
+                              th:text="#{voc.reconcile.week(${wkStat.count})} + ' (' + ${wk.label} + ')'">Week 1</span>
+                        <div class="rank-tables">
+                            <table class="rank-mini rank-high">
+                                <thead>
+                                <tr><th colspan="2" th:text="#{voc.reconcile.highcons}">HIGH CONSUMPTION</th></tr>
+                                <tr><th th:text="#{voc.reconcile.type}">TYPE</th><th th:text="#{voc.reconcile.pct}">%</th></tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="r, st : ${wk.high}" th:if="${st.index < 5}">
+                                    <td th:text="${r.code}">311BSVN</td>
+                                    <td th:text="${#numbers.formatDecimal(r.ratio * 100, 1, 0)} + '%'">123%</td>
+                                </tr>
+                                <tr th:if="${wk.high.isEmpty()}"><td colspan="2" th:text="#{voc.reconcile.none}">—</td></tr>
+                                </tbody>
+                            </table>
+                            <table class="rank-mini rank-low">
+                                <thead>
+                                <tr><th colspan="2" th:text="#{voc.reconcile.lowcons}">LOW CONSUMPTION</th></tr>
+                                <tr><th th:text="#{voc.reconcile.type}">TYPE</th><th th:text="#{voc.reconcile.pct}">%</th></tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="r, st : ${wk.low}" th:if="${st.index < 5}">
+                                    <td th:text="${r.code}">GH-708</td>
+                                    <td th:text="${#numbers.formatDecimal(r.ratio * 100, 1, 0)} + '%'">71%</td>
+                                </tr>
+                                <tr th:if="${wk.low.isEmpty()}"><td colspan="2" th:text="#{voc.reconcile.none}">—</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="table pivot mode-ratio heatmap reconcile-week">
+                            <thead>
+                            <tr>
+                                <th th:text="#{voc.col.date}">Date</th>
+                                <th class="num chem-col" th:each="chem : ${report.reconcileChemicals}" th:text="${chem}">577NT3</th>
+                                <th class="num" th:text="#{voc.col.gpair}">g/pair</th>
+                                <th class="num" th:text="#{voc.col.vockg}">VOC (kg)</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="row : ${wk.rows}">
+                                <td th:text="${row.date}">2026-05-01</td>
+                                <th:block th:replace="~{:: rcells(${row})}"/>
+                            </tr>
+                            <tr class="row-total">
+                                <td th:text="#{voc.reconcile.total}">Total</td>
+                                <th:block th:replace="~{:: rcells(${wk.totalRow})}"/>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
 </div>
 
@@ -414,7 +413,7 @@
 <table th:if="${false}">
     <tr>
         <th:block th:fragment="rcells(row)">
-            <td class="num" th:each="chem : ${report.reconcileChemicals}"
+            <td class="num chem-col" th:each="chem : ${report.reconcileChemicals}"
                 th:with="cell=${row.cells.get(chem)}"
                 th:attr="data-ratio=${cell != null and cell.ratio != null ? cell.ratio : null}"
                 th:classappend="${cell == null ? '' : (cell.status == 'OVER' ? 'cell-over' : (cell.status == 'OK' ? 'cell-ok' : (cell.status == 'NC' ? 'cell-nc' : 'cell-na')))}"
@@ -435,8 +434,7 @@
                 </th:block>
             </td>
             <td class="num" th:text="${#numbers.formatDecimal(row.vocPerPair, 1, 2)}">0</td>
-            <td class="num" th:text="${#numbers.formatInteger(row.output, 0, 'COMMA')}">0</td>
-            <td class="num" th:text="${#numbers.formatDecimal(row.vocGrams, 1, 0)}">0</td>
+            <td class="num" th:text="${#numbers.formatDecimal(row.vocKg, 1, 2)}">0</td>
         </th:block>
     </tr>
 </table>
@@ -488,8 +486,8 @@
         if (panel && !panel.contains(e.target)) panel.classList.remove('open');
     });
 
-    // Heatmap: tint each ratio cell red (over-consumption >100%) → blue (under <100%).
-    // 100% ≈ neutral; saturates at 200%+ (red) and 50%- (blue). Persists across cell modes.
+    // Heatmap: tint each ratio cell red (over-consumption >100%) → green (under <100%).
+    // 100% ≈ neutral; saturates at 200%+ (red) and 50%- (green). Persists across cell modes.
     function applyHeatmap() {
         document.querySelectorAll('.pivot.heatmap td[data-ratio]').forEach(td => {
             const r = parseFloat(td.getAttribute('data-ratio'));
@@ -499,11 +497,59 @@
                 td.style.background = `rgba(220,53,69,${(0.10 + 0.55 * t).toFixed(3)})`;
             } else {
                 const t = Math.min((1 - r) / 0.5, 1);
-                td.style.background = `rgba(13,110,253,${(0.08 + 0.40 * t).toFixed(3)})`;
+                td.style.background = `rgba(25,135,84,${(0.08 + 0.40 * t).toFixed(3)})`;
             }
         });
     }
     document.addEventListener('DOMContentLoaded', applyHeatmap);
+
+    // Paginate the By Line / Day table — 5 rows per page (client-side; rows already rendered)
+    function paginateByline() {
+        const PAGE = 5;
+        const body = document.getElementById('bylineBody');
+        const pager = document.getElementById('bylinePager');
+        if (!body || !pager) return;
+        const rows = Array.from(body.querySelectorAll('tr'));
+        const pages = Math.max(1, Math.ceil(rows.length / PAGE));
+        let page = 0;
+        const prev = document.createElement('button');
+        prev.type = 'button'; prev.className = 'btn btn-outline-secondary btn-sm'; prev.textContent = '‹';
+        const next = document.createElement('button');
+        next.type = 'button'; next.className = 'btn btn-outline-secondary btn-sm'; next.textContent = '›';
+        const label = document.createElement('span');
+        label.style.cssText = 'font-size:.85rem; color:#6c757d;';
+        function show() {
+            rows.forEach((tr, i) => tr.style.display = (Math.floor(i / PAGE) === page) ? '' : 'none');
+            prev.disabled = page === 0;
+            next.disabled = page >= pages - 1;
+            label.textContent = (page + 1) + ' / ' + pages;
+        }
+        prev.onclick = () => { if (page > 0) { page--; show(); } };
+        next.onclick = () => { if (page < pages - 1) { page++; show(); } };
+        pager.append(prev, label, next);
+        show();
+    }
+    document.addEventListener('DOMContentLoaded', paginateByline);
+
+    // DIFFERENCE tables: hide chemical columns that are entirely empty or NA.
+    // Judged per-table, so each week drops only its own no-data columns (a chem with
+    // data in another week still shows there). Toggled from the filter bar. A cell
+    // counts as "no data" when its td is empty (no recipe+actual) or is cell-na.
+    function toggleEmptyCols() {
+        const on = document.getElementById('hideEmptyCols').checked;
+        document.querySelectorAll('table.reconcile-week').forEach(t => {
+            const ths = t.querySelectorAll('thead th.chem-col');
+            const empty = new Array(ths.length).fill(true);
+            t.querySelectorAll('tbody tr').forEach(tr =>
+                tr.querySelectorAll('td.chem-col').forEach((td, i) => {
+                    if (!(td.classList.contains('cell-na') || td.children.length === 0)) empty[i] = false;
+                }));
+            ths.forEach((th, i) => th.style.display = (on && empty[i]) ? 'none' : '');
+            t.querySelectorAll('tbody tr').forEach(tr =>
+                tr.querySelectorAll('td.chem-col').forEach((td, i) => td.style.display = (on && empty[i]) ? 'none' : ''));
+        });
+    }
+    document.addEventListener('DOMContentLoaded', toggleEmptyCols);
 </script>
 </body>
 </html>

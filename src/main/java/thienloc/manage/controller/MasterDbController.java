@@ -3,7 +3,7 @@ package thienloc.manage.controller;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
@@ -31,19 +31,16 @@ import thienloc.manage.service.SystemLogService;
 
 @Controller
 @RequestMapping("/masterdb")
+@RequiredArgsConstructor
 public class MasterDbController {
 
-    @Autowired
-    private MasterDbService masterDbService;
+    private final MasterDbService masterDbService;
 
-    @Autowired
-    private MasterDbImportService masterDbImportService;
+    private final MasterDbImportService masterDbImportService;
 
-    @Autowired
-    private MasterDbTemplateService masterDbTemplateService;
+    private final MasterDbTemplateService masterDbTemplateService;
 
-    @Autowired
-    private SystemLogService systemLogService;
+    private final SystemLogService systemLogService;
 
     // ─── List (Read) ───────────────────────────────────────────────────────────
 

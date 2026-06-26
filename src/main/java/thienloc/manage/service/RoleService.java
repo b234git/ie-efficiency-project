@@ -1,6 +1,6 @@
 package thienloc.manage.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import thienloc.manage.entity.Feature;
@@ -15,19 +15,16 @@ import java.util.Locale;
 import java.util.Set;
 
 @Service
+@RequiredArgsConstructor
 public class RoleService {
 
-    @Autowired
-    private RoleRepository roleRepository;
+    private final RoleRepository roleRepository;
 
-    @Autowired
-    private FeatureRepository featureRepository;
+    private final FeatureRepository featureRepository;
 
-    @Autowired
-    private PermissionService permissionService;
+    private final PermissionService permissionService;
 
-    @Autowired
-    private SystemLogService systemLogService;
+    private final SystemLogService systemLogService;
 
     @Transactional(readOnly = true)
     public List<Role> findAllRoles() {

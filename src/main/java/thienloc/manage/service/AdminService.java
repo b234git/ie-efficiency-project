@@ -1,22 +1,20 @@
 package thienloc.manage.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class AdminService {
 
-    @Autowired
-    private IProductionService productionService;
+    private final IProductionService productionService;
 
-    @Autowired
-    private ISplitEntryService splitEntryService;
+    private final ISplitEntryService splitEntryService;
 
-    @Autowired
-    private SystemLogService systemLogService;
+    private final SystemLogService systemLogService;
 
     public ForceDeleteResult forceDeleteByIds(String source, List<Long> ids) {
         boolean isSplit = "SPLIT".equalsIgnoreCase(source);

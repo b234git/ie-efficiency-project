@@ -335,10 +335,37 @@ class EfficiencyCalculatorServiceTest {
 
         calculator.populateEfficiencyMetrics(dto, entity);
 
+        // No 18:00 dinner slot here, so all slots count fully (matches Excel SUM of per-slot quota):
         // sumQuota = (300/10)*3 + (200/10)*2 = 90 + 40 = 130 ; sumMp = 20*3 + 10*2 = 80 ; slots = 5
-        // refTime = 5 (≤10) ; adjustedSumQuota = 130 ; avgMp = 16
         // salaryTarget = (130/16)*DLI*allowance = 8.125*25 = 203.125 ; effSalary = 1000/203.125
         assertEquals(1000.0 / 203.125, dto.getEffSalary(), 0.0001);
+    }
+
+    @Test
+    void testEffSalaryHalvesDinnerSlot() {
+        // Regression for BUFFING 7B (2026-06-17): article in 2 slots, one of which is the 18:00–19:00
+        // dinner half-slot → counts as 0.5 (Excel hard-codes that slot column as ×MP/2).
+        // quota_db=2000 → per-slot 200 ; effectiveSlots = 2 − 0.5 = 1.5 ; TotQuota = 200*1.5 = 300 ;
+        // salaryTarget = (300/MP 4)*DLI 10 = 750 ; effSalary = 870/750 = 1.16.
+        MasterDb md = MasterDb.builder()
+                .articleNo("401698").patternNo("P-BUFF").shoeName("BuffShoe")
+                .buff1stCt(67.1).buff1stMp(4.0).buff1stQuotaDb(2000.0).buff1stPph(50.0)
+                .build();
+
+        DailyProductionDto dto = new DailyProductionDto();
+        dto.setArticle("401698");
+        // buildEntity(section, article, output, dli, wt, mp, allowance)
+        DailyProduction entity = buildEntity("BUFFING 1ST", "401698", 870, 10.0, 1.5, 10.0, 1.0);
+        entity.setDetails(List.of(
+                detailOf("401698", "17:00-18:00"), detailOf("401698", "18:00-19:00")));
+
+        when(masterDbRepository.findByArticleNoInAndDataMonthOrderByRefAsc(anyList(), anyString()))
+                .thenReturn(List.of(md));
+
+        calculator.populateEfficiencyMetrics(dto, entity);
+
+        assertEquals(870.0 / 750.0, dto.getEffSalary(), 0.0001);
+        assertEquals(300.0, dto.getStdQuota(), 0.001);
     }
 
     @Test

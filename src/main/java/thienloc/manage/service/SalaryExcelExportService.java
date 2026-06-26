@@ -61,7 +61,7 @@ public class SalaryExcelExportService {
                             cell(dr, c++, d.getDate() != null ? d.getDate().toString() : "", null);
                             numCell(dr, c++, round(d.getTargetQuota(), 1));
                             numCell(dr, c++, round(d.getTargetMp(), 1));
-                            numCell(dr, c++, d.getMp());
+                            numCell(dr, c++, round(d.getMp(), 1));
                             numCell(dr, c++, round(d.getWt(), 1));
                             numCell(dr, c++, round(d.getOutput(), 0));
                             cell(dr, c++, d.getSec(), null);

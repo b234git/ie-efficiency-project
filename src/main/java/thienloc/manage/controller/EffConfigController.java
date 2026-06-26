@@ -1,6 +1,6 @@
 package thienloc.manage.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/eff-config")
+@RequiredArgsConstructor
 public class EffConfigController {
 
     private static final Map<String, List<String>> SECTION_GRADE_LABELS;
@@ -27,8 +28,7 @@ public class EffConfigController {
         SECTION_GRADE_LABELS.put("BUFF", Arrays.asList("A","B","C","LL1","LL2","LL3","CB4","CB5","CB6"));
     }
 
-    @Autowired
-    private EffConfigService effConfigService;
+    private final EffConfigService effConfigService;
 
     @GetMapping({"", "/"})
     public String index(Model model) {

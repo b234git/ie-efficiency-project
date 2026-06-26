@@ -1,6 +1,6 @@
 package thienloc.manage.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Controller;
@@ -38,22 +38,18 @@ import java.util.Map;
  */
 @Controller
 @RequestMapping("/entry/grid")
+@RequiredArgsConstructor
 public class EntryGridController {
 
-    @Autowired
-    private IProductionService productionService;
+    private final IProductionService productionService;
 
-    @Autowired
-    private IEfficiencyCalculatorService efficiencyCalculator;
+    private final IEfficiencyCalculatorService efficiencyCalculator;
 
-    @Autowired
-    private DailyProductionRepository productionRepository;
+    private final DailyProductionRepository productionRepository;
 
-    @Autowired
-    private SystemLogService systemLogService;
+    private final SystemLogService systemLogService;
 
-    @Autowired
-    private LineAssignmentService lineAssignmentService;
+    private final LineAssignmentService lineAssignmentService;
 
     @GetMapping({"", "/"})
     public String showGrid(

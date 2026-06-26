@@ -1,7 +1,7 @@
 package thienloc.manage.service;
 
 import org.apache.poi.ss.usermodel.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -50,17 +50,18 @@ import java.util.stream.Collectors;
  * Output for VOC g/pair comes from the existing daily_production table.
  */
 @Service
+@RequiredArgsConstructor
 public class VocService {
 
-    @Autowired private VocChemicalRepository chemicalRepo;
-    @Autowired private VocConsumptionRepository consumptionRepo;
-    @Autowired private VocStandardRateRepository rateRepo;
-    @Autowired private VocRecipeArticleRepository recipeArticleRepo;
-    @Autowired private VocSubconEntryRepository subconRepo;
-    @Autowired private VocProductionRepository vocProductionRepo;
-    @Autowired private DailyProductionRepository productionRepo;
-    @Autowired private SystemLogService systemLogService;
-    @Autowired private org.springframework.transaction.PlatformTransactionManager txManager;
+    private final VocChemicalRepository chemicalRepo;
+    private final VocConsumptionRepository consumptionRepo;
+    private final VocStandardRateRepository rateRepo;
+    private final VocRecipeArticleRepository recipeArticleRepo;
+    private final VocSubconEntryRepository subconRepo;
+    private final VocProductionRepository vocProductionRepo;
+    private final DailyProductionRepository productionRepo;
+    private final SystemLogService systemLogService;
+    private final org.springframework.transaction.PlatformTransactionManager txManager;
 
     public static final String DEFAULT_SECTION = "SEW";
 

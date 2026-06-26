@@ -3,7 +3,7 @@ package thienloc.manage.controller;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
@@ -30,21 +30,18 @@ import java.util.Map;
 
 @Controller
 @RequestMapping("/entry")
+@RequiredArgsConstructor
 public class ProductionController {
 
     private static final Logger log = LoggerFactory.getLogger(ProductionController.class);
 
-    @Autowired
-    private IProductionService productionService;
+    private final IProductionService productionService;
 
-    @Autowired
-    private thienloc.manage.service.SystemLogService systemLogService;
+    private final thienloc.manage.service.SystemLogService systemLogService;
 
-    @Autowired
-    private NotificationService notificationService;
+    private final NotificationService notificationService;
 
-    @Autowired
-    private MeterRegistry meterRegistry;
+    private final MeterRegistry meterRegistry;
 
     /* ── Entry Form ───────────────────────────────────────────── */
     @GetMapping({ "", "/" })

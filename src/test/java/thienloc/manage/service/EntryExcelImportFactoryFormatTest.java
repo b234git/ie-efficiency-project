@@ -1,6 +1,5 @@
 package thienloc.manage.service;
 
-import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,8 +10,6 @@ import thienloc.manage.repository.DailyProductionRepository;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Field;
-import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -28,20 +25,12 @@ class EntryExcelImportFactoryFormatTest {
     private EntryExcelImportService service;
 
     @BeforeEach
-    void setUp() throws Exception {
-        service = new EntryExcelImportService();
-        // Field injection bypass: this test exercises only parseForPreview, which
-        // touches MeterRegistry but not the repository or user service.
-        inject(service, "productionRepository", mock(DailyProductionRepository.class));
-        inject(service, "userService", mock(UserService.class));
-        MeterRegistry registry = new SimpleMeterRegistry();
-        inject(service, "meterRegistry", registry);
-    }
-
-    private static void inject(Object target, String fieldName, Object value) throws Exception {
-        Field f = target.getClass().getDeclaredField(fieldName);
-        f.setAccessible(true);
-        f.set(target, value);
+    void setUp() {
+        // parseForPreview touches MeterRegistry but not the repository or user service.
+        service = new EntryExcelImportService(
+                mock(DailyProductionRepository.class),
+                new SimpleMeterRegistry(),
+                mock(UserService.class));
     }
 
     private MockMultipartFile loadSample() throws IOException {

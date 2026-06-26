@@ -1,6 +1,6 @@
 package thienloc.manage.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,10 +12,10 @@ import thienloc.manage.service.RoleService;
 
 @Controller
 @RequestMapping("/admin/roles")
+@RequiredArgsConstructor
 public class RoleController {
 
-    @Autowired
-    private RoleService roleService;
+    private final RoleService roleService;
 
     @GetMapping("/")
     public String listRoles(Model model) {

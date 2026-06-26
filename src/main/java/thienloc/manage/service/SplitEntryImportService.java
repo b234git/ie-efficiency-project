@@ -1,7 +1,7 @@
 package thienloc.manage.service;
 
 import org.apache.poi.ss.usermodel.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import thienloc.manage.dto.DailyProductionDetailDto;
@@ -15,10 +15,10 @@ import java.time.LocalDate;
 import java.util.*;
 
 @Service
+@RequiredArgsConstructor
 public class SplitEntryImportService {
 
-    @Autowired
-    private ISplitEntryService splitEntryService;
+    private final ISplitEntryService splitEntryService;
 
     private static final List<String> TIME_SLOTS = Arrays.asList(
             "07:00-08:00", "08:00-09:00", "09:00-10:00", "10:00-11:00",

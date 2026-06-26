@@ -70,6 +70,7 @@ public class DailyProductionDto {
     private String ref;
     private Double tct;
     private Double target;
+    private Double stdQuota; // WT-based standard quota (Excel sheet S "Quota" / D Total Quota basis)
     private Double eff;
     private Double pph;
     private Double gap;

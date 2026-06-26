@@ -16,7 +16,6 @@ import thienloc.manage.entity.DailyProductionDetail;
 import thienloc.manage.entity.User;
 import thienloc.manage.mapper.ProductionMapper;
 import thienloc.manage.repository.DailyProductionRepository;
-import thienloc.manage.repository.MasterDbRepository;
 import thienloc.manage.testutil.TestDataFactory;
 
 import java.time.LocalDate;
@@ -33,9 +32,6 @@ class ProductionServiceTest {
 
     @Mock
     private DailyProductionRepository productionRepository;
-
-    @Mock
-    private MasterDbRepository masterDbRepository;
 
     @Mock
     private UserService userService;

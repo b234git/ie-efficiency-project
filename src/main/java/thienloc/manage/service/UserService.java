@@ -1,6 +1,6 @@
 package thienloc.manage.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,31 +20,24 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class UserService {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
 
-    @Autowired
-    private SystemLogService systemLogService;
+    private final SystemLogService systemLogService;
 
-    @Autowired
-    private FeatureRepository featureRepository;
+    private final FeatureRepository featureRepository;
 
-    @Autowired
-    private UserFeatureOverrideRepository overrideRepository;
+    private final UserFeatureOverrideRepository overrideRepository;
 
-    @Autowired
-    private UserLineAssignmentRepository lineAssignmentRepository;
+    private final UserLineAssignmentRepository lineAssignmentRepository;
 
-    @Autowired
-    private PermissionService permissionService;
+    private final PermissionService permissionService;
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private final JdbcTemplate jdbcTemplate;
 
     public User registerUser(User user) {
         user.setPassword(passwordEncoder.encode(user.getPassword()));

@@ -2,7 +2,7 @@ package thienloc.manage.service;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.concurrent.TimeUnit;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import thienloc.manage.dto.DailyProductionDto;
 import thienloc.manage.entity.DailyProduction;
@@ -38,13 +38,12 @@ import java.util.stream.Collectors;
  * articleNo (e.g. variants by ref), CT/MP/Quota/PPH are averaged across them.
  */
 @Service
+@RequiredArgsConstructor
 public class EfficiencyCalculatorService implements IEfficiencyCalculatorService {
 
-    @Autowired
-    private MasterDbRepository masterDbRepository;
+    private final MasterDbRepository masterDbRepository;
 
-    @Autowired
-    private MeterRegistry meterRegistry;
+    private final MeterRegistry meterRegistry;
 
     /**
      * Populate efficiency metrics on a DTO based on the production entity and MasterDb lookup.
@@ -399,31 +398,36 @@ public class EfficiencyCalculatorService implements IEfficiencyCalculatorService
             return;
         }
 
+        // Standard quota = SUM over articled slots of (per-slot quota = Quota/10 = PPH×MP),
+        // matching the Excel D-sheet TotQuota (BO = SUM(per-slot AZ:BN)). The 18:00–19:00 slot
+        // is a half-hour (dinner break) — the Excel hard-codes that one slot column as ×MP/2,
+        // so it counts as 0.5 here too. (ponytail: dinner half-slot is a fixed factory-schedule
+        // fact, not derivable from slotCount/WT — replicate the sheet exactly.)
         double sumQuota = 0.0;
         double sumMp = 0.0;
         long slotCount = 0;
         for (ArticleAgg a : aggs) {
             if (a.quota() != null && a.mp() != null && a.mp() > 0) {
-                sumQuota += (a.quota() / 10.0) * a.slots();
-                sumMp += a.mp() * a.slots();
+                double effectiveSlots = a.slots() - 0.5 * a.halfSlots();
+                sumQuota += (a.quota() / 10.0) * effectiveSlots;
+                sumMp += a.mp() * a.slots();   // MP averaged over full slot count (no half)
                 slotCount += a.slots();
             }
         }
 
         if (slotCount > 0 && sumQuota > 0) {
-            // REF TIME adjustment: when >10 slots, last slot counts as half
-            double refTime = (slotCount > 10) ? slotCount - 0.5 : slotCount;
-            double adjustedSumQuota = sumQuota * refTime / slotCount;
             double avgMp = sumMp / slotCount;
-            double salaryTarget = (adjustedSumQuota / avgMp) * entity.getDli() * allowance;
+            double salaryTarget = (sumQuota / avgMp) * entity.getDli() * allowance;
             double effSalary = (salaryTarget > 0) ? (entity.getTotalOutput() / salaryTarget) : 0.0;
             dto.setEffSalary(effSalary);
+            dto.setStdQuota(sumQuota);
         } else if (dbQuota != null && dbQuota > 0 && dbMp != null && dbMp > 0) {
-            // Fallback: use single MasterDb Quota (already averaged by caller)
+            // Fallback: single MasterDb Quota (already averaged by caller), no per-slot detail.
             double slotQuota = dbQuota / 10.0;
             double salaryTarget = slotQuota / dbMp * entity.getDli() * allowance;
             double effSalary = (salaryTarget > 0) ? (entity.getTotalOutput() / salaryTarget) : 0.0;
             dto.setEffSalary(effSalary);
+            dto.setStdQuota(slotQuota);
         }
     }
 
@@ -505,20 +509,25 @@ public class EfficiencyCalculatorService implements IEfficiencyCalculatorService
         if (validDetails.isEmpty()) return Collections.emptyList();
         Map<String, Long> countByArticle = validDetails.stream()
                 .collect(Collectors.groupingBy(d -> d.getArticleNo().trim(), Collectors.counting()));
+        // Per article: how many of its slots are the 18:00–19:00 dinner half-slot.
+        Map<String, Long> halfByArticle = validDetails.stream()
+                .filter(d -> isDinnerHalfSlot(d.getTimeSlot()))
+                .collect(Collectors.groupingBy(d -> d.getArticleNo().trim(), Collectors.counting()));
 
         List<ArticleAgg> aggs = new ArrayList<>(countByArticle.size());
         for (Map.Entry<String, Long> e : countByArticle.entrySet()) {
             String rawArt = e.getKey();
             long slots = e.getValue();
+            long halfSlots = halfByArticle.getOrDefault(rawArt, 0L);
             List<MasterDb> list = masterDbMap.get(SectionMetrics.ArticleKey.parse(rawArt).cleanedArticle());
             SectionMetrics.ResolvedSection res = SectionMetrics.resolveSlot(section, rawArt);
             if (list == null || list.isEmpty() || res.primary() == null) {
-                aggs.add(new ArticleAgg(slots, null, null, null, null));
+                aggs.add(new ArticleAgg(slots, halfSlots, null, null, null, null));
                 continue;
             }
             final SectionMetrics p = res.primary();
             final SectionMetrics fb = res.fallback();
-            aggs.add(new ArticleAgg(slots,
+            aggs.add(new ArticleAgg(slots, halfSlots,
                     avgMetric(list, m -> p.getPphOrFallback(m, fb)),
                     avgMetric(list, m -> p.getCtOrFallback(m, fb)),
                     avgMetric(list, m -> p.getQuotaOrFallback(m, fb)),
@@ -527,8 +536,13 @@ public class EfficiencyCalculatorService implements IEfficiencyCalculatorService
         return aggs;
     }
 
-    /** Per-distinct-article aggregate: slot count + resolved MasterDb metrics. */
-    private record ArticleAgg(long slots, Double pph, Double ct, Double quota, Double mp) {}
+    /** Per-distinct-article aggregate: slot count, dinner half-slot count, + resolved MasterDb metrics. */
+    private record ArticleAgg(long slots, long halfSlots, Double pph, Double ct, Double quota, Double mp) {}
+
+    /** The 18:00–19:00 slot is a half-hour (dinner break); Excel counts its quota as ×0.5. */
+    private static boolean isDinnerHalfSlot(String timeSlot) {
+        return timeSlot != null && timeSlot.trim().startsWith("18:00");
+    }
 
     /**
      * Batch load MasterDb for a list of articleNos — one query instead of N queries.

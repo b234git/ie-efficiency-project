@@ -1,6 +1,6 @@
 package thienloc.manage.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -23,19 +23,16 @@ import java.util.List;
 
 @Controller
 @RequestMapping("/incentive")
+@RequiredArgsConstructor
 public class SalaryController {
 
-    @Autowired
-    private ISalaryService salaryService;
+    private final ISalaryService salaryService;
 
-    @Autowired
-    private IProductionService productionService;
+    private final IProductionService productionService;
 
-    @Autowired
-    private WeeklyTrackingService weeklyTrackingService;
+    private final WeeklyTrackingService weeklyTrackingService;
 
-    @Autowired
-    private SalaryExcelExportService salaryExcelExportService;
+    private final SalaryExcelExportService salaryExcelExportService;
 
     @GetMapping({"", "/"})
     public String index(@RequestParam(required = false) String month,

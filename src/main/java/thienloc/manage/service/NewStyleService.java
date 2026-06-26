@@ -1,7 +1,7 @@
 package thienloc.manage.service;
 
 import org.apache.poi.ss.usermodel.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import thienloc.manage.entity.NewStyleEntry;
@@ -13,10 +13,10 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class NewStyleService {
 
-    @Autowired
-    private NewStyleEntryRepository repo;
+    private final NewStyleEntryRepository repo;
 
     public List<NewStyleEntry> getAll() {
         return repo.findAllByOrderBySectionAscLineAscStyleAsc();

@@ -1,6 +1,6 @@
 package thienloc.manage.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -20,16 +20,14 @@ import java.util.List;
  * delegating to single-purpose services.
  */
 @Service
+@RequiredArgsConstructor
 public class ExcelService implements IExcelService {
 
-    @Autowired
-    private ExcelTemplateService templateService;
+    private final ExcelTemplateService templateService;
 
-    @Autowired
-    private EntryExcelImportService importService;
+    private final EntryExcelImportService importService;
 
-    @Autowired
-    private EntryExcelExportService exportService;
+    private final EntryExcelExportService exportService;
 
     @Override
     public ByteArrayInputStream generateTemplate() throws IOException {

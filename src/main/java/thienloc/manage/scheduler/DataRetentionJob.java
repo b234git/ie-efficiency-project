@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 @DisallowConcurrentExecution
 public class DataRetentionJob implements Job {
 
+    // Field injection (not constructor): Quartz instantiates Job classes with a no-arg
+    // constructor and Spring autowires the fields afterward, so a constructor param can't be used.
     @Autowired
     private DataRetentionScheduler scheduler;
 

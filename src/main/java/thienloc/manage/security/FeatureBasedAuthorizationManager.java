@@ -1,7 +1,7 @@
 package thienloc.manage.security;
 
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.authorization.AuthorizationManager;
@@ -21,10 +21,10 @@ import java.util.function.Supplier;
  * work without explicit configuration.
  */
 @Component
+@RequiredArgsConstructor
 public class FeatureBasedAuthorizationManager implements AuthorizationManager<RequestAuthorizationContext> {
 
-    @Autowired
-    private PermissionService permissionService;
+    private final PermissionService permissionService;
 
     @Override
     public AuthorizationDecision authorize(Supplier<? extends Authentication> authenticationSupplier,

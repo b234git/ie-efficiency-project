@@ -1,7 +1,7 @@
 package thienloc.manage.controller;
 
 import io.micrometer.core.instrument.MeterRegistry;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -17,16 +17,14 @@ import thienloc.manage.entity.User;
 import thienloc.manage.service.UserService;
 
 @Controller
+@RequiredArgsConstructor
 public class AuthController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
 
-    @Autowired
-    private thienloc.manage.service.SystemLogService systemLogService;
+    private final thienloc.manage.service.SystemLogService systemLogService;
 
-    @Autowired
-    private MeterRegistry meterRegistry;
+    private final MeterRegistry meterRegistry;
 
     @GetMapping("/login")
     public String loginPage() {

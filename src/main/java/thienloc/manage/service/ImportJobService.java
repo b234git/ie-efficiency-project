@@ -2,7 +2,7 @@ package thienloc.manage.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import thienloc.manage.entity.ImportJob;
@@ -16,15 +16,14 @@ import java.time.Instant;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class ImportJobService {
 
     private static final Logger log = LoggerFactory.getLogger(ImportJobService.class);
 
-    @Autowired
-    private ImportJobRepository importJobRepository;
+    private final ImportJobRepository importJobRepository;
 
-    @Autowired
-    private IExcelService excelService;
+    private final IExcelService excelService;
 
     public ImportJob createJob(String jobType, String username) {
         return importJobRepository.save(

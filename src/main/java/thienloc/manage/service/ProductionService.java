@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -29,35 +29,26 @@ import thienloc.manage.exception.ResourceNotFoundException;
 import thienloc.manage.exception.ServiceUnavailableException;
 import thienloc.manage.mapper.ProductionMapper;
 import thienloc.manage.repository.DailyProductionRepository;
-import thienloc.manage.repository.MasterDbRepository;
 import thienloc.manage.repository.SplitEntryRepository;
 import thienloc.manage.util.NormalizationUtil;
 
 @Service
+@RequiredArgsConstructor
 public class ProductionService implements IProductionService {
 
     private static final Logger log = LoggerFactory.getLogger(ProductionService.class);
 
-    @Autowired
-    private DailyProductionRepository productionRepository;
+    private final DailyProductionRepository productionRepository;
 
-    @Autowired
-    private MasterDbRepository masterDbRepository;
+    private final SplitEntryRepository splitEntryRepository;
 
-    @Autowired
-    private SplitEntryRepository splitEntryRepository;
+    private final UserService userService;
 
-    @Autowired
-    private UserService userService;
+    private final IEfficiencyCalculatorService efficiencyCalculator;
 
-    @Autowired
-    private IEfficiencyCalculatorService efficiencyCalculator;
+    private final ProductionMapper productionMapper;
 
-    @Autowired
-    private ProductionMapper productionMapper;
-
-    @Autowired
-    private LineAssignmentService lineAssignmentService;
+    private final LineAssignmentService lineAssignmentService;
 
     // ─── Save ────────────────────────────────────────────────────────────────────
 

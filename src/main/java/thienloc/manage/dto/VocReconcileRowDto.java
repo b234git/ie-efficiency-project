@@ -25,4 +25,9 @@ public class VocReconcileRowDto {
     public double getVocPerPair() {
         return output > 0 ? vocGrams / output : 0.0;
     }
+
+    /** Total VOC in kg (display unit) = vocGrams / 1000. */
+    public double getVocKg() {
+        return vocGrams / 1000.0;
+    }
 }

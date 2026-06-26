@@ -3,7 +3,7 @@ package thienloc.manage.controller;
 import jakarta.servlet.http.HttpSession;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -35,13 +35,12 @@ import java.util.List;
 
 @Controller
 @RequestMapping("/voc")
+@RequiredArgsConstructor
 public class VocController {
 
-    @Autowired
-    private VocService vocService;
+    private final VocService vocService;
 
-    @Autowired
-    private thienloc.manage.service.VocExcelExportService vocExcelExportService;
+    private final thienloc.manage.service.VocExcelExportService vocExcelExportService;
 
     // Session keys + holders for confirm-before-overwrite on batch saves.
     private static final String CONS_PENDING = "vocConsumptionPending";
@@ -61,7 +60,7 @@ public class VocController {
     private static final String IMPORT_PENDING = "vocImportPending";
 
     private static class ImportPending implements java.io.Serializable {
-        String type; String section; String filename; byte[] bytes; WeeklyImportResultDto result;
+        String type; String section; String filename; byte[] bytes;
     }
 
     private String previewImportFlow(MultipartFile file, String type, HttpSession session,
@@ -81,7 +80,7 @@ public class VocController {
             WeeklyImportResultDto result = vocService.previewImport(
                     new BytesMultipartFile("file", file.getOriginalFilename(), bytes), type, section);
             ImportPending p = new ImportPending();
-            p.type = type; p.section = section; p.filename = file.getOriginalFilename(); p.bytes = bytes; p.result = result;
+            p.type = type; p.section = section; p.filename = file.getOriginalFilename(); p.bytes = bytes;
             session.setAttribute(IMPORT_PENDING, p);
             model.addAttribute("result", result);
             model.addAttribute("filename", p.filename);

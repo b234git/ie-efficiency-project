@@ -30,7 +30,7 @@ public class SalaryReportDto {
         private LocalDate date;
         private double targetQuota;  // planned daily quota (from DailyProductionDto.target)
         private double targetMp;     // standard MP resolved by EFF calc (Excel sheet S col C)
-        private int mp;              // actual MP
+        private double mp;           // actual MP = DLI (Excel sheet S col F = D!I), not DL
         private double wt;
         private double output;       // actual produced quantity
         private String sec;          // e.g. "SEW10"

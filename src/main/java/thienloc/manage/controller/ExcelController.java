@@ -1,7 +1,7 @@
 package thienloc.manage.controller;
 
 import jakarta.servlet.http.HttpSession;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -30,17 +30,16 @@ import java.util.Map;
 
 @Controller
 @RequestMapping("/excel")
+@RequiredArgsConstructor
 public class ExcelController {
 
     private static final Logger log = LoggerFactory.getLogger(ExcelController.class);
     private static final String SESSION_PREVIEW = "entryImportPreview";
     private static final String SESSION_FILE = "entryImportFile";
 
-    @Autowired
-    private IExcelService excelService;
+    private final IExcelService excelService;
 
-    @Autowired
-    private ImportJobService importJobService;
+    private final ImportJobService importJobService;
 
     @GetMapping("/template")
     public ResponseEntity<InputStreamResource> downloadTemplate() throws IOException {

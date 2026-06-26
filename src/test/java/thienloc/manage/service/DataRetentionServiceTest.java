@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import thienloc.manage.repository.DailyProductionRepository;
 import thienloc.manage.repository.MasterDbRepository;
+import thienloc.manage.repository.VocConsumptionRepository;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -19,6 +20,9 @@ class DataRetentionServiceTest {
 
     @Mock
     private DailyProductionRepository dailyProductionRepository;
+
+    @Mock
+    private VocConsumptionRepository vocConsumptionRepository;
 
     @Mock
     private NotificationService notificationService;

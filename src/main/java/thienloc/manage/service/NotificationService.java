@@ -1,6 +1,6 @@
 package thienloc.manage.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import thienloc.manage.entity.Notification;
 import thienloc.manage.repository.NotificationRepository;
@@ -10,10 +10,10 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
+@RequiredArgsConstructor
 public class NotificationService {
 
-    @Autowired
-    private NotificationRepository notificationRepository;
+    private final NotificationRepository notificationRepository;
 
     // ─── Cached notification count (avoid DB query on every HTTP request) ──────
     private static final long CACHE_TTL_MS = 30_000; // 30 seconds

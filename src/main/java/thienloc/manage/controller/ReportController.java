@@ -1,6 +1,6 @@
 package thienloc.manage.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -25,13 +25,12 @@ import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/report")
+@RequiredArgsConstructor
 public class ReportController {
 
-    @Autowired
-    private IProductionService productionService;
+    private final IProductionService productionService;
 
-    @Autowired
-    private IExcelService excelService;
+    private final IExcelService excelService;
 
     @GetMapping({ "/", "" })
     public String report(

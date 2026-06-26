@@ -10,7 +10,6 @@ import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
-import org.springframework.test.util.ReflectionTestUtils;
 import thienloc.manage.entity.Feature;
 import thienloc.manage.entity.Role;
 import thienloc.manage.repository.FeatureRepository;
@@ -73,8 +72,11 @@ public class TestRbacSecurityConfig {
      * repository beans and runs @PostConstruct reload() to build the indexes.
      */
     @Bean
-    public PermissionService permissionService() {
-        return new PermissionService();
+    public PermissionService permissionService(RoleRepository roleRepository,
+                                               FeatureRepository featureRepository,
+                                               UserRepository userRepository,
+                                               UserFeatureOverrideRepository userFeatureOverrideRepository) {
+        return new PermissionService(roleRepository, featureRepository, userRepository, userFeatureOverrideRepository);
     }
 
     @Bean
@@ -154,9 +156,8 @@ public class TestRbacSecurityConfig {
         when(roleRepo.findAll()).thenReturn(seedRoles(seedFeatures()));
         when(featureRepo.findAll()).thenReturn(seedFeatures());
 
-        PermissionService ps = new PermissionService();
-        ReflectionTestUtils.setField(ps, "roleRepository", roleRepo);
-        ReflectionTestUtils.setField(ps, "featureRepository", featureRepo);
+        PermissionService ps = new PermissionService(roleRepo, featureRepo,
+                mock(UserRepository.class), mock(UserFeatureOverrideRepository.class));
         ps.reload();
         return ps;
     }
@@ -172,6 +173,7 @@ public class TestRbacSecurityConfig {
         private final PermissionService permissionService;
 
         RoleAwareAuthorizationManager(PermissionService permissionService) {
+            super(permissionService);
             this.permissionService = permissionService;
         }
 

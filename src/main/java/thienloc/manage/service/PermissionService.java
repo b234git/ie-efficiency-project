@@ -3,7 +3,7 @@ package thienloc.manage.service;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.annotation.PostConstruct;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.AntPathMatcher;
@@ -26,19 +26,16 @@ import java.util.stream.Collectors;
  * keyed by username; reload() invalidates all caches after any permission change.
  */
 @Service
+@RequiredArgsConstructor
 public class PermissionService {
 
-    @Autowired
-    private RoleRepository roleRepository;
+    private final RoleRepository roleRepository;
 
-    @Autowired
-    private FeatureRepository featureRepository;
+    private final FeatureRepository featureRepository;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private UserFeatureOverrideRepository overrideRepository;
+    private final UserFeatureOverrideRepository overrideRepository;
 
     private final AntPathMatcher matcher = new AntPathMatcher();
 

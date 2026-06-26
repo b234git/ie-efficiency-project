@@ -1,6 +1,6 @@
 package thienloc.manage.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Controller;
@@ -11,10 +11,10 @@ import thienloc.manage.service.NotificationService;
 
 @Controller
 @RequestMapping("/notifications")
+@RequiredArgsConstructor
 public class NotificationController {
 
-    @Autowired
-    private NotificationService notificationService;
+    private final NotificationService notificationService;
 
     @GetMapping
     public String list(Authentication auth, Model model) {

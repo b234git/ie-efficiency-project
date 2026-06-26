@@ -1,6 +1,6 @@
 package thienloc.manage.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -22,25 +22,20 @@ import java.util.Map;
 
 @Controller
 @RequestMapping("/admin")
+@RequiredArgsConstructor
 public class AdminController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
 
-    @Autowired
-    private thienloc.manage.service.SystemLogService systemLogService;
+    private final thienloc.manage.service.SystemLogService systemLogService;
 
-    @Autowired
-    private RoleService roleService;
+    private final RoleService roleService;
 
-    @Autowired
-    private PermissionService permissionService;
+    private final PermissionService permissionService;
 
-    @Autowired
-    private UserFeatureOverrideRepository overrideRepository;
+    private final UserFeatureOverrideRepository overrideRepository;
 
-    @Autowired
-    private LineAssignmentService lineAssignmentService;
+    private final LineAssignmentService lineAssignmentService;
 
     @GetMapping("/")
     public String adminDashboard(Model model) {

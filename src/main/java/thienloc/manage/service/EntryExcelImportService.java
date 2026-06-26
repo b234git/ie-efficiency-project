@@ -8,7 +8,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.concurrent.TimeUnit;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -44,16 +44,14 @@ import java.util.Set;
  * {@link SheetDetector} and {@link HeaderResolver}.
  */
 @Service
+@RequiredArgsConstructor
 public class EntryExcelImportService {
 
-    @Autowired
-    private DailyProductionRepository productionRepository;
+    private final DailyProductionRepository productionRepository;
 
-    @Autowired
-    private MeterRegistry meterRegistry;
+    private final MeterRegistry meterRegistry;
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
 
     @Transactional
     public void importExcel(MultipartFile file, String username) throws IOException {
