@@ -1038,7 +1038,8 @@ public class VocService {
             outputByDate.merge(d, out, Double::sum);
 
             // A produced article with no recipe contributes 0 (intended — no silent fallback).
-            String a = SectionMetrics.ArticleKey.parse(p.getArticleNo()).cleanedArticle();
+            // Raw key match (verbatim DB!$A, like the workbook's AVERAGEIFS) — no "-2" stripping.
+            String a = p.getArticleNo() != null && !p.getArticleNo().isBlank() ? p.getArticleNo().trim() : null;
             Map<String, Double> rec = a != null ? recipe.get(recipeKey(sec, a)) : null;
             if (rec == null) continue;
             for (Map.Entry<String, Double> e : rec.entrySet()) {
@@ -1235,8 +1236,12 @@ public class VocService {
     private Map<String, Map<String, Double>> loadRecipeMap() {
         Map<String, Map<String, Double>> recipe = new HashMap<>();
         for (VocStandardRate r : rateRepo.findAll()) {
-            String a = SectionMetrics.ArticleKey.parse(r.getArticleNo()).cleanedArticle();
-            if (a == null) continue;
+            // Raw article key (the workbook's DB!$A) — the numbered sheets match it verbatim with
+            // AVERAGEIFS, so do NOT strip the "-2" subsection suffix here (that collapse credits
+            // recipes the file never matches → over-counts allowance for ASSY/OS multi-style lines).
+            String a = r.getArticleNo();
+            if (a == null || a.isBlank()) continue;
+            a = a.trim();
             recipe.computeIfAbsent(recipeKey(r.getSection(), a), k -> new HashMap<>())
                     .put(r.getChemicalCode(), r.getKgPerPair());
         }
