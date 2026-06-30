@@ -23,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -66,15 +67,15 @@ class VocImportParityTest {
         when(rateRepo.findBySectionAndArticleNoAndChemicalCode(any(), any(), any())).thenReturn(Optional.empty());
         when(recipeArticleRepo.findById(any())).thenReturn(Optional.empty());
         when(recipeArticleRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        ArgumentCaptor<VocStandardRate> rateCaptor = ArgumentCaptor.forClass(VocStandardRate.class);
-        when(rateRepo.save(rateCaptor.capture())).thenAnswer(inv -> inv.getArgument(0));
+        ArgumentCaptor<List<VocStandardRate>> rateCaptor = ArgumentCaptor.forClass(List.class);
+        when(rateRepo.saveAll(rateCaptor.capture())).thenAnswer(inv -> inv.getArgument(0));
 
         vocService.importRecipe(new MockMultipartFile("file", fileName,
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", Files.readAllBytes(p)));
 
         Map<String, Double> rates = new HashMap<>();
         Set<String> chems = new HashSet<>();
-        for (VocStandardRate r : rateCaptor.getAllValues()) {
+        for (VocStandardRate r : rateCaptor.getAllValues().stream().flatMap(List::stream).toList()) {
             rates.put(r.getArticleNo() + "||" + r.getChemicalCode(), r.getKgPerPair());
             chems.add(r.getChemicalCode());
         }
@@ -116,15 +117,15 @@ class VocImportParityTest {
 
         when(consumptionRepo.findByProductionDateAndSectionAndLineAndChemicalCode(any(), any(), any(), any()))
                 .thenReturn(Optional.empty());
-        ArgumentCaptor<VocConsumption> cap = ArgumentCaptor.forClass(VocConsumption.class);
-        when(consumptionRepo.save(cap.capture())).thenAnswer(inv -> inv.getArgument(0));
+        ArgumentCaptor<List<VocConsumption>> cap = ArgumentCaptor.forClass(List.class);
+        when(consumptionRepo.saveAll(cap.capture())).thenAnswer(inv -> inv.getArgument(0));
 
         vocService.importConsumptionFromExcel(new MockMultipartFile("file", "Actual.xlsx",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", actualOnly));
 
         // every consumption row from the OS file carries section SF (driven by the Section column)
         Set<String> sections = new HashSet<>();
-        for (VocConsumption c : cap.getAllValues()) sections.add(c.getSection());
+        for (VocConsumption c : cap.getAllValues().stream().flatMap(List::stream).toList()) sections.add(c.getSection());
         assertEquals(Set.of("SF"), sections, "OS VOC Actual sheet section column = SF");
     }
 

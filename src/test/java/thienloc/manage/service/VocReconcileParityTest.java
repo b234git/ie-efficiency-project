@@ -105,8 +105,8 @@ class VocReconcileParityTest {
         when(recipeArticleRepo.save(any())).thenAnswer(i -> i.getArgument(0));
         when(rateRepo.findBySectionAndArticleNoAndChemicalCode(any(), any(), any())).thenReturn(Optional.empty());
         when(chemicalRepo.findByCodeIgnoreCase(any())).thenReturn(Optional.empty());
-        ArgumentCaptor<VocStandardRate> rateCap = ArgumentCaptor.forClass(VocStandardRate.class);
-        when(rateRepo.save(rateCap.capture())).thenAnswer(i -> i.getArgument(0));
+        ArgumentCaptor<List<VocStandardRate>> rateCap = ArgumentCaptor.forClass(List.class);
+        when(rateRepo.saveAll(rateCap.capture())).thenAnswer(i -> i.getArgument(0));
         vocService.importRecipe(file(fileName, bytes));
 
         // Chemical master (R sheet → sheet 0) so canonicalChem can merge case/alias variants
@@ -119,19 +119,19 @@ class VocReconcileParityTest {
 
         when(vocProductionRepo.findByProductionDateAndSectionAndLineAndArticleNo(any(), any(), any(), any()))
                 .thenReturn(Optional.empty());
-        ArgumentCaptor<VocProduction> prodCap = ArgumentCaptor.forClass(VocProduction.class);
-        when(vocProductionRepo.save(prodCap.capture())).thenAnswer(i -> i.getArgument(0));
+        ArgumentCaptor<List<VocProduction>> prodCap = ArgumentCaptor.forClass(List.class);
+        when(vocProductionRepo.saveAll(prodCap.capture())).thenAnswer(i -> i.getArgument(0));
         vocService.importVocProduction(file(fileName, bytes));
 
         when(consumptionRepo.findByProductionDateAndSectionAndLineAndChemicalCode(any(), any(), any(), any()))
                 .thenReturn(Optional.empty());
-        ArgumentCaptor<VocConsumption> consCap = ArgumentCaptor.forClass(VocConsumption.class);
-        when(consumptionRepo.save(consCap.capture())).thenAnswer(i -> i.getArgument(0));
+        ArgumentCaptor<List<VocConsumption>> consCap = ArgumentCaptor.forClass(List.class);
+        when(consumptionRepo.saveAll(consCap.capture())).thenAnswer(i -> i.getArgument(0));
         vocService.importConsumptionFromExcel(file(fileName, bytes));
 
-        List<VocStandardRate> rates = rateCap.getAllValues();
-        List<VocProduction> prods = prodCap.getAllValues();
-        List<VocConsumption> cons = consCap.getAllValues();
+        List<VocStandardRate> rates = rateCap.getAllValues().stream().flatMap(List::stream).toList();
+        List<VocProduction> prods = prodCap.getAllValues().stream().flatMap(List::stream).toList();
+        List<VocConsumption> cons = consCap.getAllValues().stream().flatMap(List::stream).toList();
         assertTrue(!cons.isEmpty() && !prods.isEmpty() && !rates.isEmpty(),
                 "imports produced no rows for " + fileName);
 

@@ -26,6 +26,9 @@ public interface VocStandardRateRepository extends JpaRepository<VocStandardRate
     // All rates for the articles on the current grid page (one query, no N+1)
     List<VocStandardRate> findByArticleNoIn(Collection<String> articleNos);
 
+    // All rates for one section — preloaded once during recipe import (no per-row lookup)
+    List<VocStandardRate> findBySection(String section);
+
     // Chemical codes actually used across the recipe — the matrix columns
     @Query("SELECT DISTINCT r.chemicalCode FROM VocStandardRate r ORDER BY r.chemicalCode")
     List<String> findDistinctChemicalCodes();

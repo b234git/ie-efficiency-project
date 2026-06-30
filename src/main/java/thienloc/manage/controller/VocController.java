@@ -48,7 +48,7 @@ public class VocController {
 
     private static class ConsPending {
         LocalDate date; String section; String line;
-        List<String> chemicalCode; List<String> quantityKg; List<String> reuseKg;
+        List<String> chemicalCode; List<String> quantityKg; List<String> throwKg; List<String> reuseKg;
     }
 
     private static class SubconPending {
@@ -234,21 +234,43 @@ public class VocController {
         model.addAttribute("lines", vocService.getLines());
         model.addAttribute("chemicals", vocService.getActiveChemicals());
         // Actual log for the day — whole day across all lines when no line is picked.
-        model.addAttribute("rows", vocService.getActualRows(date, section, line));
+        java.util.List<thienloc.manage.dto.VocActualRowDto> rows = vocService.getActualRows(date, section, line);
+        model.addAttribute("rows", rows);
+        // Lookup by chemical code so the batch form can prefill existing values (edit mode).
+        java.util.Map<String, thienloc.manage.dto.VocActualRowDto> rowsByCode = new java.util.LinkedHashMap<>();
+        for (thienloc.manage.dto.VocActualRowDto r : rows) rowsByCode.put(r.getChemicalCode(), r);
+        model.addAttribute("rowsByCode", rowsByCode);
         return "voc-entry";
     }
 
+    /** Manual single-row entry: every column typed (Date/Section/Line/Chemical/Production/Throw/Reuse),
+     *  like one row of the sheet's "Actual". Upserts on the natural key. */
     @PostMapping("/entry/save")
-    public String saveConsumption(@ModelAttribute VocConsumption consumption, RedirectAttributes ra) {
+    public String saveConsumption(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate productionDate,
+                                  @RequestParam(required = false, defaultValue = VocService.DEFAULT_SECTION) String section,
+                                  @RequestParam String line,
+                                  @RequestParam String chemicalCode,
+                                  @RequestParam(required = false) Double quantityKg,
+                                  @RequestParam(required = false) Double throwKg,
+                                  @RequestParam(required = false) Double reuseKg,
+                                  RedirectAttributes ra) {
         try {
-            vocService.saveConsumption(consumption);
-            ra.addFlashAttribute("success", "Saved " + consumption.getChemicalCode());
+            VocConsumption c = new VocConsumption();
+            c.setProductionDate(productionDate);
+            c.setSection(section);
+            c.setLine(line);
+            c.setChemicalCode(chemicalCode);
+            c.setQuantityKg(quantityKg != null ? quantityKg : 0.0);
+            c.setThrowKg(throwKg != null ? throwKg : 0.0);
+            c.setReuseKg(reuseKg != null ? reuseKg : 0.0);
+            vocService.saveConsumption(c);
+            ra.addFlashAttribute("success", "Saved " + chemicalCode);
         } catch (RuntimeException e) {
             ra.addFlashAttribute("error", "Save failed: " + e.getMessage());
         }
-        ra.addAttribute("date", consumption.getProductionDate());
-        ra.addAttribute("section", consumption.getSection());
-        ra.addAttribute("line", consumption.getLine());
+        ra.addAttribute("date", productionDate);
+        ra.addAttribute("section", section);
+        ra.addAttribute("line", line);
         return "redirect:/voc/entry";
     }
 
@@ -260,17 +282,18 @@ public class VocController {
                                        @RequestParam String line,
                                        @RequestParam(required = false) List<String> chemicalCode,
                                        @RequestParam(required = false) List<String> quantityKg,
+                                       @RequestParam(required = false) List<String> throwKg,
                                        @RequestParam(required = false) List<String> reuseKg,
                                        HttpSession session,
                                        RedirectAttributes ra) {
         try {
             VocService.BatchResult r = vocService.saveConsumptionBatch(date, section, line, chemicalCode,
-                    parseDoubles(quantityKg), parseDoubles(reuseKg), false);
+                    parseDoubles(quantityKg), parseDoubles(throwKg), parseDoubles(reuseKg), false);
             if (r.saved() > 0) ra.addFlashAttribute("success", "Saved " + r.saved() + " chemical(s)");
             if (!r.conflicts().isEmpty()) {
                 ConsPending p = new ConsPending();
                 p.date = date; p.section = section; p.line = line;
-                p.chemicalCode = chemicalCode; p.quantityKg = quantityKg; p.reuseKg = reuseKg;
+                p.chemicalCode = chemicalCode; p.quantityKg = quantityKg; p.throwKg = throwKg; p.reuseKg = reuseKg;
                 session.setAttribute(CONS_PENDING, p);
                 ra.addFlashAttribute("duplicateConflict", String.join(", ", r.conflicts()));
             }
@@ -290,7 +313,7 @@ public class VocController {
         session.removeAttribute(CONS_PENDING);
         if (p == null) return "redirect:/voc/entry";
         int n = vocService.saveConsumptionBatch(p.date, p.section, p.line, p.chemicalCode,
-                parseDoubles(p.quantityKg), parseDoubles(p.reuseKg), true).saved();
+                parseDoubles(p.quantityKg), parseDoubles(p.throwKg), parseDoubles(p.reuseKg), true).saved();
         ra.addFlashAttribute("success", "Updated " + n + " chemical(s)");
         ra.addAttribute("date", p.date);
         ra.addAttribute("section", p.section);
@@ -339,7 +362,7 @@ public class VocController {
 
     @GetMapping("/consumption/template")
     public ResponseEntity<InputStreamResource> consumptionTemplate() throws IOException {
-        String[] headers = {"Date", "Section", "Line", "Chemical", "Quantity Kg", "Reuse Kg"};
+        String[] headers = {"Date", "Section", "Line", "Chemical", "Production Kg", "Throw Kg", "Reuse Kg"};
         ByteArrayInputStream stream = buildTemplate("Consumption", headers);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=VOC_Consumption_Template.xlsx")

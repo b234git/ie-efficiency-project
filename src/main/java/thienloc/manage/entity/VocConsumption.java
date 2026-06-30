@@ -50,7 +50,11 @@ public class VocConsumption {
 
     @Builder.Default
     @Column(name = "quantity_kg", nullable = false)
-    private Double quantityKg = 0.0;
+    private Double quantityKg = 0.0;         // "Production" column
+
+    @Builder.Default
+    @Column(name = "throw_kg", nullable = false)
+    private Double throwKg = 0.0;            // "Throw" column (mirrors the sheet; not in the VOC calc)
 
     @Builder.Default
     @Column(name = "reuse_kg", nullable = false)

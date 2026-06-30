@@ -29,7 +29,13 @@ public class VocActualRowDto {
     private String manufacturer;
     private double vocFactor;
 
-    private double quantityKg;
+    private double quantityKg;        // "Production"
+    private double throwKg;           // "Throw"
     private double reuseKg;
     private double vocEmittedKg;      // factor * (qty - reuse)
+
+    /** "Production Total" column of the sheet = Production × VOC% (gross VOC, reuse not subtracted). */
+    public double getProductionTotal() {
+        return quantityKg * vocFactor;
+    }
 }

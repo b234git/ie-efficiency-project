@@ -1,6 +1,7 @@
 package thienloc.manage.controller;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -12,7 +13,9 @@ import thienloc.manage.dto.VocReconcileWeekDto;
 import thienloc.manage.dto.VocReportDto;
 import thienloc.manage.dto.VocReportFilter;
 import thienloc.manage.dto.VocSubconReportDto;
+import thienloc.manage.dto.VocActualRowDto;
 import thienloc.manage.entity.VocChemical;
+import thienloc.manage.entity.VocConsumption;
 import thienloc.manage.security.SecurityConfig;
 import thienloc.manage.security.TestRbacSecurityConfig;
 import thienloc.manage.service.NotificationService;
@@ -23,6 +26,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -174,7 +178,11 @@ class VocControllerTest {
         when(vocService.getLines()).thenReturn(List.of("1A"));
         when(vocService.getActiveChemicals()).thenReturn(List.of(
                 VocChemical.builder().code("577NT3").materialType("SOLVENT").vocFactor(0.745).active(true).build()));
-        when(vocService.getActualRows(any(), any(), any())).thenReturn(List.of());
+        // One row so the log table renders the new columns (Production/Throw/VOC%/Production Total).
+        when(vocService.getActualRows(any(), any(), any())).thenReturn(List.of(
+                VocActualRowDto.builder().id(1L).date(LocalDate.of(2026, 4, 1)).line("1A").chemicalCode("577NT3")
+                        .materialType("Solvent Base").classification("Adhesive").manufacturer("Greco")
+                        .vocFactor(0.745).quantityKg(0.9).throwKg(0.1).reuseKg(0.0).vocEmittedKg(0.6705).build()));
 
         mockMvc.perform(get("/voc/entry").param("date", "2026-04-01").param("section", "SEW").param("line", "1A")
                         .with(user("u").roles("ADMIN")))
@@ -186,7 +194,7 @@ class VocControllerTest {
     /** §6: batch consumption save delegates to the service and redirects to Entry. */
     @Test
     void saveBatchEntryRedirects() throws Exception {
-        when(vocService.saveConsumptionBatch(any(), any(), any(), any(), any(), any(), anyBoolean()))
+        when(vocService.saveConsumptionBatch(any(), any(), any(), any(), any(), any(), any(), anyBoolean()))
                 .thenReturn(new VocService.BatchResult(2, List.of()));
 
         mockMvc.perform(post("/voc/entry/save-batch").with(csrf()).with(user("u").roles("ADMIN"))
@@ -197,7 +205,7 @@ class VocControllerTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrlPattern("/voc/entry*"));
 
-        verify(vocService).saveConsumptionBatch(any(), any(), any(), any(), any(), any(), anyBoolean());
+        verify(vocService).saveConsumptionBatch(any(), any(), any(), any(), any(), any(), any(), anyBoolean());
     }
 
     /** §6: batch subcon save delegates to the service and redirects to Subcon. */
@@ -214,5 +222,27 @@ class VocControllerTest {
                 .andExpect(redirectedUrlPattern("/voc/subcon*"));
 
         verify(vocService).saveSubconBatch(any(), any(), any(), any(), any(), any(), any(), anyBoolean());
+    }
+
+    /** §6: manual single-row entry binds every column (incl. ISO date + throw) and redirects to Entry. */
+    @Test
+    void saveManualEntryRedirects() throws Exception {
+        mockMvc.perform(post("/voc/entry/save").with(csrf()).with(user("u").roles("ADMIN"))
+                        .param("productionDate", "2026-04-01").param("section", "SEW").param("line", "1A")
+                        .param("chemicalCode", "577NT")
+                        .param("quantityKg", "1.5").param("throwKg", "0.3").param("reuseKg", "0.2"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrlPattern("/voc/entry*"));
+
+        ArgumentCaptor<VocConsumption> captor = ArgumentCaptor.forClass(VocConsumption.class);
+        verify(vocService).saveConsumption(captor.capture());
+        VocConsumption c = captor.getValue();
+        assertEquals(LocalDate.of(2026, 4, 1), c.getProductionDate());
+        assertEquals("SEW", c.getSection());
+        assertEquals("1A", c.getLine());
+        assertEquals("577NT", c.getChemicalCode());
+        assertEquals(1.5, c.getQuantityKg(), 1e-9);
+        assertEquals(0.3, c.getThrowKg(), 1e-9);
+        assertEquals(0.2, c.getReuseKg(), 1e-9);
     }
 }

@@ -90,30 +90,34 @@
             <thead>
             <tr>
                 <th th:text="#{voc.col.date}">Date</th>
+                <th th:text="#{voc.col.section}">Section</th>
                 <th th:text="#{voc.col.line}">Line</th>
                 <th th:text="#{voc.col.chemical}">Chemical</th>
-                <th class="num" th:text="#{voc.col.qtykg}">Qty (kg)</th>
+                <th class="num" th:text="#{voc.col.production}">Production</th>
+                <th class="num" th:text="#{voc.col.throw}">Throw</th>
+                <th class="num" th:text="#{voc.entry.reuse}">Reuse</th>
                 <th class="voc-h" th:text="#{voc.col.materialtype}">Material Type</th>
                 <th class="voc-h" th:text="#{voc.col.class}">Classification</th>
                 <th class="voc-h" th:text="#{voc.col.manufacturer}">Manufacturer</th>
-                <th class="voc-h num" th:text="#{voc.col.factor}">VOC Factor</th>
-                <th class="voc-h num" th:text="#{voc.col.vockg}">VOC (kg)</th>
-                <th class="voc-h num" th:text="#{voc.entry.reuse}">Reuse (kg)</th>
+                <th class="voc-h num" th:text="#{voc.col.vocpct}">VOC %</th>
+                <th class="voc-h num" th:text="#{voc.col.prodtotal}">Production Total</th>
                 <th sec:authorize="hasAnyRole('ADMIN','MANAGER')"></th>
             </tr>
             </thead>
             <tbody>
             <tr th:each="r : ${rows}">
                 <td th:text="${#temporals.format(r.date, 'dd/MM')}">01/04</td>
+                <td th:text="${section}">SEW</td>
                 <td th:text="${r.line}">1A</td>
                 <td th:text="${r.chemicalCode}">577NT3</td>
                 <td class="num" th:text="${#numbers.formatDecimal(r.quantityKg, 1, 2)}">0.90</td>
+                <td class="num" th:text="${#numbers.formatDecimal(r.throwKg, 1, 2)}">0.00</td>
+                <td class="num" th:text="${#numbers.formatDecimal(r.reuseKg, 1, 2)}">0.00</td>
                 <td class="derived" th:text="${r.materialType}">Solvent Base</td>
                 <td class="derived" th:text="${r.classification}">Adhesive</td>
                 <td class="derived" th:text="${r.manufacturer}">Greco</td>
-                <td class="derived num" th:text="${#numbers.formatDecimal(r.vocFactor, 1, 3)}">0.745</td>
-                <td class="derived num" th:text="${#numbers.formatDecimal(r.vocEmittedKg, 1, 4)}">0.6705</td>
-                <td class="derived num" th:text="${#numbers.formatDecimal(r.reuseKg, 1, 2)}">0.00</td>
+                <td class="derived num" th:text="${#numbers.formatDecimal(r.vocFactor * 100, 1, 0)} + '%'">75%</td>
+                <td class="derived num" th:text="${#numbers.formatDecimal(r.productionTotal, 1, 2)}">0.67</td>
                 <td sec:authorize="hasAnyRole('ADMIN','MANAGER')">
                     <form th:action="@{'/voc/entry/delete/' + ${r.id}}" method="post" style="display:inline;"
                           th:attr="data-confirm=#{voc.confirm.title}">
@@ -125,22 +129,65 @@
                 </td>
             </tr>
             <tr th:if="${rows == null or rows.isEmpty()}">
-                <td colspan="11" style="text-align:center; color:#6c757d;" th:text="#{voc.entry.norows}">
+                <td colspan="12" style="text-align:center; color:#6c757d;" th:text="#{voc.entry.norows}">
                     No rows yet.
                 </td>
             </tr>
             </tbody>
             <tfoot th:if="${rows != null and !rows.isEmpty()}">
             <tr>
-                <td colspan="3" th:text="#{voc.recipe.total}">Total</td>
+                <td colspan="4" th:text="#{voc.recipe.total}">Total</td>
                 <td class="num" th:text="${#numbers.formatDecimal(#aggregates.sum(rows.![quantityKg]), 1, 2)}">0.00</td>
-                <td colspan="4"></td>
-                <td class="num" th:text="${#numbers.formatDecimal(#aggregates.sum(rows.![vocEmittedKg]), 1, 4)}">0.0000</td>
+                <td class="num" th:text="${#numbers.formatDecimal(#aggregates.sum(rows.![throwKg]), 1, 2)}">0.00</td>
                 <td class="num" th:text="${#numbers.formatDecimal(#aggregates.sum(rows.![reuseKg]), 1, 2)}">0.00</td>
+                <td colspan="4"></td>
+                <td class="num" th:text="${#numbers.formatDecimal(#aggregates.sum(rows.![productionTotal]), 1, 2)}">0.00</td>
                 <td sec:authorize="hasAnyRole('ADMIN','MANAGER')"></td>
             </tr>
             </tfoot>
         </table>
+    </div>
+
+    <!-- Manual single-row entry — every column typed, always available (like one row of the sheet) -->
+    <div sec:authorize="hasAnyRole('ADMIN','MANAGER')" class="voc-add-card" style="display:block; margin-top:18px;">
+        <h3 style="margin:0 0 10px;" th:text="#{voc.manual.title}">Manual entry (one row)</h3>
+        <form th:action="@{/voc/entry/save}" method="post" class="filter-bar" style="margin-bottom:0;">
+            <div class="fld">
+                <label th:text="#{voc.col.date}">Date</label>
+                <input class="form-control" type="date" name="productionDate" th:value="${date}" required/>
+            </div>
+            <div class="fld">
+                <label th:text="#{voc.col.section}">Section</label>
+                <select class="form-control" name="section">
+                    <option th:each="s : ${sections}" th:value="${s}" th:text="${s}" th:selected="${s == section}"></option>
+                </select>
+            </div>
+            <div class="fld">
+                <label th:text="#{voc.col.line}">Line</label>
+                <input class="form-control" name="line" th:value="${line}" placeholder="1A"
+                       list="line-options" autocomplete="off" required/>
+            </div>
+            <div class="fld">
+                <label th:text="#{voc.col.chemical}">Chemical</label>
+                <input class="form-control" name="chemicalCode" list="chem-options" autocomplete="off" required/>
+            </div>
+            <div class="fld">
+                <label th:text="#{voc.col.production}">Production</label>
+                <input class="form-control num" type="number" step="0.01" min="0" name="quantityKg"/>
+            </div>
+            <div class="fld">
+                <label th:text="#{voc.col.throw}">Throw</label>
+                <input class="form-control num" type="number" step="0.01" min="0" name="throwKg"/>
+            </div>
+            <div class="fld">
+                <label th:text="#{voc.entry.reuse}">Reuse</label>
+                <input class="form-control num" type="number" step="0.01" min="0" name="reuseKg"/>
+            </div>
+            <button type="submit" class="btn btn-primary" th:text="#{voc.manual.add}">Add row</button>
+        </form>
+        <datalist id="chem-options">
+            <option th:each="ch : ${chemicals}" th:value="${ch.code}"></option>
+        </datalist>
     </div>
 
     <!-- Add consumption — requires a specific line -->
@@ -157,32 +204,80 @@
             <input type="hidden" name="section" th:value="${section}"/>
             <input type="hidden" name="line" th:value="${line}"/>
             <div class="table-wrapper">
-                <table class="table">
+                <table class="table actual-tbl">
                     <thead>
                     <tr>
                         <th th:text="#{voc.col.chemical}">Chemical</th>
-                        <th class="num" th:text="#{voc.col.qtykg}">Qty (kg)</th>
-                        <th class="num" th:text="#{voc.entry.reuse}">Reuse (kg)</th>
+                        <th class="num" th:text="#{voc.col.production}">Production</th>
+                        <th class="num" th:text="#{voc.col.throw}">Throw</th>
+                        <th class="num" th:text="#{voc.entry.reuse}">Reuse</th>
+                        <th class="voc-h num" th:text="#{voc.col.vocpct}">VOC %</th>
+                        <th class="voc-h num" th:text="#{voc.col.prodtotal}">Production Total</th>
                     </tr>
                     </thead>
                     <tbody>
-                    <tr th:each="ch : ${chemicals}" th:with="ex=${rows.?[chemicalCode == ch.code]}">
+                    <tr th:each="ch : ${chemicals}" th:with="ex=${rowsByCode[ch.code]}">
                         <td th:text="${ch.code}">577NT3
                             <input type="hidden" name="chemicalCode" th:value="${ch.code}"/></td>
                         <td class="num"><input class="form-control num grid-input" type="number" step="0.01" min="0"
-                                name="quantityKg"
-                                th:value="${ex != null and !ex.isEmpty()} ? ${ex[0].quantityKg} : ''"/></td>
+                                name="quantityKg" oninput="vocCalcTotal(this)"
+                                th:attr="data-factor=${ch.vocFactor != null ? ch.vocFactor : 0}"
+                                th:value="${ex != null ? ex.quantityKg : ''}"/></td>
+                        <td class="num"><input class="form-control num grid-input" type="number" step="0.01" min="0"
+                                name="throwKg"
+                                th:value="${ex != null ? ex.throwKg : ''}"/></td>
                         <td class="num"><input class="form-control num grid-input" type="number" step="0.01" min="0"
                                 name="reuseKg"
-                                th:value="${ex != null and !ex.isEmpty()} ? ${ex[0].reuseKg} : ''"/></td>
+                                th:value="${ex != null ? ex.reuseKg : ''}"/></td>
+                        <td class="derived num"
+                            th:text="${ch.vocFactor != null ? #numbers.formatDecimal(ch.vocFactor * 100, 1, 0) + '%' : '—'}">0%</td>
+                        <td class="derived num"><span class="ptotal">0.00</span></td>
                     </tr>
                     </tbody>
+                    <!-- Free-typed chemicals not in the master list (added via the button) -->
+                    <tbody id="vocFreeRows"></tbody>
                 </table>
             </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm" style="margin:6px 0;"
+                    th:attr="data-ph=#{voc.col.chemical}" onclick="vocAddFreeRow(this)"
+                    th:text="#{voc.batch.addrow}">+ Add chemical</button>
+            <br/>
             <button class="btn btn-primary" type="submit" th:text="#{voc.batch.saveall}">Save all</button>
         </form>
     </div>
 </div>
+
+<!-- Live "Production Total" = Production × VOC% (mirrors the sheet's computed column) -->
+<script>
+    function vocCalcTotal(inp) {
+        var f = parseFloat(inp.dataset.factor) || 0;
+        var v = parseFloat(inp.value) || 0;
+        var row = inp.closest('tr');
+        var cell = row && row.querySelector('.ptotal');
+        if (cell) cell.textContent = (v * f).toFixed(2);
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('input[name="quantityKg"][data-factor]').forEach(vocCalcTotal);
+    });
+    // Append a blank row whose chemical code is free-typed (for chemicals not in the master).
+    // Each row keeps one input per name so the parallel-list binding stays index-aligned.
+    function vocAddFreeRow(btn) {
+        var tb = document.getElementById('vocFreeRows');
+        if (!tb) return;
+        var ph = (btn && btn.dataset.ph) ? btn.dataset.ph : '';
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+            '<td><input class="form-control" type="text" name="chemicalCode" autocomplete="off" placeholder="' + ph + '"></td>' +
+            '<td class="num"><input class="form-control num grid-input" type="number" step="0.01" min="0" name="quantityKg" data-factor="0" oninput="vocCalcTotal(this)"></td>' +
+            '<td class="num"><input class="form-control num grid-input" type="number" step="0.01" min="0" name="throwKg"></td>' +
+            '<td class="num"><input class="form-control num grid-input" type="number" step="0.01" min="0" name="reuseKg"></td>' +
+            '<td class="derived num">—</td>' +
+            '<td class="derived num"><span class="ptotal">0.00</span></td>';
+        tb.appendChild(tr);
+        var f = tr.querySelector('input[name="chemicalCode"]');
+        if (f) f.focus();
+    }
+</script>
 
 <!-- Shared import modal + delete-confirm modal -->
 <div th:replace="~{fragments/voc-fragments :: importModal('vocImportModal', @{/voc/consumption/import}, #{voc.import.cols.consumption})}"></div>

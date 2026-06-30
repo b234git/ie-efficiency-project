@@ -185,6 +185,7 @@ public class VocService {
             VocChemical ch = master.get(key);
             double factor = (ch != null && ch.getVocFactor() != null) ? ch.getVocFactor() : 0.0;
             double qty = c.getQuantityKg() != null ? c.getQuantityKg() : 0.0;
+            double thrown = c.getThrowKg() != null ? c.getThrowKg() : 0.0;
             double reuse = c.getReuseKg() != null ? c.getReuseKg() : 0.0;
             rows.add(VocActualRowDto.builder()
                     .id(c.getId())
@@ -196,6 +197,7 @@ public class VocService {
                     .manufacturer(ch != null ? nz(ch.getManufacturer()) : "")
                     .vocFactor(factor)
                     .quantityKg(qty)
+                    .throwKg(thrown)
                     .reuseKg(reuse)
                     .vocEmittedKg(factor * (qty - reuse))
                     .build());
@@ -213,6 +215,7 @@ public class VocService {
         c.setLine(c.getLine() != null ? c.getLine().trim() : null);
         c.setChemicalCode(c.getChemicalCode() != null ? c.getChemicalCode().trim() : null);
         if (c.getQuantityKg() == null) c.setQuantityKg(0.0);
+        if (c.getThrowKg() == null) c.setThrowKg(0.0);
         if (c.getReuseKg() == null) c.setReuseKg(0.0);
 
         if (c.getId() == null) {
@@ -222,6 +225,7 @@ public class VocService {
             if (existing.isPresent()) {
                 VocConsumption e = existing.get();
                 e.setQuantityKg(c.getQuantityKg());
+                e.setThrowKg(c.getThrowKg());
                 e.setReuseKg(c.getReuseKg());
                 c = e;
             }
@@ -256,43 +260,55 @@ public class VocService {
     @Transactional
     public int saveConsumptionBatch(LocalDate date, String section, String line,
                                     List<String> chemicalCode, List<Double> quantityKg, List<Double> reuseKg) {
-        return saveConsumptionBatch(date, section, line, chemicalCode, quantityKg, reuseKg, true).saved();
+        return saveConsumptionBatch(date, section, line, chemicalCode, quantityKg, null, reuseKg, true).saved();
     }
 
     /** Batch save with confirm-before-overwrite. New rows are saved immediately; rows whose
      *  natural key already exists are skipped and reported as conflicts unless {@code overwrite}.
-     *  Rows with neither quantity nor reuse are skipped entirely. */
+     *  Rows with no quantity, throw or reuse are skipped entirely. {@code throwKg} mirrors the
+     *  sheet's "Throw" column (parallel to chemicalCode); may be null. */
     @Transactional
     public BatchResult saveConsumptionBatch(LocalDate date, String section, String line,
-                                    List<String> chemicalCode, List<Double> quantityKg, List<Double> reuseKg,
-                                    boolean overwrite) {
+                                    List<String> chemicalCode, List<Double> quantityKg, List<Double> throwKg,
+                                    List<Double> reuseKg, boolean overwrite) {
         List<String> conflicts = new ArrayList<>();
         if (date == null || line == null || line.isBlank() || chemicalCode == null) return new BatchResult(0, conflicts);
         String sec = (section == null || section.isBlank()) ? DEFAULT_SECTION : section.trim();
         String ln = line.trim();
-        int saved = 0;
+        // One lookup for the whole (date,section,line) — was two queries per chemical.
+        Map<String, VocConsumption> existing = new HashMap<>();
+        for (VocConsumption e : consumptionRepo.findByProductionDateAndSectionAndLineOrderByChemicalCodeAsc(date, sec, ln))
+            existing.put(e.getChemicalCode(), e);
+        List<VocConsumption> toSave = new ArrayList<>();
+        Set<String> seen = new HashSet<>();   // free-typed code may repeat a listed one — first wins, no dup key
         for (int i = 0; i < chemicalCode.size(); i++) {
             String chem = chemicalCode.get(i);
             if (chem == null || chem.isBlank()) continue;
             Double qty = (quantityKg != null && i < quantityKg.size()) ? quantityKg.get(i) : null;
+            Double thrown = (throwKg != null && i < throwKg.size()) ? throwKg.get(i) : null;
             Double reuse = (reuseKg != null && i < reuseKg.size()) ? reuseKg.get(i) : null;
-            if ((qty == null || qty == 0.0) && (reuse == null || reuse == 0.0)) continue;   // blank row
+            if ((qty == null || qty == 0.0) && (thrown == null || thrown == 0.0)
+                    && (reuse == null || reuse == 0.0)) continue;   // blank row
             String chemT = chem.trim();
-            if (!overwrite && consumptionExists(date, sec, ln, chemT)) {
-                conflicts.add(chemT);
-                continue;
+            if (!seen.add(chemT)) continue;   // same code already taken in this submit
+            VocConsumption c = existing.get(chemT);
+            if (c != null && !overwrite) { conflicts.add(chemT); continue; }
+            if (c == null) {
+                c = new VocConsumption();
+                c.setProductionDate(date);
+                c.setSection(sec);
+                c.setLine(ln);
+                c.setChemicalCode(chemT);
             }
-            VocConsumption c = new VocConsumption();
-            c.setProductionDate(date);
-            c.setSection(sec);
-            c.setLine(ln);
-            c.setChemicalCode(chemT);
             c.setQuantityKg(qty != null ? qty : 0.0);
+            c.setThrowKg(thrown != null ? thrown : 0.0);
             c.setReuseKg(reuse != null ? reuse : 0.0);
-            saveConsumption(c);
-            saved++;
+            toSave.add(c);
         }
-        return new BatchResult(saved, conflicts);
+        consumptionRepo.saveAll(toSave);
+        if (!toSave.isEmpty())
+            systemLogService.logAction("BATCH_VOC_CONSUMPTION", date + " | " + ln + " | " + toSave.size() + " chem(s)");
+        return new BatchResult(toSave.size(), conflicts);
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -723,21 +739,29 @@ public class VocService {
                 }
             }
 
+            // Preload the section's rates once (keyed by article||chemical) instead of one
+            // query per aggregated key — a single SELECT + a batched saveAll.
+            Map<String, VocStandardRate> existingRates = new HashMap<>();
+            for (VocStandardRate r : rateRepo.findBySection(section))
+                existingRates.put(r.getArticleNo() + "||" + r.getChemicalCode(), r);
+            List<VocStandardRate> ratesToSave = new ArrayList<>();
             for (Map.Entry<String, double[]> e : agg.entrySet()) {
                 String[] parts = keyParts.get(e.getKey());
                 double avg = e.getValue()[0] / e.getValue()[1];
-                Optional<VocStandardRate> existing =
-                        rateRepo.findBySectionAndArticleNoAndChemicalCode(section, parts[0], parts[1]);
-                VocStandardRate r = existing.orElseGet(VocStandardRate::new);
-                r.setSection(section);
-                r.setArticleNo(parts[0]);
-                r.setChemicalCode(parts[1]);
+                VocStandardRate r = existingRates.get(parts[0] + "||" + parts[1]);
+                if (r != null) result.setUpdated(result.getUpdated() + 1);
+                else {
+                    r = new VocStandardRate();
+                    r.setSection(section);
+                    r.setArticleNo(parts[0]);
+                    r.setChemicalCode(parts[1]);
+                    result.setInserted(result.getInserted() + 1);
+                }
                 r.setKgPerPair(avg);
                 r.setFormula(keyFormula.get(e.getKey()));
-                rateRepo.save(r);
-                if (existing.isPresent()) result.setUpdated(result.getUpdated() + 1);
-                else                      result.setInserted(result.getInserted() + 1);
+                ratesToSave.add(r);
             }
+            rateRepo.saveAll(ratesToSave);
             // Upsert article identity rows (wide layout) or bare stubs (long layout)
             if (!articleMeta.isEmpty()) {
                 articleMeta.values().forEach(this::upsertArticle);
@@ -1665,6 +1689,10 @@ public class VocService {
             // 7+ cols = wide "Actual" (Date|Section|Line|Chemical|Production|Throw|Reuse) → reuse col 6;
             // 6-col legacy template (Date|Section|Line|Chemical|Quantity|Reuse) → reuse col 5.
             int reuseCol = (header != null && header.getLastCellNum() >= 7) ? 6 : 5;
+            // Parse + validate every row (tracking the date span), then one range query + a
+            // batched saveAll — was a find + save per row. Last row wins on a repeated key.
+            Map<String, VocConsumption> candidates = new LinkedHashMap<>();
+            LocalDate minDate = null, maxDate = null;
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
                 if (row == null) { result.setSkipped(result.getSkipped() + 1); continue; }
@@ -1698,25 +1726,45 @@ public class VocService {
                 chemical = chemical.trim();
 
                 Double qty = getDouble(row.getCell(4));
+                Double thrown = (reuseCol == 6) ? getDouble(row.getCell(5)) : null;   // wide "Actual" only
                 Double reuse = getDouble(row.getCell(reuseCol));
                 if (qty != null && qty < 0) {
                     result.getErrors().add("Row " + (i + 1) + ": Quantity cannot be negative");
                     continue;
                 }
 
-                Optional<VocConsumption> existing = consumptionRepo
-                        .findByProductionDateAndSectionAndLineAndChemicalCode(date, section, line, chemical);
-                VocConsumption c = existing.orElseGet(VocConsumption::new);
+                VocConsumption c = new VocConsumption();
                 c.setProductionDate(date);
                 c.setSection(section);
                 c.setLine(line);
                 c.setChemicalCode(chemical);
                 c.setQuantityKg(qty != null ? qty : 0.0);
+                c.setThrowKg(thrown != null ? thrown : 0.0);
                 c.setReuseKg(reuse != null ? reuse : 0.0);
-                consumptionRepo.save(c);
-
-                if (existing.isPresent()) result.setUpdated(result.getUpdated() + 1);
-                else                      result.setInserted(result.getInserted() + 1);
+                candidates.put(date + "|" + section + "|" + line + "|" + chemical, c);
+                if (minDate == null || date.isBefore(minDate)) minDate = date;
+                if (maxDate == null || date.isAfter(maxDate)) maxDate = date;
+            }
+            if (!candidates.isEmpty()) {
+                Map<String, VocConsumption> existing = new HashMap<>();
+                for (VocConsumption e : consumptionRepo
+                        .findByProductionDateBetweenOrderByProductionDateAscLineAscChemicalCodeAsc(minDate, maxDate))
+                    existing.put(e.getProductionDate() + "|" + e.getSection() + "|" + e.getLine() + "|" + e.getChemicalCode(), e);
+                List<VocConsumption> toSave = new ArrayList<>();
+                for (Map.Entry<String, VocConsumption> en : candidates.entrySet()) {
+                    VocConsumption ex = existing.get(en.getKey());
+                    if (ex != null) {
+                        ex.setQuantityKg(en.getValue().getQuantityKg());
+                        ex.setThrowKg(en.getValue().getThrowKg());
+                        ex.setReuseKg(en.getValue().getReuseKg());
+                        toSave.add(ex);
+                        result.setUpdated(result.getUpdated() + 1);
+                    } else {
+                        toSave.add(en.getValue());
+                        result.setInserted(result.getInserted() + 1);
+                    }
+                }
+                consumptionRepo.saveAll(toSave);
             }
         }
         systemLogService.logAction("IMPORT_VOC_CONSUMPTION", result.toFlashMessage());
@@ -1747,6 +1795,10 @@ public class VocService {
                 result.getErrors().add("Không tìm thấy sheet 'Data' trong file");
                 return result;
             }
+            // Parse every row first (tracking the date span), then one range query + a batched
+            // saveAll — was a find + save per apportioned article. Last row wins on a repeated key.
+            Map<String, VocProduction> candidates = new LinkedHashMap<>();
+            LocalDate minDate = null, maxDate = null;
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
                 if (row == null) { result.setSkipped(result.getSkipped() + 1); continue; }
@@ -1780,20 +1832,36 @@ public class VocService {
                     continue;
                 }
 
+                if (minDate == null || date.isBefore(minDate)) minDate = date;
+                if (maxDate == null || date.isAfter(maxDate)) maxDate = date;
                 for (Map.Entry<String, Double> e : weightByArticle.entrySet()) {
                     double share = output * (e.getValue() / totalWeight);   // apportion H by slot weight
-                    Optional<VocProduction> existing = vocProductionRepo
-                            .findByProductionDateAndSectionAndLineAndArticleNo(date, section, line, e.getKey());
-                    VocProduction p = existing.orElseGet(VocProduction::new);
+                    VocProduction p = new VocProduction();
                     p.setProductionDate(date);
                     p.setSection(section);
                     p.setLine(line);
                     p.setArticleNo(e.getKey());
                     p.setOutput(share);
-                    vocProductionRepo.save(p);
-                    if (existing.isPresent()) result.setUpdated(result.getUpdated() + 1);
-                    else                      result.setInserted(result.getInserted() + 1);
+                    candidates.put(date + "|" + section + "|" + line + "|" + e.getKey(), p);
                 }
+            }
+            if (!candidates.isEmpty()) {
+                Map<String, VocProduction> existing = new HashMap<>();
+                for (VocProduction p : vocProductionRepo.findByProductionDateBetween(minDate, maxDate))
+                    existing.put(p.getProductionDate() + "|" + p.getSection() + "|" + p.getLine() + "|" + p.getArticleNo(), p);
+                List<VocProduction> toSave = new ArrayList<>();
+                for (Map.Entry<String, VocProduction> e : candidates.entrySet()) {
+                    VocProduction ex = existing.get(e.getKey());
+                    if (ex != null) {
+                        ex.setOutput(e.getValue().getOutput());
+                        toSave.add(ex);
+                        result.setUpdated(result.getUpdated() + 1);
+                    } else {
+                        toSave.add(e.getValue());
+                        result.setInserted(result.getInserted() + 1);
+                    }
+                }
+                vocProductionRepo.saveAll(toSave);
             }
         }
         systemLogService.logAction("IMPORT_VOC_PRODUCTION", result.toFlashMessage());

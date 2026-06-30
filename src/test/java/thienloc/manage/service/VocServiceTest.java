@@ -256,6 +256,55 @@ class VocServiceTest {
         assertEquals(8.0 * 0.745, row.getVocKg(), 1e-9);
     }
 
+    /** §3: re-saving an existing consumption row carries the new "Throw" through the merge
+     *  branch (regression: it used to overwrite quantity+reuse but drop throwKg). */
+    @Test
+    void saveConsumptionUpdateKeepsThrow() {
+        LocalDate d = LocalDate.of(2026, 5, 4);
+        VocConsumption existing = VocConsumption.builder()
+                .id(5L).productionDate(d).section("ASSY").line("1").chemicalCode("312PM")
+                .quantityKg(10.0).throwKg(0.0).reuseKg(0.0).build();
+        when(consumptionRepo.findByProductionDateAndSectionAndLineAndChemicalCode(d, "ASSY", "1", "312PM"))
+                .thenReturn(Optional.of(existing));
+        ArgumentCaptor<VocConsumption> captor = ArgumentCaptor.forClass(VocConsumption.class);
+        when(consumptionRepo.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+        // Incoming row (id null → upsert/merge path) with a new throw value.
+        vocService.saveConsumption(VocConsumption.builder()
+                .productionDate(d).section("ASSY").line("1").chemicalCode("312PM")
+                .quantityKg(16.0).throwKg(2.5).reuseKg(1.0).build());
+
+        VocConsumption saved = captor.getValue();
+        assertSame(existing, saved);                       // merged onto the existing entity
+        assertEquals(16.0, saved.getQuantityKg(), 1e-9);
+        assertEquals(2.5, saved.getThrowKg(), 1e-9);       // 0.0 before the fix
+        assertEquals(1.0, saved.getReuseKg(), 1e-9);
+    }
+
+    /** §3b: a free-typed chemical repeating a code already in the same submit must not produce
+     *  two rows for one natural key (date,section,line,chemical) — first occurrence wins. */
+    @Test
+    void saveConsumptionBatchDedupsRepeatedCode() {
+        LocalDate d = LocalDate.of(2026, 5, 4);
+        when(consumptionRepo.findByProductionDateAndSectionAndLineOrderByChemicalCodeAsc(d, "ASSY", "1"))
+                .thenReturn(List.of());
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<VocConsumption>> captor = ArgumentCaptor.forClass(List.class);
+        when(consumptionRepo.saveAll(captor.capture())).thenReturn(List.of());
+
+        VocService.BatchResult res = vocService.saveConsumptionBatch(d, "ASSY", "1",
+                List.of("XYZ", "XYZ"),          // same free-typed code twice
+                List.of(1.0, 2.0),              // quantity
+                List.of(0.0, 0.0),              // throw
+                List.of(0.0, 0.0),              // reuse
+                true);
+
+        assertEquals(1, res.saved());
+        assertEquals(1, captor.getValue().size());
+        assertEquals("XYZ", captor.getValue().get(0).getChemicalCode());
+        assertEquals(1.0, captor.getValue().get(0).getQuantityKg(), 1e-9);   // first occurrence wins
+    }
+
     /** §2: importing the full "R" sheet reads price from $/KG (col 9), not UNIT (col 5). */
     @Test
     void importChemicalsReadsPriceFromDollarPerKgColumn() throws Exception {
@@ -382,11 +431,13 @@ class VocServiceTest {
     @Test
     void saveConsumptionBatch_conflictReportedWhenNotOverwrite() {
         LocalDate d = LocalDate.of(2026, 4, 1);
-        when(consumptionRepo.findByProductionDateAndSectionAndLineAndChemicalCode(d, "SEW", "1A", "577NT3"))
-                .thenReturn(Optional.of(new VocConsumption()));
+        VocConsumption existing = new VocConsumption();
+        existing.setChemicalCode("577NT3");
+        when(consumptionRepo.findByProductionDateAndSectionAndLineOrderByChemicalCodeAsc(d, "SEW", "1A"))
+                .thenReturn(List.of(existing));
 
         VocService.BatchResult r = vocService.saveConsumptionBatch(
-                d, "SEW", "1A", List.of("577NT3"), List.of(0.9), List.of(0.0), false);
+                d, "SEW", "1A", List.of("577NT3"), List.of(0.9), List.of(0.0), List.of(0.0), false);
 
         assertEquals(0, r.saved());
         assertEquals(List.of("577NT3"), r.conflicts());
@@ -396,12 +447,14 @@ class VocServiceTest {
     @Test
     void saveConsumptionBatch_overwriteUpdatesExisting() {
         LocalDate d = LocalDate.of(2026, 4, 1);
-        when(consumptionRepo.findByProductionDateAndSectionAndLineAndChemicalCode(any(), any(), any(), any()))
-                .thenReturn(Optional.of(new VocConsumption()));
-        when(consumptionRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        VocConsumption existing = new VocConsumption();
+        existing.setChemicalCode("577NT3");
+        when(consumptionRepo.findByProductionDateAndSectionAndLineOrderByChemicalCodeAsc(any(), any(), any()))
+                .thenReturn(List.of(existing));
+        when(consumptionRepo.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
 
         VocService.BatchResult r = vocService.saveConsumptionBatch(
-                d, "SEW", "1A", List.of("577NT3"), List.of(0.9), List.of(0.0), true);
+                d, "SEW", "1A", List.of("577NT3"), List.of(0.9), List.of(0.0), List.of(0.0), true);
 
         assertEquals(1, r.saved());
         assertTrue(r.conflicts().isEmpty());
@@ -455,10 +508,9 @@ class VocServiceTest {
         }
 
         when(chemicalRepo.findByCodeIgnoreCase(any())).thenReturn(Optional.empty());
-        when(rateRepo.findBySectionAndArticleNoAndChemicalCode(any(), any(), any())).thenReturn(Optional.empty());
         when(recipeArticleRepo.findById(any())).thenReturn(Optional.empty());
-        ArgumentCaptor<VocStandardRate> rateCaptor = ArgumentCaptor.forClass(VocStandardRate.class);
-        when(rateRepo.save(rateCaptor.capture())).thenAnswer(inv -> inv.getArgument(0));
+        ArgumentCaptor<List<VocStandardRate>> rateCaptor = ArgumentCaptor.forClass(List.class);
+        when(rateRepo.saveAll(rateCaptor.capture())).thenAnswer(inv -> inv.getArgument(0));
         ArgumentCaptor<VocRecipeArticle> artCaptor = ArgumentCaptor.forClass(VocRecipeArticle.class);
         when(recipeArticleRepo.save(artCaptor.capture())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -466,8 +518,9 @@ class VocServiceTest {
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", bytes));
 
         // exactly one dosage captured: keyed by REF (col A = DB!$A), chemical from block 1 only
-        assertEquals(1, rateCaptor.getAllValues().size());
-        VocStandardRate rate = rateCaptor.getValue();
+        List<VocStandardRate> capturedRates = rateCaptor.getAllValues().stream().flatMap(List::stream).toList();
+        assertEquals(1, capturedRates.size());
+        VocStandardRate rate = capturedRates.get(0);
         assertEquals("376682", rate.getArticleNo());     // DB col A (REF), not Article # (col C)
         assertEquals("NUV-24N", rate.getChemicalCode());
         assertEquals("SEW", rate.getSection());          // no Data sheet → default section
@@ -560,26 +613,25 @@ class VocServiceTest {
             r.createCell(2).setCellValue("1");
             r.createCell(3).setCellValue("NP-72KMN");
             r.createCell(4).setCellValue(20.0);   // Production = consumed qty
-            r.createCell(5).setCellValue(7.0);    // Throw — must be ignored
+            r.createCell(5).setCellValue(7.0);    // Throw — stored, but not the reuse column
             r.createCell(6).setCellValue(3.0);    // Reuse — the real reuse
             wb.write(bos);
             bytes = bos.toByteArray();
         }
 
-        when(consumptionRepo.findByProductionDateAndSectionAndLineAndChemicalCode(any(), any(), any(), any()))
-                .thenReturn(Optional.empty());
-        ArgumentCaptor<VocConsumption> captor = ArgumentCaptor.forClass(VocConsumption.class);
-        when(consumptionRepo.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
+        ArgumentCaptor<List<VocConsumption>> captor = ArgumentCaptor.forClass(List.class);
+        when(consumptionRepo.saveAll(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
 
         vocService.importConsumptionFromExcel(new MockMultipartFile("file", "Actual.xlsx",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", bytes));
 
-        VocConsumption c = captor.getValue();
+        VocConsumption c = captor.getAllValues().stream().flatMap(List::stream).toList().get(0);
         assertEquals(LocalDate.of(2026, 5, 4), c.getProductionDate());
         assertEquals("SF", c.getSection());
         assertEquals("1", c.getLine());
         assertEquals("NP-72KMN", c.getChemicalCode());
         assertEquals(20.0, c.getQuantityKg(), 1e-9);
         assertEquals(3.0, c.getReuseKg(), 1e-9);   // column 6 (Reuse), NOT column 5 (Throw=7.0)
+        assertEquals(7.0, c.getThrowKg(), 1e-9);   // column 5 (Throw) stored for sheet parity
     }
 }
