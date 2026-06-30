@@ -85,6 +85,10 @@
             table.matrix { font-size:0.95rem; }
             table.matrix th, table.matrix td { padding:8px 11px; }
             .c-art { min-width:150px; }
+            /* taller header rows here → shift sticky offsets so the 4 rows don't overlap */
+            table.matrix thead tr:nth-child(2) th { top:36px; }
+            table.matrix thead tr:nth-child(3) th { top:72px; }
+            table.matrix thead tr:nth-child(4) th { top:108px; }
         }
     </style>
 </head>

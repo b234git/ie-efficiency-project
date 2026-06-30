@@ -118,8 +118,9 @@
 
     <div th:if="${report.selectedMonth != null}">
 
-        <!-- ════════ SUMMARY cards + other views (now at the top) ════════ -->
-        <details class="voc-secondary" open>
+        <!-- ════════ SUMMARY cards + other views — collapsed by default so the
+             page opens straight into the primary Reconciliation view ════════ -->
+        <details class="voc-secondary">
             <summary th:text="#{voc.secondary}">Summary &amp; other views</summary>
 
         <!-- Summary cards -->
@@ -297,8 +298,9 @@
                     <span class="heat-over" th:text="#{voc.reconcile.high}">OVER</span>
                     <span class="heat-under" th:text="#{voc.reconcile.low}">UNDER</span>
                 </div>
-                <!-- Period total over the filtered range — shown first, right under the summary -->
-                <div class="week-block" th:if="${report.reconcileTotal != null}">
+                <!-- Period overview: whole-range total, set apart from the weekly blocks -->
+                <div class="period-total-block" th:if="${report.reconcileTotal != null}">
+                    <div class="pt-caption" th:text="#{voc.reconcile.overview}">Period overview</div>
                     <div class="table-wrapper">
                         <table class="table pivot mode-ratio heatmap reconcile-week">
                             <thead>
@@ -321,11 +323,10 @@
 
                 <!-- One separated block per week: header strip (label + HIGH/LOW panels)
                      above the week's OWN data table, each with its own Date header bar. -->
-                <div class="week-block" th:each="wk, wkStat : ${report.reconcileWeeks}">
-                    <div class="week-head">
-                        <span class="band-label"
-                              th:text="#{voc.reconcile.week(${wkStat.count})} + ' (' + ${wk.label} + ')'">Week 1</span>
-                        <div class="rank-tables">
+                <details class="week-block" th:each="wk, wkStat : ${report.reconcileWeeks}" open>
+                    <summary class="week-summary"
+                             th:text="#{voc.reconcile.week(${wkStat.count})} + ' (' + ${wk.label} + ')'">Week 1</summary>
+                    <div class="rank-tables">
                             <table class="rank-mini rank-high">
                                 <thead>
                                 <tr><th colspan="2" th:text="#{voc.reconcile.highcons}">HIGH CONSUMPTION</th></tr>
@@ -353,7 +354,6 @@
                                 </tbody>
                             </table>
                         </div>
-                    </div>
                     <div class="table-wrapper">
                         <table class="table pivot mode-ratio heatmap reconcile-week">
                             <thead>
@@ -376,7 +376,7 @@
                             </tbody>
                         </table>
                     </div>
-                </div>
+                </details>
             </div>
         </section>
     </div>
@@ -486,18 +486,21 @@
         if (panel && !panel.contains(e.target)) panel.classList.remove('open');
     });
 
-    // Heatmap: tint each ratio cell red (over-consumption >100%) → green (under <100%).
-    // 100% ≈ neutral; saturates at 200%+ (red) and 50%- (green). Persists across cell modes.
+    // Heatmap: only cells OUTSIDE the on-target band (90%–110%, matching the legend) get
+    // tinted — red for over-consumption, green for under. On-target cells stay white so the
+    // eye lands on the real outliers instead of a wall of colour. Persists across cell modes.
     function applyHeatmap() {
         document.querySelectorAll('.pivot.heatmap td[data-ratio]').forEach(td => {
             const r = parseFloat(td.getAttribute('data-ratio'));
             if (!isFinite(r)) return;
-            if (r >= 1) {
-                const t = Math.min((r - 1) / 1.0, 1);
-                td.style.background = `rgba(220,53,69,${(0.10 + 0.55 * t).toFixed(3)})`;
+            if (r > 1.10) {
+                const t = Math.min((r - 1.10) / 0.9, 1);
+                td.style.background = `rgba(220,53,69,${(0.15 + 0.50 * t).toFixed(3)})`;
+            } else if (r < 0.90) {
+                const t = Math.min((0.90 - r) / 0.4, 1);
+                td.style.background = `rgba(25,135,84,${(0.13 + 0.42 * t).toFixed(3)})`;
             } else {
-                const t = Math.min((1 - r) / 0.5, 1);
-                td.style.background = `rgba(25,135,84,${(0.08 + 0.40 * t).toFixed(3)})`;
+                td.style.background = '#fff';   // on target → neutral, no colour
             }
         });
     }

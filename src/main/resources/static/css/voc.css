@@ -84,14 +84,21 @@
 .pivot .t1 { display:block; line-height:1.15; }
 .pivot .t2 { display:block; line-height:1.1; font-size:.74em; font-weight:400; opacity:.75; }
 
-/* Per-week blocks (each = header strip + its own table) + ranking chips + total rows */
-.week-block { margin:0 0 22px; }
-.week-head { display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap;
-             background:#eef3fb; border:1px solid #cfe0f7; border-bottom:none;
-             border-radius:8px 8px 0 0; padding:10px 12px; }
-.week-block .table-wrapper { border:1px solid #cfe0f7; border-top:none; border-radius:0 0 8px 8px; }
-.band-label { font-weight:700; color:#1c4e9d; font-size:.92rem; padding:5px 12px;
-              background:#dbe7fb; border:1px solid #c3d7f4; border-radius:6px; white-space:nowrap; }
+/* Per-week blocks: a collapsible <details> with a clickable <summary> header bar
+   over the week's HIGH/LOW panels + data table. */
+.week-block { margin:0 0 18px; }
+.week-block > summary { cursor:pointer; user-select:none; list-style-position:inside;
+    font-weight:700; color:#1c4e9d; font-size:.95rem;
+    background:#eef3fb; border:1px solid #cfe0f7; border-radius:8px; padding:9px 14px; }
+.week-block[open] > summary { border-radius:8px 8px 0 0; border-bottom:none; }
+.week-block > summary:hover { background:#e3edfb; }
+.week-block > .rank-tables { padding:12px 14px; background:#f6f9fe;
+    border-left:1px solid #cfe0f7; border-right:1px solid #cfe0f7; }
+.week-block > .table-wrapper { border:1px solid #cfe0f7; border-top:none; border-radius:0 0 8px 8px; }
+/* Period overview: whole-range total, set apart from the weekly blocks */
+.period-total-block { margin:0 0 20px; border:1px solid #cfe0f7; border-radius:8px; overflow:hidden; }
+.period-total-block .pt-caption { background:#dbe7fb; color:#1c4e9d; font-weight:700;
+    padding:8px 14px; font-size:.95rem; }
 .band-rank { font-size:.78rem; color:#6c757d; font-weight:600; }
 .chip { display:inline-block; padding:1px 8px; border-radius:10px; font-size:.75rem;
         font-weight:700; margin-left:4px; white-space:nowrap; }
@@ -118,12 +125,13 @@
 .heat-under { background:rgba(25,135,84,.35); }
 
 /* Per-week HIGH/LOW ranking panels (% sheet AC/AF) — compact 5-row TYPE | % tables */
-.rank-tables { display:flex; gap:12px; }
-.rank-mini { border-collapse:collapse; font-size:.85rem; background:#fff; white-space:nowrap;
+.rank-tables { display:flex; gap:12px; flex-wrap:wrap; }
+/* width:auto overrides the global `table{width:100%}` so panels are content-sized, not stretched */
+.rank-mini { width:auto; border-collapse:collapse; font-size:.8rem; background:#fff; white-space:nowrap;
              box-shadow:0 1px 3px rgba(0,0,0,.10); border-radius:5px; overflow:hidden; }
-.rank-mini th, .rank-mini td { border:1px solid #e6e6e6; padding:5px 16px; text-align:left; line-height:1.6; }
-.rank-mini tbody td:first-child { min-width:90px; }
-.rank-mini thead tr:first-child th { color:#fff; text-align:center; letter-spacing:.3px; padding:5px 10px; }
+.rank-mini th, .rank-mini td { border:1px solid #e6e6e6; padding:3px 10px; text-align:left; line-height:1.45; }
+.rank-mini tbody td:first-child { min-width:72px; }
+.rank-mini thead tr:first-child th { color:#fff; text-align:center; letter-spacing:.3px; padding:3px 8px; font-size:.74rem; }
 .rank-high thead tr:first-child th { background:#dc3545; }
 .rank-low  thead tr:first-child th { background:#198754; }
 .rank-mini thead tr:nth-child(2) th { background:#f3f4f6; color:#666; font-size:.74rem; }
@@ -189,11 +197,11 @@
     .tab-btn { font-size:.98rem; padding:9px 24px; }
     .filter-bar .fld label, .fgroup > label { font-size:.76rem; }
     /* Week blocks + ranking panels */
-    .band-label { font-size:1rem; }
+    .week-block > summary { font-size:1.02rem; }
     .band-rank { font-size:.84rem; }
     .chip { font-size:.8rem; }
-    .rank-mini { font-size:.92rem; }
-    .rank-mini th, .rank-mini td { padding:6px 18px; }
+    .rank-mini { font-size:.84rem; }
+    .rank-mini th, .rank-mini td { padding:4px 12px; }
     /* All VOC data tables uniformly: report by-line/by-chem, reconcile + subcon
        pivots, chemicals list. Pivot t1/t2 sub-lines inherit the larger figure. */
     .table th, .table td { font-size:1.05rem; padding:11px 13px; }
