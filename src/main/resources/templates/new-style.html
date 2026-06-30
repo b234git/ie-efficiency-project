@@ -46,6 +46,12 @@
         .page-btn.active { background: #0d6efd; color: #fff; border-color: #0d6efd; }
         .page-btn:disabled { opacity: 0.45; cursor: default; }
         .page-info { font-size: 0.85rem; color: #495057; }
+
+        /* Large screens: enlarge the reference table for readability */
+        @media (min-width: 1400px) {
+            .ref-table { font-size: 1rem; }
+            .ref-table th, .ref-table td { padding: 7px 10px; }
+        }
     </style>
 </head>
 

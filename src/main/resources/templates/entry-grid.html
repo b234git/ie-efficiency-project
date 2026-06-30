@@ -17,6 +17,13 @@
         .eff-hi { color: #28a745; } .eff-low { color: #dc3545; }
         .grid-toolbar { display: flex; gap: 10px; align-items: center; margin: 14px 0; flex-wrap: wrap; }
         .row-del { background: #f8d7da; border: none; cursor: pointer; border-radius: 4px; padding: 2px 8px; color: #b02a37; }
+
+        /* Large screens: enlarge the fast-entry grid for readability */
+        @media (min-width: 1400px) {
+            .grid-table { font-size: 0.98rem; }
+            .grid-table th, .grid-table td { padding: 6px 9px; }
+            .grid-table input, .grid-table select { font-size: 0.95rem; }
+        }
     </style>
 </head>
 

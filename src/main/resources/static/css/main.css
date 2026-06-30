@@ -877,3 +877,11 @@ th {
         justify-content: center;
     }
 }
+
+/* ── Large screens: data-heavy pages use more of the width so wide tables scroll
+   less. Only the wide containers grow; .container / .container-sm (forms, login,
+   simple pages) stay narrow on purpose. VOC pages override .container-xl in voc.css. */
+@media (min-width: 1400px) {
+    .container-lg { max-width: 1700px; }
+    .container-xl { max-width: 1850px; }
+}

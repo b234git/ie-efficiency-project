@@ -99,6 +99,12 @@
             font-style: italic;
         }
         .month-filter { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+
+        /* Large screens: enlarge the dense salary table for readability */
+        @media (min-width: 1400px) {
+            .salary-table { font-size: 0.95rem; }
+            .salary-table th, .salary-table td { padding: 7px 9px; }
+        }
     </style>
 </head>
 

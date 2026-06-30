@@ -176,3 +176,29 @@
     .fgroup .form-control, .grid-input { width:100%; }
     .voc-cards .voc-card { min-width:120px; }
 }
+
+/* ── Large screens: roomier container + larger type so dense pivots read easily.
+   voc.css is page-scoped (only /voc/** load it), so widening .container-xl here
+   affects VOC pages only. Base sizes are untouched — this only enhances ≥1400px. */
+@media (min-width:1400px) {
+    .container-xl { max-width:1880px; }
+    /* Summary cards + page chrome */
+    .voc-card .value { font-size:1.9rem; }
+    .voc-card .label { font-size:.82rem; }
+    .muted, .pivot-legend { font-size:.9rem; }
+    .tab-btn { font-size:.98rem; padding:9px 24px; }
+    .filter-bar .fld label, .fgroup > label { font-size:.76rem; }
+    /* Week blocks + ranking panels */
+    .band-label { font-size:1rem; }
+    .band-rank { font-size:.84rem; }
+    .chip { font-size:.8rem; }
+    .rank-mini { font-size:.92rem; }
+    .rank-mini th, .rank-mini td { padding:6px 18px; }
+    /* All VOC data tables uniformly: report by-line/by-chem, reconcile + subcon
+       pivots, chemicals list. Pivot t1/t2 sub-lines inherit the larger figure. */
+    .table th, .table td { font-size:1.05rem; padding:11px 13px; }
+    .pivot .t2 { font-size:.8em; }
+    /* Entry "Actual" table (own class) */
+    .actual-tbl { font-size:1rem; }
+    .actual-tbl th, .actual-tbl td { padding:8px 12px; }
+}
