@@ -40,10 +40,15 @@ public class UserService {
     private final JdbcTemplate jdbcTemplate;
 
     public User registerUser(User user) {
+        // Self-registration is public, so NEVER trust privilege fields off the form.
+        // Force a fresh, non-privileged account; admins promote via updateRole().
+        //  - id=null    → can't overwrite an existing row (account takeover via mass-assignment)
+        //  - role       → always ROLE_USER, ignoring any submitted role=ROLE_ADMIN
+        //  - enabled    → always true (new accounts active; admin can disable)
+        user.setId(null);
+        user.setRole("ROLE_USER");
+        user.setEnabled(true);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
-        if (user.getRole() == null || user.getRole().isEmpty()) {
-            user.setRole("ROLE_USER");
-        }
         return userRepository.save(user);
     }
 

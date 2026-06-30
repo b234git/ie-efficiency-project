@@ -69,14 +69,32 @@ class UserServiceTest {
     }
 
     @Test
-    void testRegisterUser_ExplicitRole_Preserved() {
-        User user = User.builder().username("test").password("pass").role("ROLE_MANAGER").build();
+    void testRegisterUser_ClientSuppliedRole_IgnoredForcedToRoleUser() {
+        // Self-registration is public: a submitted role MUST NOT be honoured,
+        // otherwise anyone could POST role=ROLE_ADMIN and self-promote.
+        User user = User.builder().username("test").password("pass").role("ROLE_ADMIN").build();
         when(passwordEncoder.encode(any())).thenReturn("encoded");
         when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
         User result = userService.registerUser(user);
 
-        assertEquals("ROLE_MANAGER", result.getRole());
+        assertEquals("ROLE_USER", result.getRole());
+    }
+
+    @Test
+    void testRegisterUser_ClientSuppliedIdAndEnabled_Reset() {
+        // id off the form would let save() overwrite an existing row (account
+        // takeover); enabled must default to a fresh active account.
+        User user = User.builder().id(5L).username("test").password("pass")
+                .role("ROLE_ADMIN").enabled(false).build();
+        when(passwordEncoder.encode(any())).thenReturn("encoded");
+        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+
+        User result = userService.registerUser(user);
+
+        assertNull(result.getId());
+        assertTrue(result.isEnabled());
+        assertEquals("ROLE_USER", result.getRole());
     }
 
     @Test
